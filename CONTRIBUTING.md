@@ -70,10 +70,13 @@ generation stage, not the pipeline.
 `run_pipeline.sh` assumes a populated `vendor/` and downloaded weights. Needs a bootstrap script
 and a `requirements.txt` that is actually pinned.
 
-### 6. Second character
-Every measurement in this repository comes from one character. Several constants are suspiciously
-well-suited to it. A second subject with different proportions and a different garment is the
-cheapest way to find what is genuinely general.
+### 6. Third character, and a different body type
+A second character (Wren) now exists and the pipeline reproduced her without a parameter change,
+which is the first evidence anything here generalises. But both subjects are adult humans of
+similar proportion in a jacket and trousers. The constants that would actually break — the
+lateral-frac midline test, the weld tolerance, the bone-graph spread bound — need a subject that
+stresses them: very different proportions, a skirt or a coat that breaks the two-leg assumption,
+or a non-human silhouette.
 
 ---
 
@@ -98,6 +101,11 @@ Newest first. Each of these has a script and a measurement.
   | medium | 8.57% | 62.2% | 137.6% |
   | strong | 8.55% | 67.1% | 167.9% |
 
+- **A second character, and a roster to pick from.** Wren — a woman in a brown leather jacket
+  with a satchel — was rebuilt from her raw generation through the current pipeline with no
+  parameter changes, and lands in the same place as Rowan (clothing median p99 54.7% vs 62.0%,
+  worst 128.8% vs 131.2%). The playground now carries both, switchable without a reload, each
+  downloaded only when selected, plus a panel explaining how to run the generator locally.
 - **Web build 3.4x smaller at no visible cost.** 23.45 MB → 6.88 MB. Textures were 86% of the
   file; the 4K albedo turned out to be upsampled from TRELLIS's native 1024 and held nothing over
   2K. Albedo 2048 WebP q95, normal map 2048 WebP **lossless** (a normal is a direction, not a

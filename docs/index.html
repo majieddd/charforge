@@ -47,7 +47,40 @@
          z-index:6;display:none;touch-action:none}
   #touch i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
            background:var(--accent);opacity:.85}
+  #roster{right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:10px 11px 11px}
+  #roster h2{margin:0 0 8px;font-size:10.5px;font-weight:600;letter-spacing:.09em;
+             text-transform:uppercase;color:var(--muted)}
+  .cards{display:flex;gap:8px}
+  .card{position:relative;width:76px;padding:0;border-radius:9px;overflow:hidden;cursor:pointer;
+        background:var(--panel2);border:1px solid var(--line);display:block;text-align:left}
+  .card img{display:block;width:100%;height:auto;background:linear-gradient(#20262F,#171C24)}
+  .card b{display:block;font-size:10px;font-weight:600;padding:5px 6px 1px;color:var(--ink);
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card i{display:block;font-size:9px;font-style:normal;padding:0 6px 5px;color:var(--muted)}
+  .card[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .card:hover{border-color:var(--accent)}
+  .card.busy{opacity:.55;pointer-events:none}
+  #b-gen{width:100%;margin-top:8px;font-size:10.5px;padding:6px 8px}
+  #gen[hidden]{display:none}
+  #gen{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;
+       background:color-mix(in srgb,#000 62%,transparent);backdrop-filter:blur(3px)}
+  #genbox{max-width:540px;width:100%;background:var(--panel);border:1px solid var(--line);
+          border-radius:13px;padding:20px 21px;max-height:86vh;overflow:auto}
+  #genbox h3{margin:0 0 3px;font-size:16px;letter-spacing:-.01em}
+  #genbox .sub{margin:0 0 15px;font-size:11.5px;color:var(--muted)}
+  #genbox p{margin:0 0 11px;font-size:12px;line-height:1.55;color:var(--ink2)}
+  #genbox ol{margin:0 0 11px;padding-left:19px;font-size:12px;line-height:1.6;color:var(--ink2)}
+  #genbox pre{margin:7px 0 13px;padding:10px 11px;background:var(--panel2);border:1px solid var(--line);
+              border-radius:7px;font-family:var(--mono);font-size:10.5px;color:var(--ink);
+              overflow-x:auto;white-space:pre}
+  #genbox a{color:var(--accent)}
+  .genrow{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}
+  #genbox .genrow a.btn{text-decoration:none;font-size:11.5px;padding:7px 12px;border-radius:7px;
+                background:var(--accent);color:#fff;border:1px solid var(--accent)}
+  #genbox .genrow a.btn.ghost{background:var(--panel2);color:var(--ink);border-color:var(--line)}
+  .genrow button{font-size:11.5px;padding:7px 12px}
   @media (hover:none) and (pointer:coarse){#touch{display:block}#keys{display:none}}
+  @media (max-width:560px){#roster{left:14px;right:14px}.cards{justify-content:flex-start}}
   @media (max-width:560px){#stats{display:none}#title{max-width:calc(100vw - 28px)}}
 </style>
 
@@ -55,14 +88,15 @@
 
 <div id="title" class="hud">
   <h1>CharForge Playground</h1>
-  <p>Generated from a text prompt on a laptop &mdash; geometry, skeleton and skinning all local.
-  Geometry from stochastic multi-view conditioning, retopologised to a watertight quad mesh with
-  4K albedo and normal baked from the high-resolution surface. Mixamo capture retargeted onto a
-  T-posed rig, skinned throughout &mdash; the way a game character actually ships.
-  Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers apply
-  it linearly, which hollows out the inside of every bent joint. Blending the rotations as
+  <p>Two characters, each generated from a text prompt on a laptop &mdash; geometry, skeleton and
+  skinning all local. Pick one from the roster, bottom right, or see what it takes to make your
+  own. Geometry comes from stochastic multi-view conditioning, retopologised to a watertight quad
+  mesh with albedo and normal baked from the high-resolution surface, then Mixamo capture
+  retargeted onto a T-posed rig and skinned throughout.</p>
+  <p>Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers
+  apply it linearly, which hollows out the inside of every bent joint. Blending the rotations as
   rotations instead takes jacket faces collapsed below half their rest area from 8.8% to 6.1%
-  over the walk and 11.5% to 6.0% over the run. Toggle it to see the difference.</p>
+  over the walk. Toggle it to see the difference.</p>
   <div class="btns">
     <button id="b-dqs" aria-pressed="true">Dual-quat skin</button>
     <button id="b-parts" aria-pressed="false">Show parts</button>
@@ -76,6 +110,7 @@
   <div class="row"><span>speed</span><b id="s-speed">0.0 m/s</b></div>
   <div class="row"><span>polygons</span><b id="s-tris">&mdash;</b></div>
   <div class="row"><span>bones</span><b id="s-bones">&mdash;</b></div>
+  <div class="row"><span>clips</span><b id="s-clips">&mdash;</b></div>
   <div class="row"><span>fps</span><b id="s-fps">&mdash;</b></div>
 </div>
 
@@ -87,6 +122,44 @@
     <tr><td><kbd>E</kbd></td><td>wave</td></tr>
     <tr><td><kbd>drag</kbd></td><td>orbit camera</td></tr>
   </table>
+</div>
+
+<div id="roster" class="hud">
+  <h2>Characters</h2>
+  <div class="cards" id="cards"></div>
+  <button id="b-gen">Make your own &rarr;</button>
+</div>
+
+<div id="gen" hidden>
+  <div id="genbox" role="dialog" aria-modal="true" aria-labelledby="gentitle">
+    <h3 id="gentitle">Generate your own character</h3>
+    <p class="sub">CharForge is a local pipeline, not a hosted service &mdash; there is no
+      &ldquo;generate&rdquo; button to press here.</p>
+    <p>Everything that made the characters in this playground runs on one Apple Silicon laptop:
+      generation, segmentation, retopology, rigging, skinning and animation. Nothing is sent
+      anywhere. That is the point of it, and it is also why the generator cannot live on this
+      page &mdash; it needs Blender, the TRELLIS.2 weights and about 20&nbsp;GB on disk.</p>
+    <ol>
+      <li>Clone the repository and install the host dependencies</li>
+      <li>Run <code>tools/check_env.py</code> &mdash; it reports anything missing across all
+          three environments before a long run starts</li>
+      <li>Give <code>run_pipeline.sh</code> a prompt and a name</li>
+    </ol>
+<pre>git clone https://github.com/majieddd/charforge
+cd charforge
+python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
+.venv/bin/python tools/check_env.py
+
+./run_pipeline.sh "a woman in a brown leather jacket with a satchel" char03</pre>
+    <p>Each stage leaves inspectable output in <code>work/&lt;name&gt;/</code> and prints what it
+      measured. The character that drops out the far end is the <code>.glb</code> this page
+      loads, so you can point the playground at your own.</p>
+    <div class="genrow">
+      <a class="btn" id="gen-repo" href="https://github.com/majieddd/charforge" target="_blank" rel="noopener">Open the repository</a>
+      <a class="btn ghost" href="https://github.com/majieddd/charforge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">What&rsquo;s next / how to help</a>
+      <button id="gen-close">Close</button>
+    </div>
+  </div>
 </div>
 
 <div id="touch"><i></i></div>
@@ -280,15 +353,80 @@ function patchDQS(mat) {
   return mat;
 }
 
-// Served straight from GitHub Pages. The artifact build has to smuggle the GLB in as base64
-// across five .js modules because that host will not serve .glb; here a plain fetch works, which
-// saves the 33% base64 tax and lets the progress bar report real bytes.
-// ?model= lets the 2K web build be compared against the full 4K bake without a rebuild.
-// The default is the 2K one: round-tripping the albedo through 2048 scores 39.6 dB PSNR
-// against the 4K original and the normal 38.3 dB, both above the point where a difference is
-// visible, for a third of the download.
-const MODEL = new URLSearchParams(location.search).get('model') || './character.glb';
-new GLTFLoader().load(MODEL, (gltf) => {
+
+// ---- the character roster --------------------------------------------------------------
+// CHARACTER_SOURCES is the single block the GitHub Pages build swaps out. Here each character
+// arrives as a lazily-imported base64 module, because artifact hosting serves .js but not .glb;
+// on Pages the same characters are fetched as .glb directly. Lazy is the point either way -
+// only the character you actually select is downloaded.
+// GitHub Pages serves .glb directly, so each character is streamed rather than smuggled in as
+// base64 across .js modules - it saves the 33% base64 tax and gives the progress bar real bytes.
+async function fetchGLB(url, onProgress) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(url + ' -> HTTP ' + res.status);
+  const total = Number(res.headers.get('content-length')) || 0;
+  if (!res.body || !total) return res.arrayBuffer();
+  const reader = res.body.getReader();
+  const parts = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value); got += value.length;
+    onProgress && onProgress(got / total);
+  }
+  const out = new Uint8Array(got);
+  let at = 0;
+  for (const part of parts) { out.set(part, at); at += part.length; }
+  return out.buffer;
+}
+
+const CHARACTER_SOURCES = {
+  char01: (p) => fetchGLB('./character.glb', p),
+  char02: (p) => fetchGLB('./char02.glb', p),
+};
+
+const CHARACTERS = [
+  { id:'char01', name:'Rowan', blurb:'green bomber',
+    prompt:'a man in a green bomber jacket with medium-length wavy hair',
+    thumb:'data:image/webp;base64,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' },
+  { id:'char02', name:'Wren', blurb:'leather + satchel',
+    prompt:'a woman in a brown leather jacket with a satchel and a braid',
+    thumb:'data:image/webp;base64,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' },
+];
+
+// ---- loading and swapping ----------------------------------------------------------------
+let activeId = null, loading = false;
+
+function disposeCharacter() {
+  if (mixer) { mixer.stopAllAction(); mixer.uncacheRoot(mixer.getRoot()); mixer = null; }
+  if (skeletonHelper) { scene.remove(skeletonHelper); skeletonHelper = null; }
+  if (model) {
+    rig.remove(model);
+    // A cloned material shares its textures with the original, so textures are collected into a
+    // set and disposed once - releasing GPU memory twice is how a swap turns into a leak.
+    const mats = new Set(), texes = new Set();
+    for (const m of [...origMats.values(), ...dqsMats.values()]) if (m) mats.add(m);
+    model.traverse((o) => {
+      if (!(o.isMesh || o.isSkinnedMesh)) return;
+      if (o.material) mats.add(o.material);
+      o.geometry && o.geometry.dispose();
+    });
+    for (const m of mats) {
+      for (const k of ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap',
+                       'alphaMap','bumpMap','displacementMap']) if (m[k]) texes.add(m[k]);
+      m.dispose();
+    }
+    for (const t of texes) t.dispose();
+    model = null;
+  }
+  origMats.clear(); dqsMats.clear();
+  for (const k of Object.keys(actions)) delete actions[k];
+  for (const k of Object.keys(clothAddon)) delete clothAddon[k];
+  current = null; locked = 0; speed = 0;
+}
+
+function buildCharacter(gltf) {
   model = gltf.scene;
   model.traverse((o) => {
     if (o.isMesh || o.isSkinnedMesh) {
@@ -297,10 +435,9 @@ new GLTFLoader().load(MODEL, (gltf) => {
       origMats.set(o, o.material);
       const d = patchDQS(o.material.clone());   // clone shares textures, not the program
       dqsMats.set(o, d);
-      o.material = d;
+      o.material = dqsOn ? d : o.material;
     }
   });
-
   rig.add(model);
 
   mixer = new THREE.AnimationMixer(model);
@@ -310,10 +447,6 @@ new GLTFLoader().load(MODEL, (gltf) => {
     if (clip.name === 'jump' || clip.name === 'wave' || clip.name === 'turn') {
       a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
     }
-    // A baked cloth simulation exports as its own animation carrying only morph weights, so it
-    // has to be driven alongside the skeletal clip it belongs to. Left to the state machine it
-    // would simply sit at weight 0 and the jacket would never move - which is exactly what the
-    // first build did while reporting "17 morph targets" loaded.
     // Cloth is exported merged into each clip now (paired NLA tracks), so a clip carries both
     // skeleton and morph-weight channels. The separate cloth_* path is kept for exports made
     // the old way, where it would otherwise sit at weight zero and never play.
@@ -332,7 +465,7 @@ new GLTFLoader().load(MODEL, (gltf) => {
   if (isFinite(box.min.y)) model.position.y -= box.min.y;
 
   skeletonHelper = new THREE.SkeletonHelper(model);
-  skeletonHelper.visible = false;
+  skeletonHelper.visible = !!(skeletonHelper && $('b-skel').getAttribute('aria-pressed') === 'true');
   skeletonHelper.material.linewidth = 2;
   scene.add(skeletonHelper);
 
@@ -344,20 +477,85 @@ new GLTFLoader().load(MODEL, (gltf) => {
     if (o.isBone) bones++;
   });
   $('s-tris').textContent = Math.round(tris).toLocaleString();
-  $('s-bones').textContent = bones || '—';
+  $('s-bones').textContent = bones || '\u2014';
+  $('s-clips').textContent = Object.keys(actions).length || '\u2014';
   // small debug handle: lets the state of the mixer be inspected from the console, which is
   // how the cloth-addon bug was found (17 targets loaded, every influence pinned at zero).
-  window.__cf = { scene, model, mixer, actions, clothAddon,
+  window.__cf = { scene, model, mixer, actions, clothAddon, characters: CHARACTERS,
+                  get activeId() { return activeId; }, select,
                   garment: (() => { let g = null; model.traverse(o => {
                     if ((o.isMesh || o.isSkinnedMesh) && o.morphTargetInfluences &&
                         o.morphTargetInfluences.length) g = o; }); return g; })() };
-  $('load').remove();
-}, (ev) => {
-  if (ev && ev.total) $('load-bar').style.width = Math.round(ev.loaded / ev.total * 100) + '%';
-}, (err) => {
-  $('load').innerHTML = '<div>Could not load the character model.<br><span style="color:var(--muted)">' +
-    String(err && err.message || err).slice(0, 140) + '</span></div>';
-});
+}
+
+function showLoader(on, msg) {
+  let el = $('load');
+  if (on && !el) {
+    el = document.createElement('div');
+    el.id = 'load';
+    el.innerHTML = '<div>' + (msg || 'Loading\u2026') +
+                   '<div class="bar"><i id="load-bar"></i></div></div>';
+    document.body.appendChild(el);
+  } else if (!on && el) {
+    el.remove();
+  }
+}
+
+async function select(id) {
+  if (loading || id === activeId) return;
+  const spec = CHARACTERS.find(c => c.id === id);
+  const source = CHARACTER_SOURCES[id];
+  if (!spec || !source) return;
+  loading = true;
+  for (const el of document.querySelectorAll('.card')) el.classList.add('busy');
+  showLoader(true, 'Loading ' + spec.name + '\u2026');
+  const bar = $('load-bar');
+  if (bar) bar.style.width = '12%';
+
+  // Parts mode builds its own materials per mesh; they belong to the outgoing character, so it
+  // is reset rather than carried across a swap.
+  if (partMode) { partMode = false; $('b-parts').setAttribute('aria-pressed', 'false'); }
+
+  try {
+    const buf = await source((p) => { if (bar) bar.style.width = Math.round(12 + p * 80) + '%'; });
+    if (bar) bar.style.width = '94%';
+    const gltf = await new Promise((res, rej) =>
+      new GLTFLoader().parse(buf, '', res, rej));
+    disposeCharacter();
+    buildCharacter(gltf);
+    activeId = id;
+    for (const el of document.querySelectorAll('.card'))
+      el.setAttribute('aria-current', String(el.dataset.id === id));
+    showLoader(false);
+  } catch (err) {
+    showLoader(true, 'Could not load ' + spec.name + '.<br><span style="color:var(--muted)">' +
+               String((err && err.message) || err).slice(0, 140) + '</span>');
+  } finally {
+    loading = false;
+    for (const el of document.querySelectorAll('.card')) el.classList.remove('busy');
+  }
+}
+
+(function buildRoster() {
+  const wrap = $('cards');
+  for (const c of CHARACTERS) {
+    const b = document.createElement('button');
+    b.className = 'card';
+    b.dataset.id = c.id;
+    b.title = c.prompt;
+    b.setAttribute('aria-current', 'false');
+    b.innerHTML = '<img alt="" src="' + c.thumb + '"><b>' + c.name + '</b><i>' + c.blurb + '</i>';
+    b.onclick = () => select(c.id);
+    wrap.appendChild(b);
+  }
+})();
+
+$('b-gen').onclick = () => { $('gen').hidden = false; $('gen-close').focus(); };
+$('gen-close').onclick = () => { $('gen').hidden = true; $('b-gen').focus(); };
+$('gen').addEventListener('click', (e) => { if (e.target === $('gen')) $('gen').hidden = true; });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('gen').hidden) $('gen').hidden = true; });
+
+select(CHARACTERS[0].id);
 
 // ---- animation blending ----------------------------------------------------
 function crossfade(name, dur = 0.22) {

@@ -5,9 +5,15 @@ locally on an Apple Silicon laptop — generation, segmentation, retopology, rig
 animation. No cloud calls in the mesh path.
 
 **[▶ Open the live playground](https://majieddd.github.io/charforge/)** — WASD to move, Shift to
-run, Space to jump, E to wave. 77,768 triangles, 25 bones, five clips, a 6.9 MB download. There
-is a toggle for dual-quaternion vs. linear blend skinning so you can see the difference the
-skinning algorithm makes on the same mesh and the same weights.
+run, Space to jump, E to wave. Two characters in the roster, switchable without a reload; each is
+downloaded only when selected. There is a toggle for dual-quaternion vs. linear blend skinning so
+you can see the difference the skinning algorithm makes on the same mesh and the same weights,
+and a panel explaining how to run the generator yourself.
+
+| | prompt | triangles | download |
+|---|---|---|---|
+| **Rowan** | a man in a green bomber jacket with medium-length wavy hair | 77,768 | 6.9 MB |
+| **Wren** | a woman in a brown leather jacket with a satchel and a braid | 58,840 | 5.2 MB |
 
 <p align="center">
   <img src="results/clips.gif" width="820" alt="The generated character walking, running and idling">
@@ -93,6 +99,18 @@ difference 0.64 of 255.
 
 <p align="center">
   <img src="results/texture_ab.png" width="720" alt="4K PNG versus 2K WebP close-up, visually identical">
+</p>
+
+**It holds up on a second character.** Every number above came from one subject, which is the
+usual way a pipeline turns out to be fitted to its test case. Wren was rebuilt from her raw
+generation through the current pipeline without touching a parameter, and lands in the same
+place — clothing median per-bone p99 stretch **54.7%** against Rowan's 62.0%, skin 21.5% against
+16.2%, worst case 128.8% against 131.2%. Her satchel strap is the interesting part: a generated
+mesh is one fused shell, so the strap is a painted-on band bridging hip and shoulder rather than
+a separate object, and it survives skinning only because nothing tries to treat it as one.
+
+<p align="center">
+  <img src="results/char02_walk.png" width="760" alt="Wren walking, rebuilt on the current pipeline">
 </p>
 
 **Exclude hidden faces from any collapse metric.** Only 56% of collapsed jacket faces are
