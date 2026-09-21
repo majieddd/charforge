@@ -10,8 +10,12 @@ is a toggle for dual-quaternion vs. linear blend skinning so you can see the dif
 skinning algorithm makes on the same mesh and the same weights.
 
 <p align="center">
-  <img src="results/compare_skin.png" width="640" alt="Character rendered across idle, walk and run clips">
+  <img src="results/clips.gif" width="820" alt="The generated character walking, running and idling">
 </p>
+
+<p align="center"><sub>Walk, run and idle — retargeted Mixamo capture on the generated rig.
+Rendered with <code>blender/render_clip_seq.py</code>; a 199 KB H.264 version is at
+<a href="results/clips.mp4">results/clips.mp4</a>.</sub></p>
 
 ## What it does
 
