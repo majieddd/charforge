@@ -1,8 +1,18 @@
-# Pipeline (host python). Blender stages use Blender's bundled interpreter.
-numpy>=2.0
-scipy>=1.13
-trimesh>=4.4
-pillow>=10.3
-torch>=2.4
-transformers>=4.44
-mlx>=0.18
+# Host-side pipeline dependencies, pinned to the versions this was built and measured against
+# (macOS 15 / Apple Silicon, Python 3.11). Relax the pins if you need to; these are what the
+# numbers in the README were produced with.
+#
+# The Blender stages do NOT use this environment - they run inside Blender's own interpreter and
+# need nothing installed. Blender 5.x ships the numpy they rely on; none of them import scipy.
+#
+# The generation stage additionally needs `mlx`, which belongs to the trellis2mlx checkout and
+# its own requirements, not here. See the README for that step.
+
+numpy==2.4.6
+scipy==1.17.1
+trimesh==5.1.0
+pillow==12.3.0
+torch==2.14.0
+transformers==5.17.0
+safetensors==0.8.0
+httpx==0.28.1

@@ -97,22 +97,34 @@ under the jacket, where it costs nothing. The honest visible figure is 4.93%, no
 
 ## Running it
 
-Requires macOS on Apple Silicon, Blender 5.x on `PATH`, and Python 3.11+.
+Requires macOS on Apple Silicon, Blender 5.x (on `PATH`, or point `$BLENDER` at it), and
+Python 3.11+.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python tools/check_env.py
 ```
 
-The generation stage needs [trellis2mlx](https://github.com/lyonsno/trellis2mlx) checked out
-alongside, with the stochastic multi-view patch applied:
+`check_env.py` reports what is present and what is missing across all three environments this
+spans — the host Python, Blender's own interpreter, and the vendored generation stage — so a
+gap surfaces in a second rather than halfway through a long run.
+
+The Blender stages need **nothing installed**: they run inside Blender's bundled interpreter and
+use only the numpy it ships. You can re-run every stage downstream of generation — rigging,
+skinning, retargeting, auditing, export — on a checkout with no Python environment at all.
+
+The generation stage is the one heavy dependency. It needs
+[trellis2mlx](https://github.com/lyonsno/trellis2mlx) checked out alongside, with the stochastic
+multi-view patch applied, plus its own `mlx` install and the TRELLIS.2 weights:
 
 ```bash
 git clone https://github.com/lyonsno/trellis2mlx vendor/trellis2mlx
 git -C vendor/trellis2mlx apply ../../patches/trellis2mlx-stochastic-multiview.patch
 ```
 
-Then `./run_pipeline.sh`. Individual stages are runnable on their own; every Blender stage takes
-`--blend in.blend --out out.blend` and prints what it measured.
+Then `./run_pipeline.sh "a man in a green bomber jacket" char02`. Individual stages are runnable
+on their own; every Blender stage takes `--blend in.blend --out out.blend` and prints what it
+measured.
 
 To re-run just the verification on a built character:
 
