@@ -283,7 +283,12 @@ function patchDQS(mat) {
 // Served straight from GitHub Pages. The artifact build has to smuggle the GLB in as base64
 // across five .js modules because that host will not serve .glb; here a plain fetch works, which
 // saves the 33% base64 tax and lets the progress bar report real bytes.
-new GLTFLoader().load('./character.glb', (gltf) => {
+// ?model= lets the 2K web build be compared against the full 4K bake without a rebuild.
+// The default is the 2K one: round-tripping the albedo through 2048 scores 39.6 dB PSNR
+// against the 4K original and the normal 38.3 dB, both above the point where a difference is
+// visible, for a third of the download.
+const MODEL = new URLSearchParams(location.search).get('model') || './character.glb';
+new GLTFLoader().load(MODEL, (gltf) => {
   model = gltf.scene;
   model.traverse((o) => {
     if (o.isMesh || o.isSkinnedMesh) {

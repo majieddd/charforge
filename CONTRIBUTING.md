@@ -41,33 +41,35 @@ apart), cross-midline binding count, unweighted-vertex count. These are proxies.
 
 ## Open — ranked by expected impact
 
-### 1. Joint-aligned edge loops in the retopology
-**The single biggest remaining lever.** The quad mesh is uniform; there are no dedicated edge
-loops at elbow, shoulder or knee, so a bend has no geometry to work with. This is why every
-weighting scheme bottoms out at roughly the same place — the weights are not the constraint, the
-topology is. Production garments have 2–3 loops per joint.
+### 1. Reduce the weight gradient where it is steepest
+`blender/collapse_why.py` measures what collapsing faces have in common. On the jacket, the two
+factors that carry are **face aspect ratio (lift 2.73x, 27% of all collapses)** and **steepness
+of the weight gradient across the face (lift 2.48x, 25%)**. Faces spanning a sharp change in the
+weight field have corners following different bones, and lose area.
 
-Touches `blender/retopo.py`. Needs the joint positions (already available in `joints.json`) fed
-into the remesher so loop placement follows the skeleton rather than curvature alone.
+The obvious response — smooth the weights harder — has already backfired twice on this project,
+so this needs to be *targeted*: smooth only in the top decile of gradient, leave the rest alone,
+and measure. Anything global regresses the median.
 
-### 2. Strip occluded interior geometry
-44% of collapsing faces are never seen — the t-shirt sleeve under the jacket, the jacket's inner
-lining. They cost triangles, download size and metric noise for zero visual value. A visibility
-pass (ray from face centre along its normal, over a sample of animation poses, not just the rest
-pose) can cut them safely. Careful: the t-shirt *is* visible through the open jacket front, so
-this must be per-face and pose-aware, not per-part.
-
-Prototype exists inline in the session notes; needs to become `blender/cull_hidden.py`.
+### 2. Improve face shape in the retopology
+Aspect ratio is the single strongest factor, but the mesh is not pathological: p50 aspect is
+1.66, p90 is 2.20, and only 2.75% of faces exceed 3. So this is not about fixing slivers, it is
+about pushing an already-decent mesh toward more uniform quads. A relax-and-reproject pass
+(tangential smoothing, then shrinkwrap back onto the original high-resolution surface) is the
+standard move and does not change the silhouette.
 
 ### 3. Pose-space correctives for shoulder and elbow
 What AAA does. glTF morph targets are applied *before* skinning so a standard viewer cannot do
 pose-space deformation, but the playground drives its own shader and can. Drive a corrective
-shape from joint angle to restore volume on the inside of a deep bend.
+shape from joint angle to restore volume on the inside of a deep bend. Still worth doing even
+though the collapse turned out not to be joint-centred — the shoulder is where the two largest
+per-bone figures sit.
 
-### 4. Mobile-friendly web build
-22 MB is a deliberate full-quality choice but a poor default on a phone. Ship a 2K-albedo /
-4K-normal variant (roughly halves it, loses almost nothing — the normal map is where 4K pays) and
-pick based on connection or a query parameter.
+### 4. Strip occluded interior geometry
+44% of collapsing faces are never seen — the t-shirt sleeve under the jacket, the jacket's inner
+lining. Note this is now a *metric hygiene* task, not a size one: geometry and animation are only
+3.17 MB of the GLB, so culling saves well under a megabyte. Do it to stop the audit reporting
+damage nobody can see, not to shrink the download.
 
 ### 5. Raise generative fidelity
 Hair reads as a solid mass; the face is smooth rather than sculpted. Levers: more conditioning
@@ -89,6 +91,13 @@ cheapest way to find what is genuinely general.
 
 Newest first. Each of these has a script and a measurement.
 
+- **Web build 3.4x smaller at no visible cost.** 23.45 MB → 6.88 MB. Textures were 86% of the
+  file; the 4K albedo turned out to be upsampled from TRELLIS's native 1024 and held nothing over
+  2K. Albedo 2048 WebP q95, normal map 2048 WebP **lossless** (a normal is a direction, not a
+  colour — lossy cost it 5 dB against the albedo's 2). Verified by re-rendering a matched
+  close-up: **44.9 dB PSNR**, mean difference 0.64/255. `tools/optimize_glb.py`.
+- **Found out what actually collapses.** `blender/collapse_why.py` — see the rejected table for
+  what this ruled out.
 - **Dual quaternion skinning in the playground.** Jacket faces under half rest area 8.80% → 6.18%
   (walk), 11.49% → 5.96% (run); skin 0.79% → 0.11%. No measurable frame cost. Toggleable.
   `web/playground.html`, verified by `blender/dqs_test.py`.
@@ -132,6 +141,7 @@ Newest first. Each of these has a script and a measurement.
 | Cloth simulation on the garment | diverged at 8,438%, blew the legs apart by walk frame 14 | one connected garment pinned only at the top 18%; removed entirely |
 | Blender bone heat (`ARMATURE_AUTO`) | failed at 100% unweighted, twice | needs a closed manifold; a jacket is an open shell |
 | QuadriFlow remesh | silent no-op | same reason; decimation preserves the shell |
+| Joint-aligned edge loops as the fix for cloth collapse | faces near a joint are **less** likely to collapse (lift 0.49x, only 4.9% of collapses) | this was item #1 on the roadmap for a week. It is not candy-wrapper: collapsing faces are *further* from joints than average (29.9 vs 26.0 face widths) and *larger* than average. Measure before building |
 | A vision model as a quality gate | misdescribes A-pose and side lighting | see `pipeline/gates.py`; caps anything built on it |
 
 ---

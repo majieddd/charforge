@@ -5,9 +5,9 @@ locally on an Apple Silicon laptop — generation, segmentation, retopology, rig
 animation. No cloud calls in the mesh path.
 
 **[▶ Open the live playground](https://majieddd.github.io/charforge/)** — WASD to move, Shift to
-run, Space to jump, E to wave. 77,768 triangles, 25 bones, five clips. There is a toggle for
-dual-quaternion vs. linear blend skinning so you can see the difference the skinning algorithm
-makes on the same mesh and the same weights.
+run, Space to jump, E to wave. 77,768 triangles, 25 bones, five clips, a 6.9 MB download. There
+is a toggle for dual-quaternion vs. linear blend skinning so you can see the difference the
+skinning algorithm makes on the same mesh and the same weights.
 
 <p align="center">
   <img src="results/compare_skin.png" width="640" alt="Character rendered across idle, walk and run clips">
@@ -69,6 +69,24 @@ the surface tears between them.
 Smoothness of the weight field beats anatomical purity of any single vertex. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for what this implies about the remaining work.
 
+**Most of the file was texture that carried no information.** Textures were 86% of a 23.45 MB
+GLB. The albedo is upsampled from a native 1024, so 4K held nothing over 2K; the normal map is
+baked from the high-resolution surface and holds a little more, so it is re-encoded losslessly
+while the albedo is not — a normal is a direction, and a small error in it tilts the surface.
+
+| | before | after |
+|---|---|---|
+| albedo | 4096 PNG, 10.85 MB | 2048 WebP q95, **0.54 MB** |
+| normal | 4096 PNG, 9.34 MB | 2048 WebP lossless, **3.08 MB** |
+| whole file | 23.45 MB | **6.88 MB** |
+
+Checked by re-rendering a matched close-up from both and comparing: **44.9 dB PSNR**, mean
+difference 0.64 of 255.
+
+<p align="center">
+  <img src="results/texture_ab.png" width="720" alt="4K PNG versus 2K WebP close-up, visually identical">
+</p>
+
 **Exclude hidden faces from any collapse metric.** Only 56% of collapsed jacket faces are
 externally visible, against an 86.5% baseline — the collapse concentrates in the t-shirt layered
 under the jacket, where it costs nothing. The honest visible figure is 4.93%, not 8.80%.
@@ -104,14 +122,14 @@ blender -b -noaudio --python blender/deform_audit.py -- \
 - The hair reads as a solid mass rather than strands, and the face is smooth rather than
   sculpted. That is the generative stage, not the pipeline — more conditioning views or a higher
   TRELLIS sampling grid are the levers.
-- The albedo is upsampled from TRELLIS's native 1024. 4K buys texel density and less UV-island
-  bleed; the normal map is where 4K actually pays.
+- The albedo is upsampled from TRELLIS's native 1024, which is measurable: round-tripping it
+  through 2048 scores 41.3 dB PSNR against the 4K original. The web build therefore ships 2K and
+  is visually identical (see below); 4K is available from the pipeline if you want it.
 - Cloth simulation was implemented and then removed. On a single connected garment pinned only at
   the top it diverged and blew the legs apart by walk frame 14. The garment is skinned, which is
   what most shipped game characters do anyway.
 - There is no facial rig. The head travels as one piece.
-- The web build is a 22 MB download. That is deliberate — full 4K quality — but it is not a
-  mobile-friendly default.
+- There is no level-of-detail chain. One mesh at 77,768 triangles, whatever the distance.
 
 ## Assets and licensing
 
@@ -133,6 +151,7 @@ committed here. Open an issue if you are the rights holder and want this removed
 ```
 blender/     Blender stages: retopology, rigging, skinning, retargeting, auditing, rendering
 pipeline/    generation, segmentation, label transfer, gates
+tools/       GLB optimisation (texture resize + WebP, with a PSNR floor it refuses to cross)
 patches/     the stochastic multi-view conditioning patch for trellis2mlx
 web/         the three.js playground (base64 build, for hosts that will not serve .glb)
 docs/        GitHub Pages build — same playground, fetching the .glb directly
