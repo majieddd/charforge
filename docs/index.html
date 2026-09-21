@@ -1,0 +1,565 @@
+<title>CharForge Playground</title>
+<meta name="description" content="Drive the generated character around a world.">
+<style>
+  :root{
+    --bg:#0E1116; --panel:#161B23; --panel2:#1D242E; --ink:#E8ECF2; --ink2:#AEB9C8;
+    --muted:#77839A; --line:#28313D; --accent:#5B9CFF; --good:#3FBE97; --warn:#D9A43B;
+    --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#EEF1F5; --panel:#FFFFFF; --panel2:#F4F6FA; --ink:#141922; --ink2:#3E4A5C;
+    --muted:#6B7788; --line:#DDE3EB; --accent:#2F6BD8;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+
+  .hud{position:fixed;z-index:5;background:color-mix(in srgb,var(--panel) 88%,transparent);
+       border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(8px)}
+  #title{top:calc(14px + env(safe-area-inset-top,0px));left:14px;padding:11px 14px;max-width:min(330px,calc(100vw - 28px))}
+  #title h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
+  #title p{margin:5px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.45}
+  #keys{bottom:calc(14px + env(safe-area-inset-bottom,0px));left:14px;padding:10px 13px}
+  #keys table{border-collapse:collapse;font-size:11.5px}
+  #keys td{padding:2px 0}
+  #keys td:first-child{padding-right:11px}
+  kbd{font-family:var(--mono);font-size:10.5px;background:var(--panel2);border:1px solid var(--line);
+      border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:var(--ink)}
+  #stats{top:calc(14px + env(safe-area-inset-top,0px));right:14px;padding:10px 13px;font-family:var(--mono);
+         font-size:11px;color:var(--ink2);min-width:150px}
+  #stats b{color:var(--ink);font-weight:500}
+  #stats .row{display:flex;justify-content:space-between;gap:14px;padding:1px 0}
+  #load{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:20;
+        font-size:13px;color:var(--ink2);text-align:center;padding:20px}
+  #load .bar{width:210px;height:3px;background:var(--line);border-radius:2px;margin:12px auto 0;overflow:hidden}
+  #load .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  button{font:inherit;font-size:11.5px;padding:5px 10px;border-radius:7px;cursor:pointer;
+         background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  button:hover{border-color:var(--accent)}
+  button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #touch{position:fixed;left:16px;bottom:calc(120px + env(safe-area-inset-bottom,0px));width:112px;height:112px;
+         border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 70%,transparent);
+         z-index:6;display:none;touch-action:none}
+  #touch i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
+           background:var(--accent);opacity:.85}
+  @media (hover:none) and (pointer:coarse){#touch{display:block}#keys{display:none}}
+  @media (max-width:560px){#stats{display:none}#title{max-width:calc(100vw - 28px)}}
+</style>
+
+<div id="stage"></div>
+
+<div id="title" class="hud">
+  <h1>CharForge Playground</h1>
+  <p>Generated from a text prompt on a laptop &mdash; geometry, skeleton and skinning all local.
+  Geometry from stochastic multi-view conditioning, retopologised to a watertight quad mesh with
+  4K albedo and normal baked from the high-resolution surface. Mixamo capture retargeted onto a
+  T-posed rig, skinned throughout &mdash; the way a game character actually ships.
+  Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers apply
+  it linearly, which hollows out the inside of every bent joint. Blending the rotations as
+  rotations instead takes jacket faces collapsed below half their rest area from 8.8% to 6.1%
+  over the walk and 11.5% to 6.0% over the run. Toggle it to see the difference.</p>
+  <div class="btns">
+    <button id="b-dqs" aria-pressed="true">Dual-quat skin</button>
+    <button id="b-parts" aria-pressed="false">Show parts</button>
+    <button id="b-skel" aria-pressed="false">Skeleton</button>
+    <button id="b-cam" aria-pressed="true">Follow cam</button>
+  </div>
+</div>
+
+<div id="stats" class="hud">
+  <div class="row"><span>state</span><b id="s-state">idle</b></div>
+  <div class="row"><span>speed</span><b id="s-speed">0.0 m/s</b></div>
+  <div class="row"><span>polygons</span><b id="s-tris">&mdash;</b></div>
+  <div class="row"><span>bones</span><b id="s-bones">&mdash;</b></div>
+  <div class="row"><span>fps</span><b id="s-fps">&mdash;</b></div>
+</div>
+
+<div id="keys" class="hud">
+  <table>
+    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move</td></tr>
+    <tr><td><kbd>Shift</kbd></td><td>run</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>jump</td></tr>
+    <tr><td><kbd>E</kbd></td><td>wave</td></tr>
+    <tr><td><kbd>drag</kbd></td><td>orbit camera</td></tr>
+  </table>
+</div>
+
+<div id="touch"><i></i></div>
+
+<div id="load"><div>Loading character&hellip;<div class="bar"><i id="load-bar"></i></div></div></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = (id) => document.getElementById(id);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0E1116);
+scene.fog = new THREE.Fog(0x0E1116, 26, 80);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('stage').appendChild(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 400);
+camera.position.set(4.2, 3.0, 5.6);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 2; controls.maxDistance = 22;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 1, 0);
+
+// ---- world -----------------------------------------------------------------
+scene.add(new THREE.HemisphereLight(0xA8BEDC, 0x33291E, 2.0));
+const sun = new THREE.DirectionalLight(0xFFF3E0, 3.1);
+sun.position.set(7, 12, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const d = 16;
+Object.assign(sun.shadow.camera, { left:-d, right:d, top:d, bottom:-d, near:1, far:45 });
+sun.shadow.bias = -0.0012;
+scene.add(sun);
+// rim from behind: separates the character from the ground at 2K texture detail
+const rim = new THREE.DirectionalLight(0x8FB4FF, 1.1);
+rim.position.set(-7, 5, -8);
+scene.add(rim);
+
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(60, 64).rotateX(-Math.PI/2),
+  new THREE.MeshStandardMaterial({ color:0x333C4D, roughness:0.95, metalness:0 })
+);
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(60, 60, 0x3A4557, 0x222A36);
+grid.material.transparent = true; grid.material.opacity = 0.5;
+grid.position.y = 0.002;
+scene.add(grid);
+
+// A few obstacles, so movement has something to read against
+const OBSTACLES = [];
+const boxMat = new THREE.MeshStandardMaterial({ color:0x39445A, roughness:0.75 });
+const accMat = new THREE.MeshStandardMaterial({ color:0x5B9CFF, roughness:0.4, metalness:0.15 });
+function block(x, z, w, h, dp, mat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+  m.position.set(x, h/2, z);
+  m.castShadow = m.receiveShadow = true;
+  scene.add(m);
+  OBSTACLES.push({ x, z, r: Math.hypot(w, dp) * 0.5 });
+  return m;
+}
+block(-5.5, -3.5, 2.2, 0.9, 2.2, boxMat);
+block(-6.6, -4.2, 1.2, 1.8, 1.2, boxMat);
+block(6.0, -5.0, 3.0, 0.5, 3.0, boxMat);
+block(4.6, 4.8, 1.0, 2.6, 1.0, accMat);
+block(-3.0, 6.2, 5.0, 0.35, 1.4, boxMat);
+for (let i = 0; i < 9; i++) {
+  const a = i / 9 * Math.PI * 2, r = 13.5;
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 3.4, 10), boxMat);
+  p.position.set(Math.cos(a) * r, 1.7, Math.sin(a) * r);
+  p.castShadow = true; scene.add(p);
+  OBSTACLES.push({ x:p.position.x, z:p.position.z, r:0.36 });
+}
+
+// ---- character -------------------------------------------------------------
+const rig = new THREE.Group();
+scene.add(rig);
+
+let mixer = null, skeletonHelper = null, model = null;
+const actions = {};
+const clothAddon = {};   // base clip name -> morph-weight action baked from the cloth sim
+let current = null, locked = 0;
+const PART_COLORS = [new THREE.Color(0x5B9CFF), new THREE.Color(0xD9A43B),
+                     new THREE.Color(0x3FBE97), new THREE.Color(0xE2705F)];
+let partMode = false;
+let dqsOn = true;
+const origMats = new Map();
+const dqsMats = new Map();
+
+
+// ---- dual quaternion skinning ------------------------------------------------------------
+// glTF stores one weight set and every viewer applies it with linear blend skinning, which
+// averages the bone *matrices*. The average of two rotations 90 degrees apart is a matrix that
+// shrinks what it touches, so the inside of every bent joint loses volume - the candy-wrapper.
+// Measured on this character, LBS leaves 8.8% of jacket faces under half their rest area during
+// the walk and 11.5% during the run. Blending the rotations *as rotations* instead sends each
+// vertex along an arc rather than a chord: the same figures drop to 6.1% and 6.0%, with no
+// change to the geometry or the weights. Unity and Unreal both offer this switch; the web
+// viewer has to patch the shader itself.
+const DQ_PARS = `
+vec4 cf_quatFromMat(mat4 m){
+  float m00=m[0][0], m01=m[1][0], m02=m[2][0];
+  float m10=m[0][1], m11=m[1][1], m12=m[2][1];
+  float m20=m[0][2], m21=m[1][2], m22=m[2][2];
+  float tr=m00+m11+m22; vec4 q;
+  if(tr>0.0){ float s=sqrt(tr+1.0)*2.0; q=vec4((m21-m12)/s,(m02-m20)/s,(m10-m01)/s,0.25*s); }
+  else if(m00>m11 && m00>m22){ float s=sqrt(1.0+m00-m11-m22)*2.0; q=vec4(0.25*s,(m01+m10)/s,(m02+m20)/s,(m21-m12)/s); }
+  else if(m11>m22){ float s=sqrt(1.0+m11-m00-m22)*2.0; q=vec4((m01+m10)/s,0.25*s,(m12+m21)/s,(m02-m20)/s); }
+  else { float s=sqrt(1.0+m22-m00-m11)*2.0; q=vec4((m02+m20)/s,(m12+m21)/s,0.25*s,(m10-m01)/s); }
+  return normalize(q);
+}
+vec4 cf_qmul(vec4 a, vec4 b){
+  return vec4(a.w*b.xyz + b.w*a.xyz + cross(a.xyz,b.xyz), a.w*b.w - dot(a.xyz,b.xyz));
+}
+vec4 cf_dualFromMat(mat4 m, vec4 q){ return 0.5 * cf_qmul(vec4(m[3].xyz, 0.0), q); }
+vec3 cf_dqRotate(vec4 q, vec3 v){ return v + 2.0*cross(q.xyz, cross(q.xyz,v) + q.w*v); }
+vec3 cf_dqPoint(vec4 q, vec4 d, vec3 p){
+  vec3 t = 2.0*(q.w*d.xyz - d.w*q.xyz + cross(q.xyz, d.xyz));
+  return cf_dqRotate(q,p) + t;
+}
+// The antipodal case is not optional: a quaternion and its negation are the same rotation, so
+// two bones can be given opposite-signed quaternions and their weighted sum cancels toward zero,
+// collapsing the vertex to the origin. Every bone is flipped into the same hemisphere as the
+// first one before blending.
+void cf_blend(mat4 bx, mat4 by, mat4 bz, mat4 bw, vec4 w, out vec4 qo, out vec4 dopt){
+  vec4 q0=cf_quatFromMat(bx), q1=cf_quatFromMat(by), q2=cf_quatFromMat(bz), q3=cf_quatFromMat(bw);
+  float s1 = dot(q0,q1)<0.0 ? -1.0 : 1.0;
+  float s2 = dot(q0,q2)<0.0 ? -1.0 : 1.0;
+  float s3 = dot(q0,q3)<0.0 ? -1.0 : 1.0;
+  vec4 qb = w.x*q0 + w.y*s1*q1 + w.z*s2*q2 + w.w*s3*q3;
+  vec4 db = w.x*cf_dualFromMat(bx,q0) + w.y*s1*cf_dualFromMat(by,q1)
+          + w.z*s2*cf_dualFromMat(bz,q2) + w.w*s3*cf_dualFromMat(bw,q3);
+  float L = length(qb);
+  if (L < 1e-6) { qo = vec4(0.0,0.0,0.0,1.0); dopt = vec4(0.0); return; }
+  qo = qb / L; dopt = db / L;
+}
+`;
+const DQ_SKIN = `
+#ifdef USE_SKINNING
+  vec4 cf_w = skinWeight;
+  float cf_sum = cf_w.x + cf_w.y + cf_w.z + cf_w.w;
+  cf_w = cf_sum > 1e-6 ? cf_w / cf_sum : vec4(1.0, 0.0, 0.0, 0.0);
+  vec4 cf_q, cf_d;
+  cf_blend(boneMatX, boneMatY, boneMatZ, boneMatW, cf_w, cf_q, cf_d);
+  vec4 skinVertex = bindMatrix * vec4( transformed, 1.0 );
+  transformed = ( bindMatrixInverse * vec4( cf_dqPoint(cf_q, cf_d, skinVertex.xyz), 1.0 ) ).xyz;
+#endif
+`;
+const DQ_NORMAL = `
+#ifdef USE_SKINNING
+  vec4 cf_nw = skinWeight;
+  float cf_nsum = cf_nw.x + cf_nw.y + cf_nw.z + cf_nw.w;
+  cf_nw = cf_nsum > 1e-6 ? cf_nw / cf_nsum : vec4(1.0, 0.0, 0.0, 0.0);
+  vec4 cf_nq, cf_nd;
+  cf_blend(boneMatX, boneMatY, boneMatZ, boneMatW, cf_nw, cf_nq, cf_nd);
+  objectNormal = mat3( bindMatrixInverse ) * cf_dqRotate( cf_nq, mat3( bindMatrix ) * objectNormal );
+  #ifdef USE_TANGENT
+    objectTangent = mat3( bindMatrixInverse ) * cf_dqRotate( cf_nq, mat3( bindMatrix ) * objectTangent );
+  #endif
+#endif
+`;
+function patchDQS(mat) {
+  if (!mat || mat.__dqs) return mat;
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <skinning_pars_vertex>', '#include <skinning_pars_vertex>\n' + DQ_PARS)
+      .replace('#include <skinnormal_vertex>', DQ_NORMAL)
+      .replace('#include <skinning_vertex>', DQ_SKIN);
+  };
+  mat.customProgramCacheKey = () => 'cf-dqs-v1';
+  mat.__dqs = true;
+  mat.needsUpdate = true;
+  return mat;
+}
+
+// Served straight from GitHub Pages. The artifact build has to smuggle the GLB in as base64
+// across five .js modules because that host will not serve .glb; here a plain fetch works, which
+// saves the 33% base64 tax and lets the progress bar report real bytes.
+new GLTFLoader().load('./character.glb', (gltf) => {
+  model = gltf.scene;
+  model.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) {
+      o.castShadow = true; o.receiveShadow = true;
+      o.frustumCulled = false;            // skinned bounds are wrong while animating
+      origMats.set(o, o.material);
+      const d = patchDQS(o.material.clone());   // clone shares textures, not the program
+      dqsMats.set(o, d);
+      o.material = d;
+    }
+  });
+
+  rig.add(model);
+
+  mixer = new THREE.AnimationMixer(model);
+  for (const clip of gltf.animations) {
+    const a = mixer.clipAction(clip);
+    a.enabled = true; a.setEffectiveWeight(0);
+    if (clip.name === 'jump' || clip.name === 'wave' || clip.name === 'turn') {
+      a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
+    }
+    // A baked cloth simulation exports as its own animation carrying only morph weights, so it
+    // has to be driven alongside the skeletal clip it belongs to. Left to the state machine it
+    // would simply sit at weight 0 and the jacket would never move - which is exactly what the
+    // first build did while reporting "17 morph targets" loaded.
+    // Cloth is exported merged into each clip now (paired NLA tracks), so a clip carries both
+    // skeleton and morph-weight channels. The separate cloth_* path is kept for exports made
+    // the old way, where it would otherwise sit at weight zero and never play.
+    if (clip.name.startsWith('cloth_')) clothAddon[clip.name.slice(6)] = a;
+    else actions[clip.name] = a;
+    a.play();
+  }
+  if (actions.idle) { actions.idle.setEffectiveWeight(1); current = 'idle'; }
+
+  // Ground the model *after* the first pose is applied. Measuring the bind pose is not enough:
+  // a SkinnedMesh's bounds only reflect the posed skin once the mixer has run and the world
+  // matrices are updated, and the clips also carry a pelvis translation channel.
+  mixer.update(0);
+  model.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(model, true);
+  if (isFinite(box.min.y)) model.position.y -= box.min.y;
+
+  skeletonHelper = new THREE.SkeletonHelper(model);
+  skeletonHelper.visible = false;
+  skeletonHelper.material.linewidth = 2;
+  scene.add(skeletonHelper);
+
+  let tris = 0, bones = 0;
+  model.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) {
+      tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    }
+    if (o.isBone) bones++;
+  });
+  $('s-tris').textContent = Math.round(tris).toLocaleString();
+  $('s-bones').textContent = bones || '—';
+  // small debug handle: lets the state of the mixer be inspected from the console, which is
+  // how the cloth-addon bug was found (17 targets loaded, every influence pinned at zero).
+  window.__cf = { scene, model, mixer, actions, clothAddon,
+                  garment: (() => { let g = null; model.traverse(o => {
+                    if ((o.isMesh || o.isSkinnedMesh) && o.morphTargetInfluences &&
+                        o.morphTargetInfluences.length) g = o; }); return g; })() };
+  $('load').remove();
+}, (ev) => {
+  if (ev && ev.total) $('load-bar').style.width = Math.round(ev.loaded / ev.total * 100) + '%';
+}, (err) => {
+  $('load').innerHTML = '<div>Could not load the character model.<br><span style="color:var(--muted)">' +
+    String(err && err.message || err).slice(0, 140) + '</span></div>';
+});
+
+// ---- animation blending ----------------------------------------------------
+function crossfade(name, dur = 0.22) {
+  if (!actions[name] || current === name) return;
+  // cloth follows its base clip: same weight, same clock
+  for (const k in clothAddon) clothAddon[k].setEffectiveWeight(k === name ? 1 : 0);
+  const from = actions[current], to = actions[name];
+  if (to.loop === THREE.LoopOnce) { to.reset(); }
+  to.enabled = true;
+  to.setEffectiveTimeScale(1);
+  if (from) from.crossFadeTo(to, dur, false); else to.setEffectiveWeight(1);
+  to.setEffectiveWeight(1);
+  current = name;
+}
+
+function oneShot(name, seconds) {
+  if (!actions[name] || locked > 0) return;
+  locked = seconds;
+  crossfade(name, 0.12);
+}
+
+// ---- input -----------------------------------------------------------------
+const keys = Object.create(null);
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (k === ' ') { e.preventDefault(); oneShot('jump', 1.6); }
+  if (k === 'e') oneShot('wave', 2.0);
+});
+addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+// touch stick for phones
+const stick = { x:0, y:0, active:false };
+const pad = $('touch'), nub = pad.querySelector('i');
+pad.addEventListener('pointerdown', (e) => { pad.setPointerCapture(e.pointerId); stick.active = true; move(e); });
+pad.addEventListener('pointermove', (e) => { if (stick.active) move(e); });
+pad.addEventListener('pointerup', () => { stick.active = false; stick.x = stick.y = 0; nub.style.transform = ''; });
+function move(e) {
+  const r = pad.getBoundingClientRect();
+  let dx = (e.clientX - r.left - r.width/2) / (r.width/2);
+  let dz = (e.clientY - r.top - r.height/2) / (r.height/2);
+  const len = Math.hypot(dx, dz) || 1;
+  if (len > 1) { dx /= len; dz /= len; }
+  stick.x = dx; stick.y = dz;
+  nub.style.transform = `translate(${dx*30}px,${dz*30}px)`;
+}
+
+// ---- movement --------------------------------------------------------------
+// Ground speeds measured from the source captures at retarget time (root travel / duration).
+// Matching playback rate to these is what stops the feet skating.
+const CLIP_SPEED = { walk: 1.26, run: 6.72 };
+const WALK_SPEED = CLIP_SPEED.walk, RUN_SPEED = CLIP_SPEED.run;
+const vel = new THREE.Vector3();
+let facing = 0, speed = 0;
+const tmp = new THREE.Vector3();
+
+function step(dt) {
+  // desired direction in world space, relative to where the camera is looking
+  let ix = 0, iz = 0;
+  if (keys['w'] || keys['arrowup']) iz -= 1;
+  if (keys['s'] || keys['arrowdown']) iz += 1;
+  if (keys['a'] || keys['arrowleft']) ix -= 1;
+  if (keys['d'] || keys['arrowright']) ix += 1;
+  if (stick.active) { ix += stick.x; iz += stick.y; }
+  const mag = Math.min(1, Math.hypot(ix, iz));
+
+  const running = !!(keys['shift'] || Math.hypot(stick.x, stick.y) > 0.75);
+  const target = mag > 0.05 ? (running ? RUN_SPEED : WALK_SPEED) * mag : 0;
+
+  if (mag > 0.05) {
+    camera.getWorldDirection(tmp); tmp.y = 0; tmp.normalize();
+    const right = new THREE.Vector3(-tmp.z, 0, tmp.x);
+    const dir = new THREE.Vector3().addScaledVector(tmp, -iz).addScaledVector(right, ix).normalize();
+    vel.copy(dir);
+    const want = Math.atan2(dir.x, dir.z);
+    let diff = want - facing;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    facing += diff * Math.min(1, dt * 11);       // turn toward heading, not snap
+  }
+  speed += (target - speed) * Math.min(1, dt * 8);
+  if (speed < 0.02) speed = 0;
+
+  if (speed > 0) {
+    const nx = rig.position.x + vel.x * speed * dt;
+    const nz = rig.position.z + vel.z * speed * dt;
+    let blocked = false;
+    for (const o of OBSTACLES) {
+      if ((nx - o.x) ** 2 + (nz - o.z) ** 2 < (o.r + 0.34) ** 2) { blocked = true; break; }
+    }
+    const R = 26;
+    if (!blocked && nx * nx + nz * nz < R * R) { rig.position.x = nx; rig.position.z = nz; }
+  }
+  rig.rotation.y = facing;
+
+  // state machine
+  if (locked > 0) {
+    locked -= dt;
+    if (locked <= 0) { locked = 0; current = null; crossfade(speed > 0.1 ? (speed > 2.4 ? 'run' : 'walk') : 'idle'); }
+  } else {
+    const want = speed > 2.4 ? 'run' : speed > 0.12 ? 'walk' : 'idle';
+    if (want !== current) crossfade(want);
+    // keep the cycle's footfalls matched to ground speed
+    if (actions.walk) actions.walk.setEffectiveTimeScale(
+      Math.min(2.2, Math.max(0.5, speed / CLIP_SPEED.walk)));
+    if (actions.run) actions.run.setEffectiveTimeScale(
+      Math.min(1.8, Math.max(0.5, speed / CLIP_SPEED.run)));
+  }
+  // keep each cloth addon in phase with the clip it belongs to
+  for (const k in clothAddon) {
+    if (actions[k] && clothAddon[k].getEffectiveWeight() > 0) {
+      clothAddon[k].time = actions[k].time % clothAddon[k].getClip().duration;
+      clothAddon[k].setEffectiveTimeScale(actions[k].getEffectiveTimeScale());
+    }
+  }
+  $('s-state').textContent = current || '—';
+  $('s-speed').textContent = speed.toFixed(1) + ' m/s';
+}
+
+// ---- toggles ---------------------------------------------------------------
+let followCam = true;
+$('b-cam').onclick = (e) => {
+  followCam = !followCam;
+  e.currentTarget.setAttribute('aria-pressed', String(followCam));
+};
+$('b-skel').onclick = (e) => {
+  if (!skeletonHelper) return;
+  skeletonHelper.visible = !skeletonHelper.visible;
+  e.currentTarget.setAttribute('aria-pressed', String(skeletonHelper.visible));
+};
+$('b-parts').onclick = (e) => {
+  if (!model) return;
+  partMode = !partMode;
+  e.currentTarget.setAttribute('aria-pressed', String(partMode));
+  model.traverse((o) => {
+    if (!(o.isMesh || o.isSkinnedMesh)) return;
+    if (!partMode) { o.material = (dqsOn ? dqsMats : origMats).get(o); return; }
+    // glTF lowercases custom attributes, so _PARTID arrives as _partid
+    const attr = o.geometry.attributes._partid || o.geometry.attributes._PARTID;
+    const m = new THREE.MeshStandardMaterial({ roughness:0.85, vertexColors: !!attr });
+    if (attr) {
+      const col = new Float32Array(attr.count * 3);
+      for (let i = 0; i < attr.count; i++) {
+        const c = PART_COLORS[Math.max(0, Math.min(3, attr.getX(i) | 0))];
+        col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+      }
+      m.setAttribute ? null : null;
+      o.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    } else {
+      m.color = new THREE.Color(0x5B9CFF);
+    }
+    o.material = dqsOn ? patchDQS(m) : m;
+  });
+};
+
+$('b-dqs').onclick = (e) => {
+  if (!model) return;
+  dqsOn = !dqsOn;
+  e.currentTarget.setAttribute('aria-pressed', String(dqsOn));
+  model.traverse((o) => {
+    if (!(o.isMesh || o.isSkinnedMesh) || partMode) return;
+    o.material = (dqsOn ? dqsMats : origMats).get(o) || o.material;
+  });
+};
+
+// theme follows the host
+const mq = matchMedia('(prefers-color-scheme: light)');
+function theme() {
+  const light = document.documentElement.dataset.theme === 'light' ||
+                (!document.documentElement.dataset.theme && mq.matches);
+  const bg = light ? 0xEEF1F5 : 0x0E1116;
+  scene.background = new THREE.Color(bg);
+  scene.fog.color = new THREE.Color(bg);
+  ground.material.color = new THREE.Color(light ? 0xD5DCE6 : 0x2A3140);
+}
+mq.addEventListener('change', theme); theme();
+
+// ---- loop ------------------------------------------------------------------
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+addEventListener('resize', resize); resize();
+
+const clock = new THREE.Clock();
+let acc = 0, frames = 0;
+const camOffset = new THREE.Vector3();
+controls.addEventListener('start', () => { camOffset.copy(camera.position).sub(controls.target); });
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  step(dt);
+  if (mixer) mixer.update(dt);
+
+  if (followCam) {
+    // keep the orbit target on the character; the user still owns the orbit angle
+    const want = tmp.set(rig.position.x, 1.0, rig.position.z);
+    const delta = want.clone().sub(controls.target);
+    controls.target.add(delta);
+    camera.position.add(delta);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+
+  acc += dt; frames++;
+  if (acc > 0.5) { $('s-fps').textContent = Math.round(frames / acc); acc = 0; frames = 0; }
+});
+</script>

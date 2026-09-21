@@ -1,0 +1,31 @@
+{
+  "hops": 2,
+  "power": 3.0,
+  "iters": 12,
+  "meshes": {
+    "char_skin": {
+      "vertices": 12918,
+      "rays": 51853,
+      "visible_mean": 2.843,
+      "coincident_groups": 3061,
+      "unweighted": 0,
+      "spread_ge3": 0,
+      "spread_ge3_pct": 0.0,
+      "torso_arm_cross": 0,
+      "wrong_side": 0,
+      "wrong_side_pct": 0.0
+    },
+    "char_clothing": {
+      "vertices": 37582,
+      "rays": 225968,
+      "visible_mean": 4.985,
+      "coincident_groups": 6635,
+      "unweighted": 0,
+      "spread_ge3": 0,
+      "spread_ge3_pct": 0.0,
+      "torso_arm_cross": 791,
+      "wrong_side": 0,
+      "wrong_side_pct": 0.0
+    }
+  }
+}

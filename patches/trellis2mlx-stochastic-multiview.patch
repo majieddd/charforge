@@ -1,0 +1,196 @@
+diff --git a/generate.py b/generate.py
+index ffe1c37..1c5b89c 100644
+--- a/generate.py
++++ b/generate.py
+@@ -1183,6 +1183,14 @@ def _validate_sparse_layernorm_correction_route(parser, args) -> None:
+ def main():
+     parser = argparse.ArgumentParser(description="Generate 3D mesh from image via MLX")
+     parser.add_argument("--image", nargs="+", help="Input image(s) — multiple images enable multi-view conditioning")
++    parser.add_argument("--mv-mode", default="weighted", choices=["concat", "cycle", "weighted"],
++                        help="How several conditioning images are combined. 'concat' joins their "
++                             "feature tokens (original behaviour, damages the result); 'cycle' and "
++                             "'weighted' condition each denoising step on a single view, which is "
++                             "the scheme TRELLIS was trained for. Default: weighted.")
++    parser.add_argument("--mv-weights", default=None,
++                        help="Comma-separated per-view sampling weights for --mv-mode weighted, "
++                             "e.g. '3,1,1' to keep the reference image dominant. Default: uniform.")
+     parser.add_argument("--seed", type=int, default=42)
+     parser.add_argument("--output", default="/tmp/trellis-mlx-mesh.glb")
+     parser.add_argument("--resolution", type=int, default=1024,
+@@ -2180,13 +2188,28 @@ def main():
+         if len(image_paths) == 1:
+             cond = _extract_image_features(image_paths[0])
+         else:
+-            # Multi-view: extract features per view, concatenate along sequence dim
+-            view_features = []
+-            for img_path in image_paths:
+-                feat = _extract_image_features(img_path)
+-                view_features.append(feat)
+-            cond = mx.concatenate(view_features, axis=1)
+-            print(f"  Multi-view: {len(image_paths)} views → {cond.shape[1]} context tokens", flush=True)
++            view_features = [_extract_image_features(p) for p in image_paths]
++            if args.mv_mode == "concat":
++                # Original behaviour: concatenate along the sequence dim. Retained so the two
++                # schemes can be compared, but it is the worse one - it triples the context
++                # length past what the checkpoint was trained on and weights every view equally,
++                # which visibly damages whichever detail only the reference image carried.
++                cond = mx.concatenate(view_features, axis=1)
++                print(f"  Multi-view (concat): {len(image_paths)} views → "
++                      f"{cond.shape[1]} context tokens", flush=True)
++            else:
++                # Stochastic: each step is conditioned on a single view, so every forward pass
++                # sees the token layout the model expects. cond/neg_cond keep one view's shape.
++                from trellmlx import samplers as _samplers
++                weights = None
++                if args.mv_weights:
++                    weights = [float(x) for x in args.mv_weights.split(",")]
++                _samplers.ACTIVE_MULTIVIEW = _samplers.MultiViewConditioning(
++                    view_features, mode=args.mv_mode, weights=weights, seed=args.seed)
++                cond = view_features[0]
++                print(f"  Multi-view ({args.mv_mode}): {len(image_paths)} views, "
++                      f"{cond.shape[1]} context tokens per step"
++                      + (f", weights {weights}" if weights else ""), flush=True)
+         neg_cond = mx.zeros_like(cond)
+         conditioning_route = {
+             "schema": CONDITIONING_PROVENANCE_SCHEMA,
+@@ -3631,6 +3654,21 @@ def main():
+             print("  Stop after stage: mesh_raw", flush=True)
+             return
+ 
++    # CHARFORGE: the full-resolution mesh is discarded by simplification. Dump it first so a
++    # retopology pass can bake the detail it carries onto a clean low-poly cage.
++    _hires = os.environ.get("TRELLIS_DUMP_HIGHRES")
++    if _hires:
++        try:
++            import trimesh as _tm
++            import numpy as _np
++            _v = _np.asarray(vertices)
++            _f = _np.asarray(faces)
++            _tm.Trimesh(vertices=_v, faces=_f, process=False).export(_hires)
++            print(f"  [charforge] dumped pre-simplification mesh: "
++                  f"{len(_v):,}V {len(_f):,}F -> {_hires}", flush=True)
++        except Exception as _e:
++            print(f"  [charforge] high-res dump failed: {_e}", flush=True)
++
+     vertices, faces = _cleanup_and_simplify_mesh(
+         vertices,
+         faces,
+@@ -3904,7 +3942,12 @@ def _extract_image_features(image_path, resolution=512):
+     """Extract DINOv3 image features, preferring native MLX path."""
+     try:
+         from trellmlx.models.dinov3 import extract_features
+-        features = extract_features(image_path, image_size=resolution)
++        # CHARFORGE: allow an explicit weights dir, so the ungated timm copy of DINOv3
++        # (converted by charforge/pipeline/convert_dinov3.py) can be used instead of the
++        # gated facebook/ repo this otherwise requires.
++        _wp = os.environ.get("TRELLIS_DINOV3_PATH")
++        features = (extract_features(image_path, image_size=resolution, weights_path=_wp) if _wp
++                    else extract_features(image_path, image_size=resolution))
+         print(f"  Features: {features.shape} (MLX)", flush=True)
+         return features
+     except Exception as e:
+diff --git a/trellmlx/samplers.py b/trellmlx/samplers.py
+index 05f144f..bee46c4 100644
+--- a/trellmlx/samplers.py
++++ b/trellmlx/samplers.py
+@@ -50,6 +50,67 @@ def dense_cfg_rescale_std_backend_identity(
+     }
+ 
+ 
++class MultiViewConditioning:
++    """Stochastic multi-view conditioning for the flow samplers.
++
++    TRELLIS is trained with a single conditioning image, so its cross-attention expects one
++    view's worth of context tokens. The obvious way to pass several views - concatenating their
++    DINOv3 features along the token axis - triples the context length and gives every view equal
++    weight, and measurably wrecks the result: on the CharForge test character it tore the surface
++    (open edges 2.30% -> 10.58%) and destroyed the face, because the front reference that carried
++    the facial detail was diluted to a third of the context.
++
++    The scheme TRELLIS actually uses varies *which* view conditions each denoising step. Every
++    individual forward pass then sees exactly the token layout the model was trained on, while
++    the trajectory as a whole is pulled toward agreeing with all the views. That is what this
++    implements.
++
++    modes:
++      cycle     round-robin over the views. Deterministic and reproducible.
++      weighted  sample a view per step from `weights`. Use this to keep the reference image
++                dominant - it is the only view with a real face - while still letting the side
++                and back views steer the geometry they alone can see.
++
++    The sampler reads whichever instance is assigned to ACTIVE_MULTIVIEW, rather than taking it
++    as an argument, because the scheme has to apply identically across all four sampling stages
++    (sparse structure, low- and high-res shape, texture) and threading it through each call site
++    would be more surface area for the two of them to drift apart.
++    """
++
++    def __init__(self, views, mode="cycle", weights=None, seed=0):
++        if not views:
++            raise ValueError("MultiViewConditioning needs at least one view")
++        shapes = {tuple(v.shape) for v in views}
++        if len(shapes) != 1:
++            raise ValueError(f"all conditioning views must share a shape, got {shapes}")
++        self.views = list(views)
++        self.mode = mode
++        self.weights = weights
++        self.seed = seed
++
++    def schedule(self, steps):
++        n = len(self.views)
++        if n == 1:
++            return [0] * steps
++        if self.mode == "cycle":
++            return [i % n for i in range(steps)]
++        if self.mode == "weighted":
++            w = np.asarray(self.weights if self.weights else [1.0] * n, dtype=np.float64)
++            if len(w) != n:
++                raise ValueError(f"got {len(w)} weights for {n} views")
++            w = w / w.sum()
++            rng = np.random.default_rng(self.seed)
++            # force the first step onto view 0: the earliest steps fix global layout, and view 0
++            # is the reference image
++            plan = [0] + [int(i) for i in rng.choice(n, size=max(steps - 1, 0), p=w)]
++            return plan[:steps]
++        raise ValueError(f"unknown multi-view mode {self.mode!r}")
++
++
++# Set by generate.py when several conditioning images are supplied; None means single-view.
++ACTIVE_MULTIVIEW = None
++
++
+ def flow_euler_sample(
+     model,
+     noise: mx.array,
+@@ -119,6 +180,22 @@ def flow_euler_sample(
+         if guidance_strength != 1.0:
+             neg_kv_cache = model.build_cross_kv_cache(neg_cond)
+ 
++    # Stochastic multi-view: one cache per view, swapped in at the top of each step. The caches
++    # are built once here for the same reason the single-view one is - the conditioning images
++    # do not change between steps.
++    view_caches = None
++    view_plan = None
++    mv = ACTIVE_MULTIVIEW
++    if mv is not None and len(mv.views) > 1:
++        view_caches = [
++            (v, model.build_cross_kv_cache(v) if hasattr(model, 'build_cross_kv_cache') else None)
++            for v in mv.views
++        ]
++        view_plan = mv.schedule(steps)
++        if verbose:
++            print(f"  Multi-view: {len(mv.views)} views, mode={mv.mode}, "
++                  f"per-step plan {view_plan}", flush=True)
++
+     # Build timestep schedule
+     t_seq = np.linspace(1, 0, steps + 1)
+     t_seq = rescale_t * t_seq / (1 + (rescale_t - 1) * t_seq)
+@@ -132,6 +209,9 @@ def flow_euler_sample(
+         if verbose:
+             print(f"  Step {step_idx + 1}/{steps} (t={t:.4f}→{t_prev:.4f})", end="", flush=True)
+ 
++        if view_caches is not None:
++            cond, pos_kv_cache = view_caches[view_plan[step_idx]]
++
+         t_tensor = mx.array([1000 * t], dtype=mx.float32)
+ 
+         # Determine if we apply guidance at this timestep

@@ -1,0 +1,102 @@
+{
+  "char_skin": {
+    "walk": {
+      "lbs": {
+        "area_p01": 0.522,
+        "area_p50": 0.99,
+        "area_p99": 1.252,
+        "swing_p99": 134.8,
+        "faces_below_half_area": 0.734
+      },
+      "dqs": {
+        "area_p01": 0.743,
+        "area_p50": 1.008,
+        "area_p99": 1.299,
+        "swing_p99": 130.8,
+        "faces_below_half_area": 0.077
+      }
+    },
+    "run": {
+      "lbs": {
+        "area_p01": 0.591,
+        "area_p50": 0.945,
+        "area_p99": 1.304,
+        "swing_p99": 165.9,
+        "faces_below_half_area": 0.505
+      },
+      "dqs": {
+        "area_p01": 0.607,
+        "area_p50": 1.0,
+        "area_p99": 2.472,
+        "swing_p99": 155.2,
+        "faces_below_half_area": 0.438
+      }
+    },
+    "idle": {
+      "lbs": {
+        "area_p01": 0.869,
+        "area_p50": 0.998,
+        "area_p99": 1.257,
+        "swing_p99": 89.6,
+        "faces_below_half_area": 0.01
+      },
+      "dqs": {
+        "area_p01": 0.893,
+        "area_p50": 1.001,
+        "area_p99": 1.264,
+        "swing_p99": 89.6,
+        "faces_below_half_area": 0.016
+      }
+    }
+  },
+  "char_clothing": {
+    "walk": {
+      "lbs": {
+        "area_p01": 0.129,
+        "area_p50": 0.965,
+        "area_p99": 1.694,
+        "swing_p99": 132.5,
+        "faces_below_half_area": 8.834
+      },
+      "dqs": {
+        "area_p01": 0.169,
+        "area_p50": 0.987,
+        "area_p99": 1.894,
+        "swing_p99": 127.5,
+        "faces_below_half_area": 6.073
+      }
+    },
+    "run": {
+      "lbs": {
+        "area_p01": 0.133,
+        "area_p50": 0.936,
+        "area_p99": 2.024,
+        "swing_p99": 152.3,
+        "faces_below_half_area": 11.49
+      },
+      "dqs": {
+        "area_p01": 0.209,
+        "area_p50": 0.978,
+        "area_p99": 2.333,
+        "swing_p99": 151.6,
+        "faces_below_half_area": 5.962
+      }
+    },
+    "idle": {
+      "lbs": {
+        "area_p01": 0.151,
+        "area_p50": 0.991,
+        "area_p99": 1.459,
+        "swing_p99": 125.5,
+        "faces_below_half_area": 7.807
+      },
+      "dqs": {
+        "area_p01": 0.216,
+        "area_p50": 0.992,
+        "area_p99": 1.502,
+        "swing_p99": 101.6,
+        "faces_below_half_area": 6.728
+      }
+    }
+  }
+}

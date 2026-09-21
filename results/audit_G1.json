@@ -1,0 +1,1525 @@
+{
+  "blend": "charforge/work/char01/G1.blend",
+  "clips": {
+    "idle": {
+      "frames": 25,
+      "per_bone": {
+        "char_skin": [
+          {
+            "bone": "right_collar",
+            "edges": 207,
+            "stretch_p99": 2.0842,
+            "stretch_max": 2.7263,
+            "area_p01": 1.1078,
+            "area_p99": 3.3632,
+            "swing_p99": 36.39
+          },
+          {
+            "bone": "neck",
+            "edges": 5078,
+            "stretch_p99": 0.4744,
+            "stretch_max": 2.0896,
+            "area_p01": 0.8154,
+            "area_p99": 1.9825,
+            "swing_p99": 24.01
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 531,
+            "stretch_p99": 0.359,
+            "stretch_max": 0.7265,
+            "area_p01": 0.651,
+            "area_p99": 1.4726,
+            "swing_p99": 42.48
+          },
+          {
+            "bone": "spine3",
+            "edges": 16,
+            "stretch_p99": 0.3148,
+            "stretch_max": 0.3328,
+            "area_p01": 1.3891,
+            "area_p99": 1.6275,
+            "swing_p99": 8.08
+          },
+          {
+            "bone": "left_wrist",
+            "edges": 1169,
+            "stretch_p99": 0.2747,
+            "stretch_max": 0.3766,
+            "area_p01": 0.7641,
+            "area_p99": 1.2958,
+            "swing_p99": 38.98
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 440,
+            "stretch_p99": 0.2039,
+            "stretch_max": 0.2811,
+            "area_p01": 0.6595,
+            "area_p99": 1.1787,
+            "swing_p99": 25.52
+          },
+          {
+            "bone": "right_wrist",
+            "edges": 1274,
+            "stretch_p99": 0.1599,
+            "stretch_max": 0.3259,
+            "area_p01": 0.833,
+            "area_p99": 1.1693,
+            "swing_p99": 24.02
+          },
+          {
+            "bone": "left_hand",
+            "edges": 1153,
+            "stretch_p99": 0.1283,
+            "stretch_max": 0.2523,
+            "area_p01": 0.808,
+            "area_p99": 1.0725,
+            "swing_p99": 21.6
+          },
+          {
+            "bone": "head",
+            "edges": 4393,
+            "stretch_p99": 0.1267,
+            "stretch_max": 0.322,
+            "area_p01": 0.8833,
+            "area_p99": 1.1868,
+            "swing_p99": 5.89
+          },
+          {
+            "bone": "right_hand",
+            "edges": 1237,
+            "stretch_p99": 0.0657,
+            "stretch_max": 0.1529,
+            "area_p01": 0.8742,
+            "area_p99": 1.0006,
+            "swing_p99": 10.96
+          },
+          {
+            "bone": "left_ankle",
+            "edges": 1687,
+            "stretch_p99": 0.0541,
+            "stretch_max": 0.1043,
+            "area_p01": 0.94,
+            "area_p99": 1.0293,
+            "swing_p99": 6.29
+          },
+          {
+            "bone": "right_ankle",
+            "edges": 2004,
+            "stretch_p99": 0.0466,
+            "stretch_max": 0.0984,
+            "area_p01": 0.9909,
+            "area_p99": 1.0456,
+            "swing_p99": 4.59
+          },
+          {
+            "bone": "right_knee",
+            "edges": 3775,
+            "stretch_p99": 0.0389,
+            "stretch_max": 0.0907,
+            "area_p01": 0.9873,
+            "area_p99": 1.0485,
+            "swing_p99": 4.52
+          },
+          {
+            "bone": "left_knee",
+            "edges": 3118,
+            "stretch_p99": 0.0374,
+            "stretch_max": 0.0862,
+            "area_p01": 0.9513,
+            "area_p99": 1.0133,
+            "swing_p99": 5.55
+          },
+          {
+            "bone": "head_top",
+            "edges": 2706,
+            "stretch_p99": 0.0206,
+            "stretch_max": 0.0556,
+            "area_p01": 0.9812,
+            "area_p99": 1.0268,
+            "swing_p99": 1.01
+          },
+          {
+            "bone": "left_foot",
+            "edges": 851,
+            "stretch_p99": 0.0105,
+            "stretch_max": 0.0167,
+            "area_p01": 0.9876,
+            "area_p99": 1.0083,
+            "swing_p99": 1.36
+          },
+          {
+            "bone": "right_foot",
+            "edges": 563,
+            "stretch_p99": 0.0084,
+            "stretch_max": 0.0174,
+            "area_p01": 0.9968,
+            "area_p99": 1.0114,
+            "swing_p99": 0.67
+          }
+        ],
+        "char_clothing": [
+          {
+            "bone": "spine1",
+            "edges": 6200,
+            "stretch_p99": 2.2974,
+            "stretch_max": 8.8998,
+            "area_p01": 0.3745,
+            "area_p99": 4.1339,
+            "swing_p99": 136.06
+          },
+          {
+            "bone": "spine2",
+            "edges": 3501,
+            "stretch_p99": 1.5119,
+            "stretch_max": 4.2326,
+            "area_p01": 0.2484,
+            "area_p99": 2.2779,
+            "swing_p99": 124.54
+          },
+          {
+            "bone": "neck",
+            "edges": 1146,
+            "stretch_p99": 1.4046,
+            "stretch_max": 3.0427,
+            "area_p01": 0.8064,
+            "area_p99": 3.4691,
+            "swing_p99": 29.9
+          },
+          {
+            "bone": "right_collar",
+            "edges": 3061,
+            "stretch_p99": 0.8693,
+            "stretch_max": 2.8246,
+            "area_p01": 0.1763,
+            "area_p99": 2.3006,
+            "swing_p99": 101.08
+          },
+          {
+            "bone": "right_hip",
+            "edges": 13352,
+            "stretch_p99": 0.826,
+            "stretch_max": 7.9513,
+            "area_p01": 0.7058,
+            "area_p99": 2.0983,
+            "swing_p99": 83.89
+          },
+          {
+            "bone": "left_shoulder",
+            "edges": 10208,
+            "stretch_p99": 0.8048,
+            "stretch_max": 4.6247,
+            "area_p01": 0.1103,
+            "area_p99": 1.4764,
+            "swing_p99": 166.0
+          },
+          {
+            "bone": "right_shoulder",
+            "edges": 10840,
+            "stretch_p99": 0.7921,
+            "stretch_max": 7.5967,
+            "area_p01": 0.132,
+            "area_p99": 1.6914,
+            "swing_p99": 165.63
+          },
+          {
+            "bone": "spine3",
+            "edges": 1491,
+            "stretch_p99": 0.7768,
+            "stretch_max": 1.8706,
+            "area_p01": 0.3494,
+            "area_p99": 2.2529,
+            "swing_p99": 102.45
+          },
+          {
+            "bone": "left_collar",
+            "edges": 2956,
+            "stretch_p99": 0.7539,
+            "stretch_max": 2.8413,
+            "area_p01": 0.1893,
+            "area_p99": 2.347,
+            "swing_p99": 58.17
+          },
+          {
+            "bone": "left_hip",
+            "edges": 14088,
+            "stretch_p99": 0.6076,
+            "stretch_max": 4.2263,
+            "area_p01": 0.7038,
+            "area_p99": 1.9336,
+            "swing_p99": 83.33
+          },
+          {
+            "bone": "pelvis",
+            "edges": 1724,
+            "stretch_p99": 0.3577,
+            "stretch_max": 0.6163,
+            "area_p01": 0.6439,
+            "area_p99": 1.374,
+            "swing_p99": 13.28
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 6164,
+            "stretch_p99": 0.1713,
+            "stretch_max": 0.4449,
+            "area_p01": 0.8066,
+            "area_p99": 1.0715,
+            "swing_p99": 28.76
+          },
+          {
+            "bone": "left_knee",
+            "edges": 7946,
+            "stretch_p99": 0.11,
+            "stretch_max": 0.2858,
+            "area_p01": 0.8445,
+            "area_p99": 1.076,
+            "swing_p99": 4.63
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 5938,
+            "stretch_p99": 0.0926,
+            "stretch_max": 0.1891,
+            "area_p01": 0.8977,
+            "area_p99": 1.1122,
+            "swing_p99": 13.95
+          },
+          {
+            "bone": "right_knee",
+            "edges": 8233,
+            "stretch_p99": 0.0925,
+            "stretch_max": 0.2115,
+            "area_p01": 0.8653,
+            "area_p99": 1.0646,
+            "swing_p99": 7.6
+          }
+        ]
+      },
+      "penetration": {
+        "sampled": 28000,
+        "inside": 12878,
+        "fraction": 0.4599,
+        "mean_depth_cm": 7.185,
+        "p99_depth_cm": 25.671
+      }
+    },
+    "jump": {
+      "frames": 29,
+      "per_bone": {
+        "char_skin": [
+          {
+            "bone": "right_collar",
+            "edges": 207,
+            "stretch_p99": 1.2396,
+            "stretch_max": 1.8443,
+            "area_p01": 0.7971,
+            "area_p99": 2.1689,
+            "swing_p99": 33.55
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 440,
+            "stretch_p99": 0.5807,
+            "stretch_max": 0.9349,
+            "area_p01": 0.198,
+            "area_p99": 1.3265,
+            "swing_p99": 81.61
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 531,
+            "stretch_p99": 0.5083,
+            "stretch_max": 1.1006,
+            "area_p01": 0.3963,
+            "area_p99": 1.4055,
+            "swing_p99": 51.43
+          },
+          {
+            "bone": "right_wrist",
+            "edges": 1274,
+            "stretch_p99": 0.4792,
+            "stretch_max": 0.9363,
+            "area_p01": 0.416,
+            "area_p99": 1.433,
+            "swing_p99": 44.79
+          },
+          {
+            "bone": "left_wrist",
+            "edges": 1169,
+            "stretch_p99": 0.4292,
+            "stretch_max": 0.8398,
+            "area_p01": 0.4418,
+            "area_p99": 1.3923,
+            "swing_p99": 36.69
+          },
+          {
+            "bone": "neck",
+            "edges": 5078,
+            "stretch_p99": 0.338,
+            "stretch_max": 1.436,
+            "area_p01": 0.6257,
+            "area_p99": 1.4834,
+            "swing_p99": 28.71
+          },
+          {
+            "bone": "left_ankle",
+            "edges": 1687,
+            "stretch_p99": 0.3109,
+            "stretch_max": 0.6662,
+            "area_p01": 0.6369,
+            "area_p99": 1.3341,
+            "swing_p99": 17.13
+          },
+          {
+            "bone": "right_ankle",
+            "edges": 2004,
+            "stretch_p99": 0.2785,
+            "stretch_max": 0.6096,
+            "area_p01": 0.6576,
+            "area_p99": 1.3001,
+            "swing_p99": 16.04
+          },
+          {
+            "bone": "head",
+            "edges": 4393,
+            "stretch_p99": 0.267,
+            "stretch_max": 0.6572,
+            "area_p01": 0.6506,
+            "area_p99": 1.279,
+            "swing_p99": 18.37
+          },
+          {
+            "bone": "right_knee",
+            "edges": 3775,
+            "stretch_p99": 0.1947,
+            "stretch_max": 0.5648,
+            "area_p01": 0.7325,
+            "area_p99": 1.1958,
+            "swing_p99": 20.14
+          },
+          {
+            "bone": "right_hand",
+            "edges": 1237,
+            "stretch_p99": 0.1929,
+            "stretch_max": 0.4731,
+            "area_p01": 0.6152,
+            "area_p99": 1.0067,
+            "swing_p99": 29.59
+          },
+          {
+            "bone": "left_hand",
+            "edges": 1153,
+            "stretch_p99": 0.1779,
+            "stretch_max": 0.4473,
+            "area_p01": 0.7231,
+            "area_p99": 1.153,
+            "swing_p99": 24.94
+          },
+          {
+            "bone": "left_knee",
+            "edges": 3118,
+            "stretch_p99": 0.1636,
+            "stretch_max": 0.5833,
+            "area_p01": 0.766,
+            "area_p99": 1.1887,
+            "swing_p99": 16.3
+          },
+          {
+            "bone": "spine3",
+            "edges": 16,
+            "stretch_p99": 0.1482,
+            "stretch_max": 0.153,
+            "area_p01": 0.8768,
+            "area_p99": 1.1185,
+            "swing_p99": 2.74
+          },
+          {
+            "bone": "right_foot",
+            "edges": 563,
+            "stretch_p99": 0.0701,
+            "stretch_max": 0.1365,
+            "area_p01": 0.9083,
+            "area_p99": 1.0937,
+            "swing_p99": 6.84
+          },
+          {
+            "bone": "left_foot",
+            "edges": 851,
+            "stretch_p99": 0.0668,
+            "stretch_max": 0.1442,
+            "area_p01": 0.9408,
+            "area_p99": 1.0702,
+            "swing_p99": 3.06
+          },
+          {
+            "bone": "head_top",
+            "edges": 2706,
+            "stretch_p99": 0.0372,
+            "stretch_max": 0.1483,
+            "area_p01": 0.9421,
+            "area_p99": 1.0299,
+            "swing_p99": 1.89
+          }
+        ],
+        "char_clothing": [
+          {
+            "bone": "spine1",
+            "edges": 6200,
+            "stretch_p99": 2.4819,
+            "stretch_max": 10.6771,
+            "area_p01": 0.363,
+            "area_p99": 4.1467,
+            "swing_p99": 129.3
+          },
+          {
+            "bone": "spine2",
+            "edges": 3501,
+            "stretch_p99": 1.4505,
+            "stretch_max": 4.763,
+            "area_p01": 0.2298,
+            "area_p99": 2.6165,
+            "swing_p99": 128.95
+          },
+          {
+            "bone": "right_hip",
+            "edges": 13352,
+            "stretch_p99": 0.9012,
+            "stretch_max": 8.9269,
+            "area_p01": 0.4026,
+            "area_p99": 2.1016,
+            "swing_p99": 86.06
+          },
+          {
+            "bone": "right_shoulder",
+            "edges": 10840,
+            "stretch_p99": 0.8253,
+            "stretch_max": 8.7035,
+            "area_p01": 0.1472,
+            "area_p99": 1.8175,
+            "swing_p99": 165.15
+          },
+          {
+            "bone": "left_shoulder",
+            "edges": 10208,
+            "stretch_p99": 0.7662,
+            "stretch_max": 5.2891,
+            "area_p01": 0.1597,
+            "area_p99": 1.7106,
+            "swing_p99": 161.96
+          },
+          {
+            "bone": "left_hip",
+            "edges": 14088,
+            "stretch_p99": 0.7504,
+            "stretch_max": 4.7665,
+            "area_p01": 0.4043,
+            "area_p99": 1.9863,
+            "swing_p99": 95.54
+          },
+          {
+            "bone": "neck",
+            "edges": 1146,
+            "stretch_p99": 0.6891,
+            "stretch_max": 1.9147,
+            "area_p01": 0.8512,
+            "area_p99": 2.0469,
+            "swing_p99": 30.96
+          },
+          {
+            "bone": "right_collar",
+            "edges": 3061,
+            "stretch_p99": 0.6787,
+            "stretch_max": 3.0905,
+            "area_p01": 0.2862,
+            "area_p99": 1.8497,
+            "swing_p99": 74.6
+          },
+          {
+            "bone": "left_collar",
+            "edges": 2956,
+            "stretch_p99": 0.5655,
+            "stretch_max": 2.9852,
+            "area_p01": 0.2936,
+            "area_p99": 1.602,
+            "swing_p99": 62.73
+          },
+          {
+            "bone": "spine3",
+            "edges": 1491,
+            "stretch_p99": 0.5436,
+            "stretch_max": 2.7901,
+            "area_p01": 0.5308,
+            "area_p99": 1.7288,
+            "swing_p99": 83.37
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 6164,
+            "stretch_p99": 0.4576,
+            "stretch_max": 1.3869,
+            "area_p01": 0.527,
+            "area_p99": 1.4853,
+            "swing_p99": 50.5
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 5938,
+            "stretch_p99": 0.412,
+            "stretch_max": 1.6606,
+            "area_p01": 0.5876,
+            "area_p99": 1.5566,
+            "swing_p99": 36.84
+          },
+          {
+            "bone": "pelvis",
+            "edges": 1724,
+            "stretch_p99": 0.4076,
+            "stretch_max": 1.6691,
+            "area_p01": 0.5971,
+            "area_p99": 1.5345,
+            "swing_p99": 23.98
+          },
+          {
+            "bone": "left_knee",
+            "edges": 7946,
+            "stretch_p99": 0.3965,
+            "stretch_max": 0.9435,
+            "area_p01": 0.3886,
+            "area_p99": 1.1645,
+            "swing_p99": 43.74
+          },
+          {
+            "bone": "right_knee",
+            "edges": 8233,
+            "stretch_p99": 0.3573,
+            "stretch_max": 0.9656,
+            "area_p01": 0.4131,
+            "area_p99": 1.1534,
+            "swing_p99": 37.68
+          }
+        ]
+      },
+      "penetration": {
+        "sampled": 32000,
+        "inside": 14575,
+        "fraction": 0.4555,
+        "mean_depth_cm": 6.99,
+        "p99_depth_cm": 30.206
+      }
+    },
+    "run": {
+      "frames": 8,
+      "per_bone": {
+        "char_skin": [
+          {
+            "bone": "right_collar",
+            "edges": 207,
+            "stretch_p99": 1.7366,
+            "stretch_max": 2.5888,
+            "area_p01": 0.9234,
+            "area_p99": 2.9948,
+            "swing_p99": 33.08
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 531,
+            "stretch_p99": 0.5678,
+            "stretch_max": 1.2081,
+            "area_p01": 0.4363,
+            "area_p99": 1.5329,
+            "swing_p99": 69.14
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 440,
+            "stretch_p99": 0.5112,
+            "stretch_max": 0.7244,
+            "area_p01": 0.3105,
+            "area_p99": 0.9804,
+            "swing_p99": 61.2
+          },
+          {
+            "bone": "left_wrist",
+            "edges": 1169,
+            "stretch_p99": 0.4707,
+            "stretch_max": 0.7874,
+            "area_p01": 0.5985,
+            "area_p99": 1.4488,
+            "swing_p99": 54.06
+          },
+          {
+            "bone": "neck",
+            "edges": 5078,
+            "stretch_p99": 0.418,
+            "stretch_max": 1.9533,
+            "area_p01": 0.5618,
+            "area_p99": 1.6157,
+            "swing_p99": 27.67
+          },
+          {
+            "bone": "right_wrist",
+            "edges": 1274,
+            "stretch_p99": 0.3959,
+            "stretch_max": 0.6336,
+            "area_p01": 0.4636,
+            "area_p99": 0.9936,
+            "swing_p99": 51.05
+          },
+          {
+            "bone": "spine3",
+            "edges": 16,
+            "stretch_p99": 0.3826,
+            "stretch_max": 0.3993,
+            "area_p01": 1.1682,
+            "area_p99": 1.5269,
+            "swing_p99": 6.93
+          },
+          {
+            "bone": "left_ankle",
+            "edges": 1687,
+            "stretch_p99": 0.3275,
+            "stretch_max": 0.6886,
+            "area_p01": 0.5708,
+            "area_p99": 1.2858,
+            "swing_p99": 23.3
+          },
+          {
+            "bone": "right_ankle",
+            "edges": 2004,
+            "stretch_p99": 0.3142,
+            "stretch_max": 0.707,
+            "area_p01": 0.5937,
+            "area_p99": 1.2446,
+            "swing_p99": 14.32
+          },
+          {
+            "bone": "head",
+            "edges": 4393,
+            "stretch_p99": 0.2786,
+            "stretch_max": 0.6584,
+            "area_p01": 0.569,
+            "area_p99": 1.2788,
+            "swing_p99": 20.08
+          },
+          {
+            "bone": "left_hand",
+            "edges": 1153,
+            "stretch_p99": 0.2152,
+            "stretch_max": 0.4603,
+            "area_p01": 0.6753,
+            "area_p99": 1.11,
+            "swing_p99": 32.28
+          },
+          {
+            "bone": "right_knee",
+            "edges": 3775,
+            "stretch_p99": 0.2146,
+            "stretch_max": 0.6774,
+            "area_p01": 0.6717,
+            "area_p99": 1.1458,
+            "swing_p99": 19.07
+          },
+          {
+            "bone": "right_hand",
+            "edges": 1237,
+            "stretch_p99": 0.2011,
+            "stretch_max": 0.28,
+            "area_p01": 0.6913,
+            "area_p99": 0.9982,
+            "swing_p99": 9.5
+          },
+          {
+            "bone": "left_knee",
+            "edges": 3118,
+            "stretch_p99": 0.1723,
+            "stretch_max": 0.6551,
+            "area_p01": 0.7169,
+            "area_p99": 1.119,
+            "swing_p99": 18.85
+          },
+          {
+            "bone": "right_foot",
+            "edges": 563,
+            "stretch_p99": 0.0756,
+            "stretch_max": 0.1877,
+            "area_p01": 0.8864,
+            "area_p99": 1.0775,
+            "swing_p99": 6.25
+          },
+          {
+            "bone": "left_foot",
+            "edges": 851,
+            "stretch_p99": 0.0665,
+            "stretch_max": 0.1276,
+            "area_p01": 0.925,
+            "area_p99": 1.0526,
+            "swing_p99": 3.44
+          },
+          {
+            "bone": "head_top",
+            "edges": 2706,
+            "stretch_p99": 0.0387,
+            "stretch_max": 0.1005,
+            "area_p01": 0.9542,
+            "area_p99": 1.0398,
+            "swing_p99": 2.71
+          }
+        ],
+        "char_clothing": [
+          {
+            "bone": "spine1",
+            "edges": 6200,
+            "stretch_p99": 2.6741,
+            "stretch_max": 9.1525,
+            "area_p01": 0.296,
+            "area_p99": 4.7894,
+            "swing_p99": 123.28
+          },
+          {
+            "bone": "spine2",
+            "edges": 3501,
+            "stretch_p99": 1.6038,
+            "stretch_max": 4.6647,
+            "area_p01": 0.1693,
+            "area_p99": 3.0193,
+            "swing_p99": 123.34
+          },
+          {
+            "bone": "right_hip",
+            "edges": 13352,
+            "stretch_p99": 1.2875,
+            "stretch_max": 7.6759,
+            "area_p01": 0.2906,
+            "area_p99": 2.2592,
+            "swing_p99": 104.3
+          },
+          {
+            "bone": "left_hip",
+            "edges": 14088,
+            "stretch_p99": 1.2371,
+            "stretch_max": 4.2882,
+            "area_p01": 0.2528,
+            "area_p99": 2.0801,
+            "swing_p99": 110.04
+          },
+          {
+            "bone": "right_shoulder",
+            "edges": 10840,
+            "stretch_p99": 1.1037,
+            "stretch_max": 10.9416,
+            "area_p01": 0.239,
+            "area_p99": 2.5122,
+            "swing_p99": 136.12
+          },
+          {
+            "bone": "spine3",
+            "edges": 1491,
+            "stretch_p99": 0.9761,
+            "stretch_max": 3.0429,
+            "area_p01": 0.4865,
+            "area_p99": 2.6279,
+            "swing_p99": 71.4
+          },
+          {
+            "bone": "right_collar",
+            "edges": 3061,
+            "stretch_p99": 0.9172,
+            "stretch_max": 3.8752,
+            "area_p01": 0.427,
+            "area_p99": 2.3718,
+            "swing_p99": 64.61
+          },
+          {
+            "bone": "neck",
+            "edges": 1146,
+            "stretch_p99": 0.8559,
+            "stretch_max": 2.3518,
+            "area_p01": 0.7585,
+            "area_p99": 2.3642,
+            "swing_p99": 31.76
+          },
+          {
+            "bone": "left_shoulder",
+            "edges": 10208,
+            "stretch_p99": 0.8553,
+            "stretch_max": 8.3608,
+            "area_p01": 0.1001,
+            "area_p99": 1.7594,
+            "swing_p99": 158.7
+          },
+          {
+            "bone": "pelvis",
+            "edges": 1724,
+            "stretch_p99": 0.7947,
+            "stretch_max": 1.7383,
+            "area_p01": 0.2935,
+            "area_p99": 1.6169,
+            "swing_p99": 66.74
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 6164,
+            "stretch_p99": 0.7109,
+            "stretch_max": 1.5622,
+            "area_p01": 0.3264,
+            "area_p99": 1.7213,
+            "swing_p99": 74.25
+          },
+          {
+            "bone": "left_collar",
+            "edges": 2956,
+            "stretch_p99": 0.6754,
+            "stretch_max": 2.8377,
+            "area_p01": 0.2525,
+            "area_p99": 1.9178,
+            "swing_p99": 43.25
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 5938,
+            "stretch_p99": 0.6411,
+            "stretch_max": 1.644,
+            "area_p01": 0.3923,
+            "area_p99": 1.8639,
+            "swing_p99": 61.12
+          },
+          {
+            "bone": "left_knee",
+            "edges": 7946,
+            "stretch_p99": 0.5173,
+            "stretch_max": 0.9874,
+            "area_p01": 0.2302,
+            "area_p99": 1.1719,
+            "swing_p99": 86.43
+          },
+          {
+            "bone": "right_knee",
+            "edges": 8233,
+            "stretch_p99": 0.4551,
+            "stretch_max": 0.9686,
+            "area_p01": 0.2825,
+            "area_p99": 1.1827,
+            "swing_p99": 74.86
+          }
+        ]
+      },
+      "penetration": {
+        "sampled": 8000,
+        "inside": 3153,
+        "fraction": 0.3941,
+        "mean_depth_cm": 6.21,
+        "p99_depth_cm": 25.089
+      }
+    },
+    "walk": {
+      "frames": 17,
+      "per_bone": {
+        "char_skin": [
+          {
+            "bone": "right_collar",
+            "edges": 207,
+            "stretch_p99": 1.5514,
+            "stretch_max": 1.955,
+            "area_p01": 1.0653,
+            "area_p99": 2.6366,
+            "swing_p99": 29.79
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 531,
+            "stretch_p99": 0.8708,
+            "stretch_max": 1.5346,
+            "area_p01": 0.2449,
+            "area_p99": 1.5114,
+            "swing_p99": 124.01
+          },
+          {
+            "bone": "left_wrist",
+            "edges": 1169,
+            "stretch_p99": 0.8066,
+            "stretch_max": 1.1172,
+            "area_p01": 0.3415,
+            "area_p99": 1.684,
+            "swing_p99": 74.06
+          },
+          {
+            "bone": "left_hand",
+            "edges": 1153,
+            "stretch_p99": 0.4878,
+            "stretch_max": 0.5668,
+            "area_p01": 0.404,
+            "area_p99": 1.1836,
+            "swing_p99": 60.84
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 440,
+            "stretch_p99": 0.4565,
+            "stretch_max": 0.5723,
+            "area_p01": 0.4074,
+            "area_p99": 1.4641,
+            "swing_p99": 45.79
+          },
+          {
+            "bone": "right_wrist",
+            "edges": 1274,
+            "stretch_p99": 0.3647,
+            "stretch_max": 0.684,
+            "area_p01": 0.7012,
+            "area_p99": 1.3851,
+            "swing_p99": 42.31
+          },
+          {
+            "bone": "neck",
+            "edges": 5078,
+            "stretch_p99": 0.3191,
+            "stretch_max": 1.5017,
+            "area_p01": 0.7416,
+            "area_p99": 1.666,
+            "swing_p99": 22.49
+          },
+          {
+            "bone": "spine3",
+            "edges": 16,
+            "stretch_p99": 0.2078,
+            "stretch_max": 0.2212,
+            "area_p01": 1.0923,
+            "area_p99": 1.2259,
+            "swing_p99": 3.75
+          },
+          {
+            "bone": "left_ankle",
+            "edges": 1687,
+            "stretch_p99": 0.2014,
+            "stretch_max": 0.423,
+            "area_p01": 0.8113,
+            "area_p99": 1.2371,
+            "swing_p99": 9.52
+          },
+          {
+            "bone": "head",
+            "edges": 4393,
+            "stretch_p99": 0.1806,
+            "stretch_max": 0.3374,
+            "area_p01": 0.758,
+            "area_p99": 1.2041,
+            "swing_p99": 10.66
+          },
+          {
+            "bone": "right_ankle",
+            "edges": 2004,
+            "stretch_p99": 0.1677,
+            "stretch_max": 0.4163,
+            "area_p01": 0.8634,
+            "area_p99": 1.2073,
+            "swing_p99": 9.52
+          },
+          {
+            "bone": "right_hand",
+            "edges": 1237,
+            "stretch_p99": 0.1156,
+            "stretch_max": 0.2397,
+            "area_p01": 0.7507,
+            "area_p99": 0.9984,
+            "swing_p99": 23.07
+          },
+          {
+            "bone": "right_knee",
+            "edges": 3775,
+            "stretch_p99": 0.107,
+            "stretch_max": 0.3839,
+            "area_p01": 0.8911,
+            "area_p99": 1.1434,
+            "swing_p99": 12.02
+          },
+          {
+            "bone": "left_knee",
+            "edges": 3118,
+            "stretch_p99": 0.1008,
+            "stretch_max": 0.3621,
+            "area_p01": 0.8802,
+            "area_p99": 1.1282,
+            "swing_p99": 9.92
+          },
+          {
+            "bone": "left_foot",
+            "edges": 851,
+            "stretch_p99": 0.0443,
+            "stretch_max": 0.088,
+            "area_p01": 0.968,
+            "area_p99": 1.0506,
+            "swing_p99": 2.01
+          },
+          {
+            "bone": "right_foot",
+            "edges": 563,
+            "stretch_p99": 0.0402,
+            "stretch_max": 0.0897,
+            "area_p01": 0.9589,
+            "area_p99": 1.0608,
+            "swing_p99": 3.82
+          },
+          {
+            "bone": "head_top",
+            "edges": 2706,
+            "stretch_p99": 0.0283,
+            "stretch_max": 0.053,
+            "area_p01": 0.9767,
+            "area_p99": 1.0367,
+            "swing_p99": 1.51
+          }
+        ],
+        "char_clothing": [
+          {
+            "bone": "spine1",
+            "edges": 6200,
+            "stretch_p99": 2.06,
+            "stretch_max": 7.7599,
+            "area_p01": 0.2978,
+            "area_p99": 3.8593,
+            "swing_p99": 132.72
+          },
+          {
+            "bone": "spine2",
+            "edges": 3501,
+            "stretch_p99": 1.3662,
+            "stretch_max": 4.1417,
+            "area_p01": 0.1184,
+            "area_p99": 2.3408,
+            "swing_p99": 134.09
+          },
+          {
+            "bone": "neck",
+            "edges": 1146,
+            "stretch_p99": 1.0317,
+            "stretch_max": 2.1037,
+            "area_p01": 0.9062,
+            "area_p99": 2.6907,
+            "swing_p99": 28.42
+          },
+          {
+            "bone": "right_shoulder",
+            "edges": 10840,
+            "stretch_p99": 0.8798,
+            "stretch_max": 8.5916,
+            "area_p01": 0.1611,
+            "area_p99": 2.0295,
+            "swing_p99": 154.87
+          },
+          {
+            "bone": "left_shoulder",
+            "edges": 10208,
+            "stretch_p99": 0.8382,
+            "stretch_max": 5.9198,
+            "area_p01": 0.0717,
+            "area_p99": 1.7019,
+            "swing_p99": 163.38
+          },
+          {
+            "bone": "right_collar",
+            "edges": 3061,
+            "stretch_p99": 0.7793,
+            "stretch_max": 2.6064,
+            "area_p01": 0.311,
+            "area_p99": 1.9808,
+            "swing_p99": 72.83
+          },
+          {
+            "bone": "left_hip",
+            "edges": 14088,
+            "stretch_p99": 0.7334,
+            "stretch_max": 3.5978,
+            "area_p01": 0.4199,
+            "area_p99": 1.8305,
+            "swing_p99": 98.02
+          },
+          {
+            "bone": "left_collar",
+            "edges": 2956,
+            "stretch_p99": 0.7122,
+            "stretch_max": 1.5557,
+            "area_p01": 0.1916,
+            "area_p99": 1.8636,
+            "swing_p99": 27.87
+          },
+          {
+            "bone": "right_hip",
+            "edges": 13352,
+            "stretch_p99": 0.7103,
+            "stretch_max": 7.3961,
+            "area_p01": 0.3944,
+            "area_p99": 1.7718,
+            "swing_p99": 77.86
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 5938,
+            "stretch_p99": 0.5884,
+            "stretch_max": 1.647,
+            "area_p01": 0.4969,
+            "area_p99": 1.8315,
+            "swing_p99": 50.84
+          },
+          {
+            "bone": "spine3",
+            "edges": 1491,
+            "stretch_p99": 0.5543,
+            "stretch_max": 1.6086,
+            "area_p01": 0.4934,
+            "area_p99": 1.5035,
+            "swing_p99": 62.71
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 6164,
+            "stretch_p99": 0.5444,
+            "stretch_max": 0.8468,
+            "area_p01": 0.3267,
+            "area_p99": 1.5682,
+            "swing_p99": 99.7
+          },
+          {
+            "bone": "pelvis",
+            "edges": 1724,
+            "stretch_p99": 0.4084,
+            "stretch_max": 0.8808,
+            "area_p01": 0.5899,
+            "area_p99": 1.3575,
+            "swing_p99": 27.15
+          },
+          {
+            "bone": "left_knee",
+            "edges": 7946,
+            "stretch_p99": 0.3722,
+            "stretch_max": 0.93,
+            "area_p01": 0.4236,
+            "area_p99": 1.14,
+            "swing_p99": 29.51
+          },
+          {
+            "bone": "right_knee",
+            "edges": 8233,
+            "stretch_p99": 0.358,
+            "stretch_max": 0.874,
+            "area_p01": 0.4483,
+            "area_p99": 1.1508,
+            "swing_p99": 28.01
+          }
+        ]
+      },
+      "penetration": {
+        "sampled": 20000,
+        "inside": 8889,
+        "fraction": 0.4445,
+        "mean_depth_cm": 6.6,
+        "p99_depth_cm": 21.24
+      }
+    },
+    "wave": {
+      "frames": 18,
+      "per_bone": {
+        "char_skin": [
+          {
+            "bone": "right_collar",
+            "edges": 207,
+            "stretch_p99": 0.8733,
+            "stretch_max": 1.448,
+            "area_p01": 0.5842,
+            "area_p99": 1.4886,
+            "swing_p99": 40.06
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 440,
+            "stretch_p99": 0.4485,
+            "stretch_max": 0.7346,
+            "area_p01": 0.3798,
+            "area_p99": 1.0231,
+            "swing_p99": 44.69
+          },
+          {
+            "bone": "right_wrist",
+            "edges": 1274,
+            "stretch_p99": 0.3775,
+            "stretch_max": 0.7475,
+            "area_p01": 0.4501,
+            "area_p99": 1.0253,
+            "swing_p99": 31.71
+          },
+          {
+            "bone": "neck",
+            "edges": 5078,
+            "stretch_p99": 0.3009,
+            "stretch_max": 1.2603,
+            "area_p01": 0.692,
+            "area_p99": 1.332,
+            "swing_p99": 22.95
+          },
+          {
+            "bone": "spine3",
+            "edges": 16,
+            "stretch_p99": 0.2277,
+            "stretch_max": 0.2294,
+            "area_p01": 0.8456,
+            "area_p99": 1.0587,
+            "swing_p99": 6.55
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 531,
+            "stretch_p99": 0.1948,
+            "stretch_max": 0.3564,
+            "area_p01": 0.7492,
+            "area_p99": 0.9933,
+            "swing_p99": 16.2
+          },
+          {
+            "bone": "head",
+            "edges": 4393,
+            "stretch_p99": 0.1854,
+            "stretch_max": 0.4362,
+            "area_p01": 0.7916,
+            "area_p99": 1.2286,
+            "swing_p99": 12.4
+          },
+          {
+            "bone": "right_hand",
+            "edges": 1237,
+            "stretch_p99": 0.1735,
+            "stretch_max": 0.3406,
+            "area_p01": 0.7434,
+            "area_p99": 1.0025,
+            "swing_p99": 11.18
+          },
+          {
+            "bone": "left_wrist",
+            "edges": 1169,
+            "stretch_p99": 0.1616,
+            "stretch_max": 0.2882,
+            "area_p01": 0.7893,
+            "area_p99": 1.0057,
+            "swing_p99": 14.05
+          },
+          {
+            "bone": "left_ankle",
+            "edges": 1687,
+            "stretch_p99": 0.1417,
+            "stretch_max": 0.3096,
+            "area_p01": 0.9807,
+            "area_p99": 1.1717,
+            "swing_p99": 8.83
+          },
+          {
+            "bone": "right_ankle",
+            "edges": 2004,
+            "stretch_p99": 0.1163,
+            "stretch_max": 0.2338,
+            "area_p01": 0.9912,
+            "area_p99": 1.1414,
+            "swing_p99": 6.21
+          },
+          {
+            "bone": "left_hand",
+            "edges": 1153,
+            "stretch_p99": 0.0793,
+            "stretch_max": 0.1271,
+            "area_p01": 0.8815,
+            "area_p99": 1.0165,
+            "swing_p99": 7.11
+          },
+          {
+            "bone": "right_knee",
+            "edges": 3775,
+            "stretch_p99": 0.0774,
+            "stretch_max": 0.2186,
+            "area_p01": 0.9738,
+            "area_p99": 1.1148,
+            "swing_p99": 7.61
+          },
+          {
+            "bone": "left_knee",
+            "edges": 3118,
+            "stretch_p99": 0.0664,
+            "stretch_max": 0.2499,
+            "area_p01": 0.9626,
+            "area_p99": 1.1119,
+            "swing_p99": 8.27
+          },
+          {
+            "bone": "right_foot",
+            "edges": 563,
+            "stretch_p99": 0.0322,
+            "stretch_max": 0.0546,
+            "area_p01": 0.9863,
+            "area_p99": 1.0443,
+            "swing_p99": 2.78
+          },
+          {
+            "bone": "left_foot",
+            "edges": 851,
+            "stretch_p99": 0.0292,
+            "stretch_max": 0.0658,
+            "area_p01": 0.9967,
+            "area_p99": 1.0361,
+            "swing_p99": 1.59
+          },
+          {
+            "bone": "head_top",
+            "edges": 2706,
+            "stretch_p99": 0.023,
+            "stretch_max": 0.0566,
+            "area_p01": 0.9701,
+            "area_p99": 1.0246,
+            "swing_p99": 1.77
+          }
+        ],
+        "char_clothing": [
+          {
+            "bone": "spine1",
+            "edges": 6200,
+            "stretch_p99": 2.1042,
+            "stretch_max": 9.3272,
+            "area_p01": 0.2609,
+            "area_p99": 3.9572,
+            "swing_p99": 135.37
+          },
+          {
+            "bone": "right_shoulder",
+            "edges": 10840,
+            "stretch_p99": 1.2739,
+            "stretch_max": 9.2464,
+            "area_p01": 0.1843,
+            "area_p99": 2.5188,
+            "swing_p99": 161.08
+          },
+          {
+            "bone": "spine2",
+            "edges": 3501,
+            "stretch_p99": 1.0849,
+            "stretch_max": 3.9726,
+            "area_p01": 0.1115,
+            "area_p99": 2.4533,
+            "swing_p99": 159.96
+          },
+          {
+            "bone": "left_shoulder",
+            "edges": 10208,
+            "stretch_p99": 0.8327,
+            "stretch_max": 5.2677,
+            "area_p01": 0.0811,
+            "area_p99": 1.4095,
+            "swing_p99": 168.66
+          },
+          {
+            "bone": "right_hip",
+            "edges": 13352,
+            "stretch_p99": 0.8312,
+            "stretch_max": 6.9312,
+            "area_p01": 0.7127,
+            "area_p99": 1.99,
+            "swing_p99": 64.82
+          },
+          {
+            "bone": "spine3",
+            "edges": 1491,
+            "stretch_p99": 0.6499,
+            "stretch_max": 1.8323,
+            "area_p01": 0.6076,
+            "area_p99": 1.7604,
+            "swing_p99": 83.65
+          },
+          {
+            "bone": "left_collar",
+            "edges": 2956,
+            "stretch_p99": 0.6493,
+            "stretch_max": 2.7197,
+            "area_p01": 0.254,
+            "area_p99": 1.6252,
+            "swing_p99": 56.2
+          },
+          {
+            "bone": "right_elbow",
+            "edges": 5938,
+            "stretch_p99": 0.6239,
+            "stretch_max": 2.0087,
+            "area_p01": 0.3392,
+            "area_p99": 1.5858,
+            "swing_p99": 81.42
+          },
+          {
+            "bone": "neck",
+            "edges": 1146,
+            "stretch_p99": 0.5992,
+            "stretch_max": 1.5673,
+            "area_p01": 0.51,
+            "area_p99": 1.8384,
+            "swing_p99": 38.8
+          },
+          {
+            "bone": "right_collar",
+            "edges": 3061,
+            "stretch_p99": 0.5892,
+            "stretch_max": 2.936,
+            "area_p01": 0.2818,
+            "area_p99": 1.6857,
+            "swing_p99": 46.01
+          },
+          {
+            "bone": "left_hip",
+            "edges": 14088,
+            "stretch_p99": 0.5545,
+            "stretch_max": 3.943,
+            "area_p01": 0.5841,
+            "area_p99": 1.7526,
+            "swing_p99": 85.44
+          },
+          {
+            "bone": "pelvis",
+            "edges": 1724,
+            "stretch_p99": 0.3004,
+            "stretch_max": 0.5199,
+            "area_p01": 0.7356,
+            "area_p99": 1.3098,
+            "swing_p99": 14.6
+          },
+          {
+            "bone": "left_knee",
+            "edges": 7946,
+            "stretch_p99": 0.2243,
+            "stretch_max": 0.7838,
+            "area_p01": 0.6538,
+            "area_p99": 1.1051,
+            "swing_p99": 12.95
+          },
+          {
+            "bone": "left_elbow",
+            "edges": 6164,
+            "stretch_p99": 0.2166,
+            "stretch_max": 0.4394,
+            "area_p01": 0.8338,
+            "area_p99": 1.2746,
+            "swing_p99": 14.14
+          },
+          {
+            "bone": "right_knee",
+            "edges": 8233,
+            "stretch_p99": 0.1575,
+            "stretch_max": 0.4424,
+            "area_p01": 0.7534,
+            "area_p99": 1.0784,
+            "swing_p99": 9.33
+          }
+        ]
+      },
+      "penetration": {
+        "sampled": 20000,
+        "inside": 6919,
+        "fraction": 0.3459,
+        "mean_depth_cm": 6.862,
+        "p99_depth_cm": 35.468
+      }
+    }
+  }
+}

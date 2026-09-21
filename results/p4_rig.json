@@ -1,0 +1,23 @@
+{
+  "retopo_vertices": 50500,
+  "labels": {
+    "body": 8819,
+    "clothing": 37635,
+    "hair": 1576,
+    "accessory": 2189
+  },
+  "reclassified_from_hair": 217,
+  "bones": 25,
+  "parts": {
+    "char_skin": {
+      "vertices": 12918,
+      "unweighted": 0,
+      "groups": 25
+    },
+    "char_clothing": {
+      "vertices": 37582,
+      "unweighted": 0,
+      "groups": 25
+    }
+  }
+}

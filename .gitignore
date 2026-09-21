@@ -1,0 +1,19 @@
+# secrets - never commit
+.env
+*.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# pipeline working files: multi-GB intermediates and model weights
+work/
+models/
+vendor/
+logs/
+*.blend
+*.blend1
+
+# the base64 web build is generated from character.glb by blender/web_export.py
+web/model*.js

@@ -1,0 +1,8 @@
+# Pipeline (host python). Blender stages use Blender's bundled interpreter.
+numpy>=2.0
+scipy>=1.13
+trimesh>=4.4
+pillow>=10.3
+torch>=2.4
+transformers>=4.44
+mlx>=0.18

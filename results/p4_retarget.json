@@ -1,0 +1,47 @@
+{
+  "idle": {
+    "frames": 49,
+    "bones_mapped": 20,
+    "scale": 1.05496,
+    "curves": 78,
+    "source": "143d71a6e2e5896c4898437f7d700b0e.fbx",
+    "root_travel_m": 0.01,
+    "leg_lengths_per_sec": 0.007
+  },
+  "walk": {
+    "frames": 34,
+    "bones_mapped": 20,
+    "scale": 1.05496,
+    "curves": 78,
+    "source": "1c287bc16d5848a3aed9b3ed45a6eb99.fbx",
+    "root_travel_m": 1.426,
+    "leg_lengths_per_sec": 1.406
+  },
+  "run": {
+    "frames": 16,
+    "bones_mapped": 20,
+    "scale": 1.05496,
+    "curves": 78,
+    "source": "1742210a6aadf79943aee5f7b46c50be.fbx",
+    "root_travel_m": 3.585,
+    "leg_lengths_per_sec": 7.51
+  },
+  "jump": {
+    "frames": 57,
+    "bones_mapped": 20,
+    "scale": 1.05496,
+    "curves": 78,
+    "source": "18a7360190366a0fe6e37666caf09858.fbx",
+    "root_travel_m": 0.061,
+    "leg_lengths_per_sec": 0.036
+  },
+  "wave": {
+    "frames": 35,
+    "bones_mapped": 20,
+    "scale": 1.05496,
+    "curves": 78,
+    "source": "19d1ded9a44672ea47e82f6fc1e34bf4.fbx",
+    "root_travel_m": 0.123,
+    "leg_lengths_per_sec": 0.118
+  }
+}
