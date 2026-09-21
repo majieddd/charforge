@@ -1,0 +1,17 @@
+{
+  "frames_checked": 13,
+  "meshes": {
+    "char_skin": {
+      "faces": 17873,
+      "hidden_at_rest": 1669,
+      "surfaced": 867,
+      "pct_of_mesh": 4.851
+    },
+    "char_clothing": {
+      "faces": 59895,
+      "hidden_at_rest": 2467,
+      "surfaced": 2037,
+      "pct_of_mesh": 3.401
+    }
+  }
+}

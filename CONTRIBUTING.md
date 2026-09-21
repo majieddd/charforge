@@ -41,46 +41,36 @@ apart), cross-midline binding count, unweighted-vertex count. These are proxies.
 
 ## Open — ranked by expected impact
 
-### 1. Reduce the weight gradient where it is steepest
-`blender/collapse_why.py` measures what collapsing faces have in common. On the jacket, the two
-factors that carry are **face aspect ratio (lift 2.73x, 27% of all collapses)** and **steepness
-of the weight gradient across the face (lift 2.48x, 25%)**. Faces spanning a sharp change in the
-weight field have corners following different bones, and lose area.
-
-The obvious response — smooth the weights harder — has already backfired twice on this project,
-so this needs to be *targeted*: smooth only in the top decile of gradient, leave the rest alone,
-and measure. Anything global regresses the median.
-
-### 2. Improve face shape in the retopology
+### 1. Improve face shape in the retopology
 Aspect ratio is the single strongest factor, but the mesh is not pathological: p50 aspect is
 1.66, p90 is 2.20, and only 2.75% of faces exceed 3. So this is not about fixing slivers, it is
 about pushing an already-decent mesh toward more uniform quads. A relax-and-reproject pass
 (tangential smoothing, then shrinkwrap back onto the original high-resolution surface) is the
 standard move and does not change the silhouette.
 
-### 3. Pose-space correctives for shoulder and elbow
+### 2. Pose-space correctives for shoulder and elbow
 What AAA does. glTF morph targets are applied *before* skinning so a standard viewer cannot do
 pose-space deformation, but the playground drives its own shader and can. Drive a corrective
 shape from joint angle to restore volume on the inside of a deep bend. Still worth doing even
 though the collapse turned out not to be joint-centred — the shoulder is where the two largest
 per-bone figures sit.
 
-### 4. Strip occluded interior geometry
+### 3. Strip occluded interior geometry
 44% of collapsing faces are never seen — the t-shirt sleeve under the jacket, the jacket's inner
 lining. Note this is now a *metric hygiene* task, not a size one: geometry and animation are only
 3.17 MB of the GLB, so culling saves well under a megabyte. Do it to stop the audit reporting
 damage nobody can see, not to shrink the download.
 
-### 5. Raise generative fidelity
+### 4. Raise generative fidelity
 Hair reads as a solid mass; the face is smooth rather than sculpted. Levers: more conditioning
 views into the stochastic multi-view pass, or a higher TRELLIS sampling grid. This is the
 generation stage, not the pipeline.
 
-### 6. Make the pipeline reproducible end-to-end from a clean checkout
+### 5. Make the pipeline reproducible end-to-end from a clean checkout
 `run_pipeline.sh` assumes a populated `vendor/` and downloaded weights. Needs a bootstrap script
 and a `requirements.txt` that is actually pinned.
 
-### 7. Second character
+### 6. Second character
 Every measurement in this repository comes from one character. Several constants are suspiciously
 well-suited to it. A second subject with different proportions and a different garment is the
 cheapest way to find what is genuinely general.
@@ -90,6 +80,23 @@ cheapest way to find what is genuinely general.
 ## Done
 
 Newest first. Each of these has a script and a measurement.
+
+- **Targeted weight-gradient smoothing.** The steepness of the weight field across a face
+  carries a lift of 2.48x on collapse, so it is softened — but only where it is steep, and by a
+  *continuously varying* amount (a smoothstep over the gradient percentile, not a selection).
+  That distinction is the whole point: every previous weight change on this project used a binary
+  per-vertex decision and tore the surface. This one does not regress anything.
+  Clothing median per-bone p99 stretch 63.5% → 62.0%, worst 134.0% → 131.2%, collapse during the
+  walk 8.83% → 8.60%; the skin is untouched and identical. `blender/smooth_hotspots.py`.
+  A strength sweep found mild is best — pushing harder buys 0.05% of collapse and costs 5 points
+  of median stretch and 37 of worst:
+
+  | strength | collapse (walk) | cloth median p99 | cloth worst |
+  |---|---|---|---|
+  | none | 8.83% | 63.5% | 134.0% |
+  | **mild (shipped)** | **8.60%** | **62.0%** | **131.2%** |
+  | medium | 8.57% | 62.2% | 137.6% |
+  | strong | 8.55% | 67.1% | 167.9% |
 
 - **Web build 3.4x smaller at no visible cost.** 23.45 MB → 6.88 MB. Textures were 86% of the
   file; the 4K albedo turned out to be upsampled from TRELLIS's native 1024 and held nothing over
@@ -142,7 +149,20 @@ Newest first. Each of these has a script and a measurement.
 | Blender bone heat (`ARMATURE_AUTO`) | failed at 100% unweighted, twice | needs a closed manifold; a jacket is an open shell |
 | QuadriFlow remesh | silent no-op | same reason; decimation preserves the shell |
 | Joint-aligned edge loops as the fix for cloth collapse | faces near a joint are **less** likely to collapse (lift 0.49x, only 4.9% of collapses) | this was item #1 on the roadmap for a week. It is not candy-wrapper: collapsing faces are *further* from joints than average (29.9 vs 26.0 face widths) and *larger* than average. Measure before building |
+| Aggressive weight smoothing (even when targeted) | strong setting: cloth median p99 62.0% → 67.1%, worst 131% → 168% | the mild setting is the whole win. Past it you trade real stretch for a rounding error of collapse |
 | A vision model as a quality gate | misdescribes A-pose and side lighting | see `pipeline/gates.py`; caps anything built on it |
+
+---
+
+## Measured but inconclusive
+
+- **Layer poke-through.** `blender/pokethrough.py` asks how much geometry is hidden at rest but
+  surfaces during animation — a t-shirt patch pushing through the jacket would read as a grey
+  flicker. It reports 3.40% of clothing faces and 4.85% of skin faces. That number is *ambiguous*
+  and was not acted on: the inside of a jacket legitimately becomes visible when the arm swings,
+  and this test cannot tell that apart from a layer actually crossing. Separating the two needs
+  the part labels carried into the test so it can ask specifically whether a *t-shirt* face
+  surfaced through a *jacket* face. Worth finishing before anyone trusts the figure.
 
 ---
 

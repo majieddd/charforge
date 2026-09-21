@@ -66,8 +66,12 @@ the surface tears between them.
 | + skeleton-graph spread bound | 44.3% | 123.6% |
 | geodesic distance along the surface | 21.4% | 73.0% |
 
-Smoothness of the weight field beats anatomical purity of any single vertex. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for what this implies about the remaining work.
+Smoothness of the weight field beats anatomical purity of any single vertex. The one weight
+change that *did* work follows from that directly: soften the field only where it is steep, and
+by a **continuously varying** amount rather than by selecting vertices, so no new discontinuity
+is created anywhere. That is worth 63.5% → 62.0% median stretch and 134% → 131% worst, with the
+skin bit-identical. Pushing it harder immediately regresses — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the strength sweep and the rest of the open work.
 
 **Most of the file was texture that carried no information.** Textures were 86% of a 23.45 MB
 GLB. The albedo is upsampled from a native 1024, so 4K held nothing over 2K; the normal map is
