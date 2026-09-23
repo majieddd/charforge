@@ -17,6 +17,13 @@ downloaded only when selected, and the **Download** button fetches its full pack
 | **Rowan** | *"a man in a green bomber jacket with medium-length wavy hair"* | 1.78 m | 58,344 / 23,336 / 8,751 | [rowan.zip](https://github.com/majieddd/charforge/releases/download/v2.0.0/rowan.zip) |
 | **Wren** | *"a woman in a brown leather jacket with a satchel and a braid"* | 1.68 m | 58,840 / 23,536 / 8,824 | [wren.zip](https://github.com/majieddd/charforge/releases/download/v2.0.0/wren.zip) |
 | **Juno** | *"a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut"* — generated end to end by one `charforge.py make`, untouched | 1.70 m | 58,392 / 23,355 / 8,757 | [juno.zip](https://github.com/majieddd/charforge/releases/download/v2.0.0/juno.zip) |
+| **Vex** | no prompt: a painted concept image with a city street behind her, given as `--image` | 1.72 m | 59,336 / 23,731 / 8,899 | [vex.zip](https://github.com/majieddd/charforge/releases/download/v2.0.0/vex.zip) |
+
+Vex is the hard case, and looks it: a digital painting with a busy background is further from
+what the 3D generator was trained on than a clean reference render, and she carries more texture
+smearing than the other three. She also found two defects no clean input had: knees close enough
+to weld in the remesh, and pink hair that the face-rescue rule took for skin. Both are fixed for
+every character now (see [REVIEW.md](REVIEW.md), findings 24 and 25).
 
 <p align="center">
   <img src="results/clips.gif" width="820" alt="A generated character walking, jogging, running and jumping">
@@ -75,10 +82,10 @@ exists, so `--from <stage>` re-runs from any point and `--until <stage>` stops e
 | multiview | side and back views rendered, repainted by an image model, and fed back as **stochastic multi-view conditioning** — a different view conditions each denoising step, the scheme TRELLIS was trained on | `blender/render_views.py`, [patch](patches/) |
 | views, parts | eight orbit renders; a human parser per view, back-projected with exact visibility to per-vertex body / clothing / hair / accessory labels | `pipeline/parts.py` |
 | skeleton | joints estimated from the orbit renders and triangulated | `pipeline/skeleton.py` |
-| retopo | watertight quad mesh; 4K albedo, normal, roughness/metallic and AO baked from the high-resolution surface | `blender/retopo.py` |
+| retopo | watertight quad mesh, with legs the remesh welded together cut apart along the skeleton; 4K albedo, normal, roughness/metallic and AO baked from the high-resolution surface | `blender/retopo.py` |
 | labels | part labels carried onto the clean mesh | `pipeline/transfer_labels.py` |
 | texclean | skin the generator painted onto clothing — islands of skin tone in the fabric, far from any skin on the mesh — filled from the fabric around it | `pipeline/texture_cleanup.py` |
-| rig | armature built, skin weights solved; shoes held rigid below the ankle | `blender/rig_retopo.py` |
+| rig | armature built, skin weights solved; shoes held rigid below the ankle, each leg bound to its own bones only | `blender/rig_retopo.py` |
 | frame | metres, soles on the floor, origin under the pelvis | `blender/normalize_frame.py` |
 | tpose | rest pose baked to a T | `blender/tpose.py` |
 | animate | clips retargeted: heading from travel, pelvis sway kept, feet grounded and planted with leg IK | `blender/retarget.py` |
@@ -97,13 +104,13 @@ touching the floor — with the character driven by the playground's own control
 the playground's console with `await __cf.footAudit()`, or offline on any build with
 `blender -b --python blender/foot_audit.py -- --blend work/<name>/final.blend --report work/<name>/retarget.json`:
 
-| | before this rebuild | now: Rowan | Wren | Juno |
-|---|---|---|---|---|
-| walk, contact slip (share of ground speed) | 30% | 2.2% | 1.9% | 2.3% |
-| jog | — | 2.5% | 2.5% | 3.6% |
-| run | 79% | 1.6% | 0.8% | 2.2% |
-| soles off the floor while planted | 4–5 cm float or sink | < 3 mm | < 3 mm | < 4 mm |
-| heading error of the run | 45° (it ran diagonally) | 0° | 0° | 0° |
+| | before this rebuild | now: Rowan | Wren | Juno | Vex |
+|---|---|---|---|---|---|
+| walk, contact slip (share of ground speed) | 30% | 2.2% | 1.9% | 2.3% | 4.3% |
+| jog | — | 2.5% | 2.4% | 3.6% | 1.8% |
+| run | 79% | 1.6% | 0.8% | 2.2% | 1.7% |
+| soles off the floor while planted | 4–5 cm float or sink | < 3 mm | < 3 mm | < 4 mm | < 5 mm |
+| heading error of the run | 45° (it ran diagonally) | 0° | 0° | 0° | 0° |
 
 Getting there took five separate fixes, each found by measuring the one before it:
 

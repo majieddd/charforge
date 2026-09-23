@@ -201,6 +201,23 @@ and fills them from the surrounding fabric. Its first version also "fixed" every
 neckline, where the part labels are a few texels off the skin's true edge; whether a patch
 touches skin is now asked on the 3D mesh, not in the atlas. On Rowan it changes nothing.
 
+**24. Legs that touch become webbed.** Vex stands with her knees almost together. The voxel
+remesh works at about 1 cm, fused the two legs where they were closer than that, and the rig
+split the weld between left and right - every stride stretched it into a web between her shins.
+Cutting the weld in the retopology (faces below mid-thigh with vertices nearer each leg's axis)
+was not enough on its own: distance-based weights still gave inner-knee vertices half of each
+leg, and choosing the leg by the nearer bone handed strips of one leg to the other, because the
+estimated knee sits off-centre. Each leg below mid-thigh is now bound to its own bones, chosen by
+which connected piece of the surface a vertex is on, and the cut's scar is smoothed back into
+the leg. Rowan, Wren and Juno had no weld; the rule changes nothing for them.
+
+**25. Pink hair was taken for a face.** The rule that rescues face fragments from the hair group
+took its "skin" reference from the brightest, reddest part of the hair itself - fine for dark hair,
+wrong for pink, and it moved 89% of Vex's hair into the face. The reference is now the character's
+own skin, a vertex must be genuinely close to it, and a rule that would move most of a group
+declines to move any of it. It also stops moving half of Rowan's hair, which it had been doing
+harmlessly since hair and face share one skinned mesh.
+
 ## Still out of reach
 
 Hands are fused, so there are no finger bones; there is no face rig; six clips are a working set,

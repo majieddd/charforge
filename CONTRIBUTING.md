@@ -112,6 +112,14 @@ bootstrap script and a pinned `requirements.txt`.
 
 Newest first. Each of these has a script and a measurement.
 
+- **Image input, tested on a painting.** Vex was made from a digital painting with a street behind
+  her and no prompt - background removal, both TRELLIS passes and every later stage held. She
+  exposed two defects, fixed for every character: legs welded by the voxel remesh (cut along the
+  skeleton in `blender/retopo.py`, then each leg piece bound to its own bones in
+  `blender/rig_retopo.py` - nearest-bone assignment pulled blades out of the inner knee), and
+  coloured hair taken for skin by the face-rescue rule (`pipeline/transfer_labels.py` now takes
+  its skin reference from real skin). The texture cleanup also learned to judge a patch by its
+  mean colour, after growth turned Vex's zipper teal.
 - **Skin painted onto clothing, removed.** TRELLIS's multi-view pass can decode the body's colour
   into a garment where its conditioning views disagree (Juno's trouser legs). `pipeline/texture_cleanup.py`
   flags clothing texels near the character's own skin tone and far from the fabric around them,
@@ -244,6 +252,8 @@ Newest first. Each of these has a script and a measurement.
 | A 30 fps bake | run slid 13% in the browser, 3% at the keys | a run's contact is 4-6 keys at 30 fps; interpolation between them moves the pinned foot |
 | `recalc_face_normals` on TRELLIS shells | normal-map repairs 27% -> 42%, AO black | the shells are double-walled with inconsistent winding; flip faces by a per-face ray test instead |
 | Smoothing the source surface before baking | high-frequency normal energy -9%, dead texels up | no benefit to faceting |
+| Choosing each leg's vertices by the nearer leg bone | blades pulled out of the inner knee | the estimated knee sits off-centre in the leg; use which connected piece of the surface the vertex is on |
+| Seeding the face-rescue rule's skin colour from the hair group | 89% of pink hair moved into the face | take skin from the body; move nothing if most of a group would move |
 | The median of floor vertices as the origin | 9-12 cm off-centre | a two-foot distribution's median lands at the inner edge of the denser foot |
 | A vision model as a quality gate | misdescribes A-pose and side lighting | see `attic/pipeline/gates.py`; caps anything built on it |
 
