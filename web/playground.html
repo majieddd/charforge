@@ -91,11 +91,11 @@
 
 <div id="title" class="hud">
   <h1>CharForge Playground</h1>
-  <p>Two characters, each generated from a text prompt on a laptop &mdash; geometry, skeleton and
-  skinning all local. Pick one from the roster, bottom right, or see what it takes to make your
-  own. Geometry comes from stochastic multi-view conditioning, retopologised to a watertight quad
-  mesh with albedo and normal baked from the high-resolution surface, then Mixamo capture
-  retargeted onto a T-posed rig and skinned throughout.</p>
+  <p>Game characters generated from a text prompt or an image on a laptop &mdash; mesh, PBR
+  textures, skeleton, skinning and animation all local. Pick one from the roster, bottom right,
+  download its package, or see what it takes to make your own. Walk, jog and run are Mixamo
+  captures retargeted with the feet planted: the shoe touching the floor slides under 3% of
+  ground speed, and the gaits blend by speed on one stride clock.</p>
   <p>Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers
   apply it linearly, which hollows out the inside of every bent joint. Blending the rotations as
   rotations instead takes jacket faces collapsed below half their rest area from 8.8% to 6.1%
@@ -159,10 +159,11 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
 
 .venv/bin/python charforge.py make --prompt "a knight in weathered plate armour" --name knight
 .venv/bin/python charforge.py make --image my_concept.png --name hero --height 1.85</pre>
-    <p>About twenty minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
-      engine convention: real height in metres, origin between the feet, a Mixamo-named skeleton
-      so any Mixamo animation applies to it, glTF and FBX, and the texture maps each engine reads
-      &mdash; plus a manifest recording clip timing and ground speeds.</p>
+    <p>About fifteen minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
+      engine convention: real height in metres, origin on the floor under the pelvis, a
+      Mixamo-named skeleton so any Mixamo animation applies to it, glTF and an FBX with three
+      LODs, the texture maps each engine reads &mdash; plus a manifest with the collision capsule,
+      clip timing, ground speeds and jump timing a character controller needs.</p>
     <div class="genrow">
       <a class="btn" id="gen-repo" href="https://github.com/majieddd/charforge" target="_blank" rel="noopener">Open the repository</a>
       <a class="btn ghost" href="https://github.com/majieddd/charforge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">What&rsquo;s next / how to help</a>
@@ -508,7 +509,61 @@ function buildCharacter(gltf) {
   window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick,
                   get activeId() { return activeId; }, get clipInfo() { return clipInfo; }, select,
                   jump: () => { wantJump = true; }, wave: () => { wantWave = true; },
-                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); } };
+                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); }, footAudit };
+}
+
+// ---- foot audit ------------------------------------------------------------------------------
+// `await __cf.footAudit()` in the console measures what the README claims: each gait driven by
+// this controller on an open lane, and for each foot the lowest shoe vertex while it touches the
+// floor - tracked from one tick to the next, so a foot rolling heel to toe is not counted as a
+// slide. Reports slip as a share of ground speed, time on the floor and the deepest the shoe
+// goes through it. Pauses rendering while it runs, deterministic 60 Hz ticks.
+async function footAudit(lane = [6, 14]) {
+  window.__cfPause = true;
+  const v = new THREE.Vector3(), sole = { L: [], R: [] }, skins = [];
+  model.traverse((o) => { if (o.isSkinnedMesh) skins.push(o); });
+  for (const sk of skins) {
+    const names = sk.skeleton.bones.map((b) => b.name);
+    const si = sk.geometry.attributes.skinIndex, sw = sk.geometry.attributes.skinWeight;
+    for (const [s, S] of [['L', 'Left'], ['R', 'Right']]) {
+      const own = new Set(names.flatMap((n, i) => (n.includes(S + 'Foot') || n.includes(S + 'ToeBase')) ? [i] : []));
+      for (let i = 0; i < si.count; i++) {
+        let w = 0; for (let k = 0; k < 4; k++) if (own.has(si.getComponent(i, k))) w += sw.getComponent(i, k);
+        if (w > 0.8) sole[s].push([sk, i]);
+      }
+    }
+  }
+  const at = ([sk, i]) => { sk.getVertexPosition(i, v); v.applyMatrix4(sk.matrixWorld); return { x: v.x, y: v.y, z: v.z, ref: [sk, i] }; };
+  const lowest = (s) => sole[s].map(at).reduce((a, b) => (b.y < a.y ? b : a));
+  const tick = () => { step(1 / 60); animate(1 / 60); mixer.update(1 / 60); scene.updateMatrixWorld(true); };
+  const home = () => { rig.position.x = lane[0]; rig.position.z = lane[1]; scene.updateMatrixWorld(true); };
+  const out = [];
+  for (const [gait, held] of [['walk', ['w', 'c']], ['jog', ['w']], ['run', ['w', 'shift']]]) {
+    for (const k of ['w', 'shift', 'c']) keys[k] = false;
+    home(); for (let k = 0; k < 90; k++) tick();
+    for (const k of held) keys[k] = true;
+    for (let k = 0; k < 120; k++) { tick(); if (k % 30 === 29) home(); }
+    let slide = 0, n = 0, speed = 0, down = 0, deepest = 1;
+    home(); let prev = { L: lowest('L'), R: lowest('R') };
+    for (let k = 0; k < 240; k++) {
+      tick(); speed += ctl.speed / 240;
+      for (const s of ['L', 'R']) {
+        const cur = lowest(s), fy = ctl.y;
+        deepest = Math.min(deepest, cur.y - fy);
+        if (cur.y - fy < 0.004) down++;
+        if (cur.y - fy < 0.004 && prev[s].y - fy < 0.004) {
+          const same = at(prev[s].ref); slide += Math.hypot(same.x - prev[s].x, same.z - prev[s].z) * 60; n++;
+        }
+        prev[s] = cur;
+      }
+      if (k % 30 === 29) { home(); prev = { L: lowest('L'), R: lowest('R') }; }   // stay on the open lane
+    }
+    for (const k of held) keys[k] = false;
+    out.push({ gait, speed_mps: +speed.toFixed(2), slip_pct: +(100 * slide / Math.max(n, 1) / Math.max(speed, 1)).toFixed(1),
+               on_floor: +(down / 480).toFixed(2), deepest_cm: +(100 * deepest).toFixed(2) });
+  }
+  window.__cfPause = false;
+  return { character: activeId, gaits: out };
 }
 
 function showLoader(on, msg) {

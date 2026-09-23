@@ -91,11 +91,11 @@
 
 <div id="title" class="hud">
   <h1>CharForge Playground</h1>
-  <p>Two characters, each generated from a text prompt on a laptop &mdash; geometry, skeleton and
-  skinning all local. Pick one from the roster, bottom right, or see what it takes to make your
-  own. Geometry comes from stochastic multi-view conditioning, retopologised to a watertight quad
-  mesh with albedo and normal baked from the high-resolution surface, then Mixamo capture
-  retargeted onto a T-posed rig and skinned throughout.</p>
+  <p>Game characters generated from a text prompt or an image on a laptop &mdash; mesh, PBR
+  textures, skeleton, skinning and animation all local. Pick one from the roster, bottom right,
+  download its package, or see what it takes to make your own. Walk, jog and run are Mixamo
+  captures retargeted with the feet planted: the shoe touching the floor slides under 3% of
+  ground speed, and the gaits blend by speed on one stride clock.</p>
   <p>Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers
   apply it linearly, which hollows out the inside of every bent joint. Blending the rotations as
   rotations instead takes jacket faces collapsed below half their rest area from 8.8% to 6.1%
@@ -159,10 +159,11 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
 
 .venv/bin/python charforge.py make --prompt "a knight in weathered plate armour" --name knight
 .venv/bin/python charforge.py make --image my_concept.png --name hero --height 1.85</pre>
-    <p>About twenty minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
-      engine convention: real height in metres, origin between the feet, a Mixamo-named skeleton
-      so any Mixamo animation applies to it, glTF and FBX, and the texture maps each engine reads
-      &mdash; plus a manifest recording clip timing and ground speeds.</p>
+    <p>About fifteen minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
+      engine convention: real height in metres, origin on the floor under the pelvis, a
+      Mixamo-named skeleton so any Mixamo animation applies to it, glTF and an FBX with three
+      LODs, the texture maps each engine reads &mdash; plus a manifest with the collision capsule,
+      clip timing, ground speeds and jump timing a character controller needs.</p>
     <div class="genrow">
       <a class="btn" id="gen-repo" href="https://github.com/majieddd/charforge" target="_blank" rel="noopener">Open the repository</a>
       <a class="btn ghost" href="https://github.com/majieddd/charforge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">What&rsquo;s next / how to help</a>
@@ -392,6 +393,7 @@ function patchDQS(mat) {
 const CHARACTER_SOURCES = {
   rowan: (p) => fetchGLB('./rowan.glb', p),
   wren: (p) => fetchGLB('./wren.glb', p),
+  juno: (p) => fetchGLB('./juno.glb', p),
 };
 const CHARACTERS = [
  {
@@ -443,7 +445,8 @@ const CHARACTERS = [
      "takeoff_s": 0.833,
      "landing_s": 1.45,
      "apex_foot_height_m": 0.634,
-     "entry_s": 0.583
+     "entry_s": 0.583,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
     },
     {
      "name": "run",
@@ -466,7 +469,7 @@ const CHARACTERS = [
      "frames": 68,
      "seconds": 1.117,
      "loop": false,
-     "ground_speed_mps": 0.09
+     "ground_speed_mps": 0.0
     }
    ],
    "prompt": "a man in a green bomber jacket with medium-length wavy hair"
@@ -477,7 +480,7 @@ const CHARACTERS = [
   "name": "Wren",
   "blurb": "leather + satchel",
   "prompt": "a woman in a brown leather jacket with a satchel and a braid",
-  "thumb": "data:image/webp;base64,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",
+  "thumb": "data:image/webp;base64,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",
   "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/wren.zip",
   "manifest": {
    "height_m": 1.68,
@@ -521,7 +524,8 @@ const CHARACTERS = [
      "takeoff_s": 0.833,
      "landing_s": 1.45,
      "apex_foot_height_m": 0.629,
-     "entry_s": 0.583
+     "entry_s": 0.583,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
     },
     {
      "name": "run",
@@ -544,10 +548,89 @@ const CHARACTERS = [
      "frames": 68,
      "seconds": 1.117,
      "loop": false,
-     "ground_speed_mps": 0.09
+     "ground_speed_mps": 0.0
     }
    ],
    "prompt": "a woman in a brown leather jacket with a satchel and a braid"
+  }
+ },
+ {
+  "id": "juno",
+  "name": "Juno",
+  "blurb": "red windbreaker",
+  "prompt": "a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut",
+  "thumb": "data:image/webp;base64,UklGRvwPAABXRUJQVlA4WAoAAAAQAAAAewAApwAAQUxQSBUHAAAB8Mbatmlr27aNuQ7bOm3btm3btm3u07Zt2z6yT9u2z52dkZ6envrjWGPMNWf6vHL9jIgJCP93HbzEbmffekvXebtMbJ5iGyV9fKth+t6DxSiqIlG4vmiU4i56yexh60bZl15yTXRog0wkWhbCeQ1yO0pJYYbGmIhSVu35oin2tFgKZZqGKN7CykU7oCFmQiiv3N8QG1jsSHfRDAciHTA+bIijO/R+Q+xM7IByf2jGFTsinNsQ0yEdiLZ3Qwwz64Awb0MUH2OllCeKhghHIB0YH5py6L9iJYy3BreaItyFimXBZ989PagpxtzZSwe/mKohQhi65zdmWWYC6zRFCFsQswBVRjRFn8loGcQuaIbWgg9ilBemaYJlXgejg2pPFO4V50FUOqpMcG9/epQOR1vCuxnopeOm3433re9rqp0jso9vlyNUYdu4tgBClcYXhWOrIlYJyoZuFQejVK0s69VC9FhlKFf29+liFWrYy/EuDfrbrA6mDPSoC6WWZsMcGoNST2GSQ8eZ1CSykD9DMWqzoj/zEOuznj+Xo/XZ0J3ZUOqzmTs3IjXaxpvpUGq0rTcHWKzTps4Ub2N1WtqZUShJs8qE2Z1ZjZiqoTDJmQuQ1Ff3YRUZI30putF2wuEHIxUpY3wZqUZ7ZebjKxPm9WV1YjtD+p9cWWRvX45HUn8XJ1Rm9k0/T4p3sdTb035oVhFmQzwZEFMgQuViFwRPh2O0Vy7pNquM2dza4EmqMj4sXBmNJmD7X6g6skVwdWYk9cuZWFXKSF+mTxlvP1mZ8WHhy9Q5L31cmdAVfJ0lBZ/1UnW05ZyZIedPq8wY5swENGVUrdwanB1ilqpemdqbvr9jdTF+aHkzwoy6Kq8V3kxAa/Rg8LZ/L1YX4WJ3Zkeoa2Q3d9Yj1mgFd6ZDayPM6M6AiNVFGeNO8X7C6jDOnf491FaZ6M48SLtuqSyylDubENtt92sNNnVn6YQs9XsNtnXnUBPAeH0mteq2c2d7IhDZfDha3ebutLpREKYq/sYq29qdMPxXxfilT+hGK9vXn7ALEZFVw4dYRcK5Ds2NYNYz+3eVKU861HoLhWdRqjb+7OtPOJJelgorIVVhjHFoX/i4CEsRKxPmcGh7eDiEQ5HKIus6tBLsHMKdaGXC8Q4tCguE1sdYZco9Ds1sLBcGCdUb//bzJ5zNqWF6pDqE6RzaXB8MmxFrEFnbodn5asgLWA2EUx0q7nt3MZQaKq87FPqc+7pZKRMph8lgh8IA7UBnhRk8ClsiJYQDJ+6iVsoY5dJAMSszawinmZQRpnZpkFHCGB7C1GiZyEIujUHJVt4qQghPo6W2c2kGJC+yUQghrEAsIZzh0kLEPJNBUwz416zM9S5tWEK4JLS9Bs1T7nLpACQrsmW7jYh5wiEurUbMEg5oNwHNi+zm0gKlTmvX+gHLEvZ1acFSl7cLRxCzInu6tHCpqxIT0Cxhf5eWKHVBovUDlhPZzaUFS0R2TBRvldnCpUloiZUS4Wk0b3uXRmFZwpypk5C8PVwag2YZw1OLE/O2dWkYlmN810qNwHKUaV3q+zuWIRwS0sXHaNYEl8LzaEZk6YywBTEjsqJP5yEZwpw5I7EM4SqfNiRmRObOCQ+jKSMOcGkWJGuxrPmRFMJ8Lg2MdKzvn1gqsq1LxWQ0JcyVFW5CU8IRLoUbkVRkmbwdiSnlWZ+OJqaE0/LmQFKojXRpWjSlPJ/X73csFdnOpeItNGF8WmSFY5CU8opLoQtJYDI07+wclFEuHZ0TmTevKyuypUvrEXPWzNuMmKG84NI0aEo4Im+ZLMyGeNS/B0soz+aNwHIiS3sU7kQTxletrNZ3WIZyvUtrEzN+6pMVbkUzjJ5+Ho3CMv7sm3cCkoExyqPWZ1g70EF5OxJzIvN7FE5DUgzNWypPOMal1YjtDAblTYfkGJ8WHi2UwhidNxzLwRjq0TgsEVkzr/UVliPM6lHrC6ydcFleOBfJiSzvUbgdbWe8XWL0v5q3hEtdSDtU58gLT6BZO7l0bobxSyurmJylvODRwN/NEhijssKzWSjjHNqMSFoZl3clkmH80MefQT+opQwZkLepxQzh8uDv5Qg537TyZkKy9vZnb4RMZXKR1/oUzTnDn9tV824PJTck5hzqz3RIjnBtmYE9ZonI/P5MW+aaMuFik4Qyzp+NylxQajoShg70ZvQ1GLmRjUqFI9A2yrPB2eUFI1uYrVyfD82miKzpyTRzL38TCGXmKxe2J7ZbzJF9AcQoGdmtA9uldvdjBDFGpb1IQnm+A8cjUxhvF27MQk+MOqWogIpIFBGxweVeM9EYRaNNcKN1P7lHHknmwFJTk7mLG2HI8Stt92D3a0/ccuWtJxVh0QMXW3iPfQ/uumy2UHrIrZP/fnL1dQ6/7+HJK/jRtgi1LPoWYcoi/M8LAFZQOCDACAAAkCkAnQEqfACoAD5JII5FIqIhE3m1ZCgEhLOAa4rl8Rho6ZXHR7E8/npV21fOu+kPodPV29ADpjP9LgEva9/m/CPyNfJ86nG3Qcje7fc2XwVr43mfsB/pn0ddBz1t7BfS0Lew4e+6qZM5v1Ua8QzHSRKZlRWYwBWfw8o5iXhow+WsxvNTGYl48mK2X3jtx8W77So5ONCUJ4ck1tqzABjgbPg4IM2VBc15umDClMJC8dObFKZrqBfyJCXLhx9otW8zmTkrPKJo+lILFqlnPjmfiFhN504DXU1hZV4sgjZW2ftL4nJG+b+P0Q/vAPSr82emr8p6Zek21rETNm89j3wWMT2+0OoEyqhKHKF3SA4/lGbuDcBPGi+3t0T/NuZsm0BS+rmRn9FXjdz+52Y7+3VnKYqCKvF9TPuWtPPc4HiGUCWerwaIqr+NhTqnoepNr2qHF1lNa8AA/v4G4kom8/CCHdw45y5hdKhjX7m5A5HIJ9E6WokTjTaTfbVmlQT0TTeOXOpiGE1pGn3tjEF6LJifF97yRAZzh1Di7NXsYgK13ONztaPBhmxn5NRELi3GRaydsbMFihqTBDAKr/n4XJbGEq8xaNKYIh3TfRNYf2V8xxDyjlKJBHNDKrFSicX612rrseEiOYRXf7lVlNUE0yjHVqcxhpwvzyl8hqWT0iT/489zbqtaI2uXYd1RdEL9cLnmQuhlRrueGCTlqawRm130ODBo4NlN5WELIjoeDDo+R9r1Ze4KQ7ahIHokddpxwijynIX1EasCE5dGi+bs+ZW2RcfR0tiyOhzulj8DMmIJD2pPIyiVhVBJagUplVgfU5qWQ3p5/mfkVZoDl28BmB3dwLZCq7iVzr3yMS5JclezowYND/+sp7ovv5gAuIBkvlsUssNb+rfxK6vJQqZB5/xev/c7/GCe1SKpDIQOczmZPQFQ2MfOAV1PJNWQBeinLEhroZz12tA5w74aseuqpSr6ncNbkX4xsij4n96S12nex9UZIUVLvXFbXeRXxI3wi3vrN+wg2iHC02W2eApuEUGqJCpDQoyQ+8Q3O5LH3XZyKHavnkHVxAKjT8OXhXmkWyFLtIuCc0uglR8KCTAGH751GF7bx5AZiboEdEwM9Wkm+bG/VrPL7kBi08F9omu7BXEsm8mwnOBjjAaoHke0RsZHPtlW+DpbHi3Zmj4+TUzv+3i2fh6u37rPlYJFxcrTtnCjtEL9QhvbPRv24qEYQZLLMJ2+pCKkE7mMGQDaj95Doo6v4/clno8008kbtSwXsX9mVrZ7UCk93GI9O7XBkYFgEznyt9PPdsLhneuZbORsgopjgtBZ1nd1nGpxCNoEhCl2vhxs5nfmPXFtWZmtpzCibBAfg86WOaJ1grdHTdOsNlmmKmbr23UuGMxCVZrssqXIs1Q1Y1Ac8Q8P2XWgOZkHHpEbVHyh1Pl0Waiz0RfwHcITIePMCBPfLyolopF3Lq2l2uDFaRCMuRpQyPabbzQtSJdYmJtvwyPM2KVr4UDiBCQHahjhQTPsVNzXEZMKWbpIEVQqNIBU0o/gu35tGEfwyLv6BmqhhuCGninMV05hznvJUTF7ndu0AsRaxHhtidmVI6/l8Gr2fc7E8jKB8KplQp6oYiq4jY0lvgENqLnQClY9if/K5YLVWZnLEXG5dhAV2ik7uhAxq/yMtR+AZnGlQ9xvRQ6OkZM8rPOQoJVgXgV5omeQcQlocGJtIQEtK1O0i1YEWkdjR8JJg1+W8Oe6xvx/eeTw3BvPzFLaxh4xZypg4mjP8ggRJUyvsTRx2mpCrY0iq0mR0FT6hunMnF8610zU0lYk5iQO1tZ8y70ZpxR4qwu/rFGeSXpU+WEKxp6crd1ytpa9VHue0tVEaZw8FpcXCJD7kAch2oV/7b//yk8LDTA3stC0nXMhAZB8zOiRKg9fe8WmP6lWh2TZMZjYYDXqUvjGSoe3WTNjRRmPiE1vhvtXAmvD/1cw8lKR6c+YQ77cCgTjiVQiWuQH0rYh7aGcl/QwRxZvkGA7uERV1gD7I3BYrGGOBv9YnNX0MfdZk8XEBSlfpQHSD6CbCRZ5E/QorffyUQad6al/JA94djHZYjsDdm1wQMqTk824IQnEI2DtFeocaFbUzFKxlCrnkEXNTvpSO5NYQN/bLJYxhXF9x1bhtGvZI8q0Ysg1Fis7/15nLHylZK58+ZXNb9NWWzULCHCk3Vc4pRKuehheDAxWoC+X0WDokYlGkpoXo0BG+1RBB1cPo+1UI7RK6DihZytQvR6/fFnCW4VzkZDAtqkDJU6+0WwrLcU2k1kBYJdL+LJQ298bpqln8r2IWUeFMkG9fcHlgMzZs7E/aBaW7a8VNjJwJyWHsmVDLP5tBiskFDRPmRDStFqKSKsvf9JXWV4wLDUKZf1ZrCr2dVyGoePEjR/KMyMtgUQw2UZTLk+MfZEI2grNQzs7XyQAxzpD5qrPc3DFDmQWWfSCG/ByTyclxuuKES4dj9eaoXHcw6LmdBIC+cCq6bt+nSZMGKvrlcXfq9awR5JLC+vhe3e07O3L8EpYk4B35wpSSnyeV3CJxfOhOc9EL2eWY3jqpgqBtHxkLPEqqersGXVkYYNi3MdxMft+10Pxjjkqh1ioiFc4CWCVdN0LtEWH/mOWAeSNSYYHcyXsxgW3D8YtlpiKeI/MM+bLZ4eAAkmHGGcmoW3vg5gn6N9TcHRgJOIL8QSUzNLFtiIn9xN/uOiHKWoaa7sXZMPFGv/jhI+Yt1sZA0NWnPLgLZftc2fS8tFk5UO52A2aHVRwNRumggm8tVIHNpGqLrbaVD0mxyiYmCHxk4or1eXaKvNCXhw1MrHP9MxY4K3u4GvVjQZqcZ0ikNICQiABUaZ5xEhhkL26QxZgj7BVOuAcF6+kPPe3xzb3cIovy7dFdZ+BqJGz9CJ1YbxPuJOJ3wXf/6rQpTu+n+PclZ1M56aPT1bluIuElkWeU0VOgXWPd1emlrFdsAA6QAAAAAA=",
+  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/juno.zip",
+  "manifest": {
+   "height_m": 1.7,
+   "triangles": 58392,
+   "capsule": {
+    "radius_m": 0.279,
+    "height_m": 1.675,
+    "center_m": [
+     0.0,
+     0.838,
+     0.0
+    ],
+    "note": "glTF axes (Y up); measured on the first idle frame"
+   },
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 25
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.182,
+     "left_contact_phase": 0.2128
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.833,
+     "landing_s": 1.467,
+     "apex_foot_height_m": 0.648,
+     "entry_s": 0.583,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 3.901,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.3,
+     "left_contact_phase": 0.1846
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.0
+    }
+   ],
+   "prompt": "a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut"
   }
  }
 ];
@@ -668,7 +751,61 @@ function buildCharacter(gltf) {
   window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick,
                   get activeId() { return activeId; }, get clipInfo() { return clipInfo; }, select,
                   jump: () => { wantJump = true; }, wave: () => { wantWave = true; },
-                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); } };
+                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); }, footAudit };
+}
+
+// ---- foot audit ------------------------------------------------------------------------------
+// `await __cf.footAudit()` in the console measures what the README claims: each gait driven by
+// this controller on an open lane, and for each foot the lowest shoe vertex while it touches the
+// floor - tracked from one tick to the next, so a foot rolling heel to toe is not counted as a
+// slide. Reports slip as a share of ground speed, time on the floor and the deepest the shoe
+// goes through it. Pauses rendering while it runs, deterministic 60 Hz ticks.
+async function footAudit(lane = [6, 14]) {
+  window.__cfPause = true;
+  const v = new THREE.Vector3(), sole = { L: [], R: [] }, skins = [];
+  model.traverse((o) => { if (o.isSkinnedMesh) skins.push(o); });
+  for (const sk of skins) {
+    const names = sk.skeleton.bones.map((b) => b.name);
+    const si = sk.geometry.attributes.skinIndex, sw = sk.geometry.attributes.skinWeight;
+    for (const [s, S] of [['L', 'Left'], ['R', 'Right']]) {
+      const own = new Set(names.flatMap((n, i) => (n.includes(S + 'Foot') || n.includes(S + 'ToeBase')) ? [i] : []));
+      for (let i = 0; i < si.count; i++) {
+        let w = 0; for (let k = 0; k < 4; k++) if (own.has(si.getComponent(i, k))) w += sw.getComponent(i, k);
+        if (w > 0.8) sole[s].push([sk, i]);
+      }
+    }
+  }
+  const at = ([sk, i]) => { sk.getVertexPosition(i, v); v.applyMatrix4(sk.matrixWorld); return { x: v.x, y: v.y, z: v.z, ref: [sk, i] }; };
+  const lowest = (s) => sole[s].map(at).reduce((a, b) => (b.y < a.y ? b : a));
+  const tick = () => { step(1 / 60); animate(1 / 60); mixer.update(1 / 60); scene.updateMatrixWorld(true); };
+  const home = () => { rig.position.x = lane[0]; rig.position.z = lane[1]; scene.updateMatrixWorld(true); };
+  const out = [];
+  for (const [gait, held] of [['walk', ['w', 'c']], ['jog', ['w']], ['run', ['w', 'shift']]]) {
+    for (const k of ['w', 'shift', 'c']) keys[k] = false;
+    home(); for (let k = 0; k < 90; k++) tick();
+    for (const k of held) keys[k] = true;
+    for (let k = 0; k < 120; k++) { tick(); if (k % 30 === 29) home(); }
+    let slide = 0, n = 0, speed = 0, down = 0, deepest = 1;
+    home(); let prev = { L: lowest('L'), R: lowest('R') };
+    for (let k = 0; k < 240; k++) {
+      tick(); speed += ctl.speed / 240;
+      for (const s of ['L', 'R']) {
+        const cur = lowest(s), fy = ctl.y;
+        deepest = Math.min(deepest, cur.y - fy);
+        if (cur.y - fy < 0.004) down++;
+        if (cur.y - fy < 0.004 && prev[s].y - fy < 0.004) {
+          const same = at(prev[s].ref); slide += Math.hypot(same.x - prev[s].x, same.z - prev[s].z) * 60; n++;
+        }
+        prev[s] = cur;
+      }
+      if (k % 30 === 29) { home(); prev = { L: lowest('L'), R: lowest('R') }; }   // stay on the open lane
+    }
+    for (const k of held) keys[k] = false;
+    out.push({ gait, speed_mps: +speed.toFixed(2), slip_pct: +(100 * slide / Math.max(n, 1) / Math.max(speed, 1)).toFixed(1),
+               on_floor: +(down / 480).toFixed(2), deepest_cm: +(100 * deepest).toFixed(2) });
+  }
+  window.__cfPause = false;
+  return { character: activeId, gaits: out };
 }
 
 function showLoader(on, msg) {

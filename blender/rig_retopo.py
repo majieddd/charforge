@@ -61,6 +61,8 @@ ap.add_argument("--joints", required=True)
 ap.add_argument("--out", required=True)
 ap.add_argument("--json", default=None)
 ap.add_argument("--max-influences", type=int, default=4)
+ap.add_argument("--albedo", default=None,
+                help="replacement base colour image (texture_cleanup.py's output)")
 a = ap.parse_args(argv)
 
 # ---- import the clean mesh --------------------------------------------------------------------
@@ -79,6 +81,23 @@ if len(added) > 1:
 mesh = bpy.context.view_layer.objects.active or added[0]
 mesh.name = "char"
 scene = bpy.context.scene
+if a.albedo and os.path.exists(a.albedo):
+    # the cleaned albedo replaces the baked one wherever the material samples it
+    swapped = 0
+    for m in mesh.data.materials:
+        if not (m and m.use_nodes):
+            continue
+        bsdf = next((n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+        link = bsdf.inputs["Base Color"].links[0] if bsdf and bsdf.inputs["Base Color"].links else None
+        node = link.from_node if link else None
+        if node is not None and node.type == "TEX_IMAGE" and node.image is not None:
+            old = node.image
+            new = bpy.data.images.load(os.path.abspath(a.albedo))
+            new.name = old.name
+            new.pack()
+            node.image = new
+            swapped += 1
+    print(f"[rig] base colour replaced from {os.path.basename(a.albedo)} ({swapped} material(s))", flush=True)
 print(f"[rig] retopo mesh: {len(mesh.data.vertices):,} verts, "
       f"{len(mesh.data.polygons):,} faces", flush=True)
 

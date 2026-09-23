@@ -169,9 +169,13 @@ if a.retarget and os.path.exists(a.retarget):
     rj = json.load(open(a.retarget))
     for clip, info in rj.items():
         if isinstance(info, dict) and info.get("frames"):
-            # the speed the character's own planted feet support, where it was measured
+            # the speed the character's own planted feet support, where it was measured; a clip
+            # that does not travel (idle, wave, a jump in place) moves at zero, whatever small
+            # drift its capture has
             if info.get("stride_speed_mps"):
                 speeds[clip] = info["stride_speed_mps"]
+            elif info.get("heading_from") == "hip line":
+                speeds[clip] = 0.0
             else:
                 dur = max(info["frames"] - 1, 1) / info.get("fps", 30)
                 speeds[clip] = round(info.get("root_travel_m", 0.0) / dur, 3)
@@ -212,6 +216,10 @@ for act in actions:
         entry["landing_s"] = t1
         entry["apex_foot_height_m"] = info.get("apex_sole_m")
         entry["entry_s"] = round(max(0.0, t0 - 0.25), 3)
+        entry["note"] = ("in place horizontally, but the clip keeps its vertical motion: the hips "
+                         "rise along the arc. Launch the capsule at takeoff_s with the arc's own "
+                         "speed and cancel the clip's lift while airborne (the playground does), "
+                         "or let the clip carry the height and keep the capsule grounded - not both")
     clips.append(entry)
 
 # ---- collision capsule ---------------------------------------------------------------------------
@@ -419,6 +427,6 @@ json.dump(manifest, open(os.path.join(a.out_dir, f"{a.name}.json"), "w"), indent
 print(f"[pkg] manifest: {height:.3f} m, {tris:,} tris, {len(rig.data.bones)} bones, "
       f"{len(clips)} clips -> {a.out_dir}", flush=True)
 for c in clips:
-    extra = "".join(f"  {k}={v}" for k, v in c.items() if k not in ("name", "frames", "seconds", "loop"))
+    extra = "".join(f"  {k}={v}" for k, v in c.items() if k not in ("name", "frames", "seconds", "loop", "note"))
     print(f"[pkg]    {c['name']:<6s} {c['seconds']:5.2f}s {'loop' if c['loop'] else 'once'}{extra}",
           flush=True)

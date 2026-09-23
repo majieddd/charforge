@@ -2,7 +2,20 @@
   "release": "v2.0.0",
   "repo": "majieddd/charforge",
   "characters": [
-    {"id": "rowan", "name": "Rowan", "blurb": "green bomber"},
-    {"id": "wren",  "name": "Wren",  "blurb": "leather + satchel"}
+    {
+      "id": "rowan",
+      "name": "Rowan",
+      "blurb": "green bomber"
+    },
+    {
+      "id": "wren",
+      "name": "Wren",
+      "blurb": "leather + satchel"
+    },
+    {
+      "id": "juno",
+      "name": "Juno",
+      "blurb": "red windbreaker"
+    }
   ]
 }

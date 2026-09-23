@@ -50,8 +50,9 @@ STAGES = [
     ("skeleton",  "joints.json",   "3D joint positions from the orbit renders"),
     ("retopo",    "retopo.glb",    "clean quad mesh; colour, normal, roughness/metal, AO baked"),
     ("labels",    "labels.json",   "part labels carried onto the clean mesh"),
+    ("texclean",  "albedo_clean.png", "skin the generator painted onto clothing, removed"),
     ("rig",       "rig.blend",     "skeleton fitted, skin weights solved"),
-    ("frame",     "rig_m.blend",   "metres, soles on the floor, origin between the feet"),
+    ("frame",     "rig_m.blend",   "metres, soles on the floor, origin under the pelvis"),
     ("tpose",     "rig_t.blend",   "rest pose baked to a T"),
     ("animate",   "animated.blend", "Mixamo captures retargeted onto the rig"),
     ("smooth",    "final.blend",   "weight field softened where it is steepest"),
@@ -127,7 +128,26 @@ def s_reference(r: Run):
     print(f"      prompt -> image in {dt:.0f}s", flush=True)
 
 
+def free_comfy():
+    """Ask ComfyUI to drop its cached models before TRELLIS runs. On Apple Silicon the GPU shares
+    system memory, and ComfyUI keeps the image model resident after a job: the next TRELLIS pass
+    then runs against it and the machine swaps (13.8 GB of swap in use on a 24 GB laptop, a
+    reference image that took 259 s). The model is the one this pipeline just used, and ComfyUI
+    reloads it on the next request; --keep-comfy-loaded turns this off. Best effort - no ComfyUI,
+    nothing to free."""
+    import urllib.request
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8188/free", method="POST",
+                                     data=b'{"unload_models": true, "free_memory": true}',
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception:                                        # noqa: BLE001
+        pass
+
+
 def trellis(r: Run, stage, images, out):
+    if not r.a.keep_comfy_loaded:
+        free_comfy()
     env = dict(os.environ, HF_HUB_OFFLINE="1", PYTHONPATH=".")
     dino = ROOT / "models" / "dinov3-vitl16-hf"
     if dino.exists():
@@ -208,10 +228,18 @@ def s_labels(r: Run):
          keep=("reclassified", "final:"))
 
 
+def s_texclean(r: Run):
+    r.py("texclean", "texture_cleanup.py", "--retopo", r.path("retopo.glb"), "--labels",
+         r.path("labels.json"), "--albedo", r.work / "baked_base_color.png", "--out",
+         r.path("albedo_clean.png"), "--mask", r.work / "texclean_mask.png",
+         keep=("[texclean]",))
+
+
 def s_rig(r: Run):
     r.bl("rig", "rig_retopo.py", "--mesh", r.path("retopo.glb"), "--labels", r.path("labels.json"),
          "--joints", r.path("joints.json"), "--out", r.path("rig.blend"),
-         "--json", r.work / "rig.json", keep=("unweighted", "skeleton"))
+         "--albedo", r.path("albedo_clean.png"),
+         "--json", r.work / "rig.json", keep=("unweighted", "skeleton", "base colour replaced"))
 
 
 def s_frame(r: Run):
@@ -315,6 +343,9 @@ def main():
     m.add_argument("--quality", choices=("best", "fast"), default="best",
                    help="best adds the multi-view second pass (needs ComfyUI)")
     m.add_argument("--seed", type=int, default=7)
+    m.add_argument("--keep-comfy-loaded", action="store_true",
+                   help="do not ask ComfyUI to unload its cached models before a TRELLIS pass "
+                        "(use this if you are working in ComfyUI while CharForge runs)")
     m.add_argument("--from", dest="from_stage", choices=NAMES, help="rerun from this stage onward")
     m.add_argument("--until", choices=NAMES, help="stop after this stage")
     m.add_argument("--force", action="store_true", help="ignore cached stage outputs")
