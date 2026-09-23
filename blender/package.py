@@ -167,8 +167,12 @@ if a.retarget and os.path.exists(a.retarget):
     rj = json.load(open(a.retarget))
     for clip, info in rj.items():
         if isinstance(info, dict) and info.get("frames"):
-            dur = info["frames"] / info.get("fps", 30)
-            speeds[clip] = round(info.get("root_travel_m", 0.0) / max(dur, 1e-6), 3)
+            # the speed the character's own planted feet support, where it was measured
+            if info.get("stride_speed_mps"):
+                speeds[clip] = info["stride_speed_mps"]
+            else:
+                dur = max(info["frames"] - 1, 1) / info.get("fps", 30)
+                speeds[clip] = round(info.get("root_travel_m", 0.0) / dur, 3)
 
 clips = []
 lfoot, rfoot = rig.pose.bones.get(PREFIX + "LeftToeBase"), rig.pose.bones.get(PREFIX + "RightToeBase")
@@ -178,24 +182,34 @@ for act in actions:
              "loop": act.name in LOOPING}
     if act.name in speeds:
         entry["ground_speed_mps"] = speeds[act.name]
-    # For a jump, find when both feet leave the floor and when one returns. A character
-    # controller needs these to launch at the right frame and land when the animation does,
-    # instead of playing a jump in place while the body stays glued to the ground.
-    if "jump" in act.name and lfoot and rfoot:
+    # Locomotion phase. To blend walk into run by speed - rather than switching at a threshold -
+    # both cycles have to be at the same point in the stride, or the legs cross mid-blend. Each
+    # clip starts wherever its capture happened to be cut, so record where the left heel strikes
+    # (left foot furthest forward of the hips; the character faces glTF +Z = Blender -Y) as a
+    # fraction of the cycle. A player then offsets each clip by its own phase and drives them
+    # from one shared stride clock.
+    lank = rig.pose.bones.get(PREFIX + "LeftFoot")
+    hips = rig.pose.bones.get(PREFIX + "Hips")
+    if act.name in LOOPING and speeds.get(act.name, 0) > 0.3 and lank and hips:
         set_action(act)
-        M = rig.matrix_world
-        lows = []
+        fwd = []
         for f in range(f0, f1 + 1):
             scene.frame_set(f)
-            lows.append(min((M @ lfoot.head).z, (M @ rfoot.head).z))
-        lows = np.array(lows)
-        ground = float(np.percentile(lows, 10))
-        air = lows > ground + 0.04
-        if air.any():
-            idx = np.where(air)[0]
-            entry["takeoff_s"] = round(float(idx[0]) / fps, 3)
-            entry["landing_s"] = round(float(idx[-1] + 1) / fps, 3)
-            entry["apex_foot_height_m"] = round(float(lows.max() - ground), 3)
+            fwd.append(-(lank.head.y - hips.head.y))
+        entry["left_contact_phase"] = round(float(np.argmax(fwd[:-1])) / max(len(fwd) - 1, 1), 4)
+    # For a jump: when both feet leave the floor and when one returns, measured by the retarget
+    # on the soles of the mesh (the foot joints of a generated rig sit inside the shoe, and the
+    # instep joint rises as soon as the heel does, which read as a takeoff 0.1 s early). A
+    # controller launches at takeoff_s and lands at landing_s. A standing jump's anticipation is
+    # long - this capture crouches for 0.87 s - so entry_s is where a game should start the clip
+    # when the player presses jump: a quarter second before takeoff, already in the crouch.
+    info = rj.get(act.name, {}) if a.retarget and os.path.exists(a.retarget) else {}
+    if "jump" in act.name and info.get("flights_s"):
+        t0, t1 = max(info["flights_s"], key=lambda f: f[1] - f[0])
+        entry["takeoff_s"] = t0
+        entry["landing_s"] = t1
+        entry["apex_foot_height_m"] = info.get("apex_sole_m")
+        entry["entry_s"] = round(max(0.0, t0 - 0.25), 3)
     clips.append(entry)
 if rig.animation_data:
     rig.animation_data.action = None

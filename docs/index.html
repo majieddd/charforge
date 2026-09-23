@@ -60,7 +60,10 @@
   .card[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
   .card:hover{border-color:var(--accent)}
   .card.busy{opacity:.55;pointer-events:none}
-  #b-gen{width:100%;margin-top:8px;font-size:10.5px;padding:6px 8px}
+  .rrow{display:flex;gap:6px;margin-top:8px}
+  .rbtn{flex:1;font:inherit;font-size:10.5px;padding:6px 8px;border-radius:7px;text-align:center;
+        background:var(--panel2);color:var(--ink);border:1px solid var(--line);text-decoration:none;cursor:pointer}
+  .rbtn:hover{border-color:var(--accent)}
   #gen[hidden]{display:none}
   #gen{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;
        background:color-mix(in srgb,#000 62%,transparent);backdrop-filter:blur(3px)}
@@ -118,6 +121,7 @@
   <table>
     <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move</td></tr>
     <tr><td><kbd>Shift</kbd></td><td>run</td></tr>
+    <tr><td><kbd>C</kbd></td><td>walk</td></tr>
     <tr><td><kbd>Space</kbd></td><td>jump</td></tr>
     <tr><td><kbd>E</kbd></td><td>wave</td></tr>
     <tr><td><kbd>drag</kbd></td><td>orbit camera</td></tr>
@@ -127,7 +131,10 @@
 <div id="roster" class="hud">
   <h2>Characters</h2>
   <div class="cards" id="cards"></div>
-  <button id="b-gen">Make your own &rarr;</button>
+  <div class="rrow">
+    <a id="b-dl" class="rbtn" href="#" target="_blank" rel="noopener">Download</a>
+    <button id="b-gen" class="rbtn">Make your own &rarr;</button>
+  </div>
 </div>
 
 <div id="gen" hidden>
@@ -143,17 +150,19 @@
       <li>Clone the repository and install the host dependencies</li>
       <li>Run <code>tools/check_env.py</code> &mdash; it reports anything missing across all
           three environments before a long run starts</li>
-      <li>Give <code>run_pipeline.sh</code> a prompt and a name</li>
+      <li>Give <code>charforge.py make</code> a prompt <em>or</em> an image, and a name</li>
     </ol>
 <pre>git clone https://github.com/majieddd/charforge
 cd charforge
 python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
 .venv/bin/python tools/check_env.py
 
-./run_pipeline.sh "a woman in a brown leather jacket with a satchel" char03</pre>
-    <p>Each stage leaves inspectable output in <code>work/&lt;name&gt;/</code> and prints what it
-      measured. The character that drops out the far end is the <code>.glb</code> this page
-      loads, so you can point the playground at your own.</p>
+.venv/bin/python charforge.py make --prompt "a knight in weathered plate armour" --name knight
+.venv/bin/python charforge.py make --image my_concept.png --name hero --height 1.85</pre>
+    <p>About twenty minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
+      engine convention: real height in metres, origin between the feet, a Mixamo-named skeleton
+      so any Mixamo animation applies to it, glTF and FBX, and the texture maps each engine reads
+      &mdash; plus a manifest recording clip timing and ground speeds.</p>
     <div class="genrow">
       <a class="btn" id="gen-repo" href="https://github.com/majieddd/charforge" target="_blank" rel="noopener">Open the repository</a>
       <a class="btn ghost" href="https://github.com/majieddd/charforge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">What&rsquo;s next / how to help</a>
@@ -177,6 +186,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
 const scene = new THREE.Scene();
@@ -201,17 +211,27 @@ controls.maxPolarAngle = Math.PI * 0.49;
 controls.target.set(0, 1, 0);
 
 // ---- world -----------------------------------------------------------------
-scene.add(new THREE.HemisphereLight(0xA8BEDC, 0x33291E, 2.0));
-const sun = new THREE.DirectionalLight(0xFFF3E0, 3.1);
-sun.position.set(7, 12, 5);
+// Image-based lighting. The characters carry real roughness, metallic and occlusion maps now, and
+// physically based materials are defined by what they reflect: with only a hemisphere and a sun
+// to reflect, leather, denim and skin converge on one dull response. A studio environment gives
+// them something to differ against; the sun stays as the key light and the only shadow caster.
+const pmrem = new THREE.PMREMGenerator(renderer);
+const ENV = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = ENV;
+const ENV_INTENSITY = 0.6;
+scene.add(new THREE.HemisphereLight(0xA8BEDC, 0x33291E, 0.7));
+const sun = new THREE.DirectionalLight(0xFFF3E0, 2.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-const d = 16;
-Object.assign(sun.shadow.camera, { left:-d, right:d, top:d, bottom:-d, near:1, far:45 });
-sun.shadow.bias = -0.0012;
-scene.add(sun);
-// rim from behind: separates the character from the ground at 2K texture detail
-const rim = new THREE.DirectionalLight(0x8FB4FF, 1.1);
+// A tight shadow frustum that follows the character: 2048 texels over 14 m instead of 32 m is
+// what makes the shadow under the feet read as contact rather than a blur.
+const SHADOW_HALF = 7;
+Object.assign(sun.shadow.camera, { left:-SHADOW_HALF, right:SHADOW_HALF, top:SHADOW_HALF,
+                                   bottom:-SHADOW_HALF, near:0.5, far:40 });
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
+const SUN_OFFSET = new THREE.Vector3(7, 12, 5);
+scene.add(sun, sun.target);
+const rim = new THREE.DirectionalLight(0x8FB4FF, 0.9);
 rim.position.set(-7, 5, -8);
 scene.add(rim);
 
@@ -227,8 +247,10 @@ grid.material.transparent = true; grid.material.opacity = 0.5;
 grid.position.y = 0.002;
 scene.add(grid);
 
-// A few obstacles, so movement has something to read against
-const OBSTACLES = [];
+// Obstacles used to be circles sized to each box's half-diagonal, with no height: the character
+// stopped well short of a box's face and could never stand on a ledge. Boxes are real
+// axis-aligned volumes now, with a top you can stand on; pillars are circles.
+const BOXES = [], PILLARS = [];
 const boxMat = new THREE.MeshStandardMaterial({ color:0x39445A, roughness:0.75 });
 const accMat = new THREE.MeshStandardMaterial({ color:0x5B9CFF, roughness:0.4, metalness:0.15 });
 function block(x, z, w, h, dp, mat) {
@@ -236,20 +258,23 @@ function block(x, z, w, h, dp, mat) {
   m.position.set(x, h/2, z);
   m.castShadow = m.receiveShadow = true;
   scene.add(m);
-  OBSTACLES.push({ x, z, r: Math.hypot(w, dp) * 0.5 });
+  BOXES.push({ x0:x - w/2, x1:x + w/2, z0:z - dp/2, z1:z + dp/2, top:h });
   return m;
 }
 block(-5.5, -3.5, 2.2, 0.9, 2.2, boxMat);
 block(-6.6, -4.2, 1.2, 1.8, 1.2, boxMat);
-block(6.0, -5.0, 3.0, 0.5, 3.0, boxMat);
+block(6.0, -5.0, 3.0, 0.5, 3.0, boxMat);          // low enough to jump onto
 block(4.6, 4.8, 1.0, 2.6, 1.0, accMat);
-block(-3.0, 6.2, 5.0, 0.35, 1.4, boxMat);
+block(-3.0, 6.2, 5.0, 0.35, 1.4, boxMat);         // low enough to step onto
+// a staircase to a platform: every riser is under the step height, so it is walked, not jumped
+for (let i = 0; i < 4; i++) block(1.6 + i * 0.55, -8.0, 0.55, 0.2 * (i + 1), 2.0, boxMat);
+block(4.3, -8.0, 1.6, 0.8, 2.0, boxMat);
 for (let i = 0; i < 9; i++) {
   const a = i / 9 * Math.PI * 2, r = 13.5;
   const p = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 3.4, 10), boxMat);
   p.position.set(Math.cos(a) * r, 1.7, Math.sin(a) * r);
   p.castShadow = true; scene.add(p);
-  OBSTACLES.push({ x:p.position.x, z:p.position.z, r:0.36 });
+  PILLARS.push({ x:p.position.x, z:p.position.z, r:0.2 });
 }
 
 // ---- character -------------------------------------------------------------
@@ -258,8 +283,7 @@ scene.add(rig);
 
 let mixer = null, skeletonHelper = null, model = null;
 const actions = {};
-const clothAddon = {};   // base clip name -> morph-weight action baked from the cloth sim
-let current = null, locked = 0;
+let clipInfo = {};       // from the character's manifest: name -> seconds, loop, ground speed...
 const PART_COLORS = [new THREE.Color(0x5B9CFF), new THREE.Color(0xD9A43B),
                      new THREE.Color(0x3FBE97), new THREE.Color(0xE2705F)];
 let partMode = false;
@@ -267,6 +291,12 @@ let dqsOn = true;
 const origMats = new Map();
 const dqsMats = new Map();
 
+function b64ToArrayBuffer(b64) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
 
 // ---- dual quaternion skinning ------------------------------------------------------------
 // glTF stores one weight set and every viewer applies it with linear blend skinning, which
@@ -355,12 +385,155 @@ function patchDQS(mat) {
 
 
 // ---- the character roster --------------------------------------------------------------
-// CHARACTER_SOURCES is the single block the GitHub Pages build swaps out. Here each character
-// arrives as a lazily-imported base64 module, because artifact hosting serves .js but not .glb;
-// on Pages the same characters are fetched as .glb directly. Lazy is the point either way -
-// only the character you actually select is downloaded.
-// GitHub Pages serves .glb directly, so each character is streamed rather than smuggled in as
-// base64 across .js modules - it saves the 33% base64 tax and gives the progress bar real bytes.
+// Generated by tools/build_site.py from each character's package in out/<name>/: its manifest,
+// its thumbnail, and how its bytes arrive - a streamed .glb on GitHub Pages, a lazily imported
+// base64 module on hosts that will not serve .glb. Edit web/roster.json, not this block.
+/*@ROSTER@*/
+const CHARACTER_SOURCES = {
+  rowan: (p) => fetchGLB('./rowan.glb', p),
+  wren: (p) => fetchGLB('./wren.glb', p),
+};
+const CHARACTERS = [
+ {
+  "id": "rowan",
+  "name": "Rowan",
+  "blurb": "green bomber",
+  "prompt": "a man in a green bomber jacket with medium-length wavy hair",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/rowan.zip",
+  "manifest": {
+   "height_m": 1.78,
+   "triangles": 58344,
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 25
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.349,
+     "left_contact_phase": 0.2128
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.833,
+     "landing_s": 1.45,
+     "apex_foot_height_m": 0.634,
+     "entry_s": 0.583
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 4.112,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.383,
+     "left_contact_phase": 0.1846
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.09
+    }
+   ],
+   "prompt": "a man in a green bomber jacket with medium-length wavy hair"
+  }
+ },
+ {
+  "id": "wren",
+  "name": "Wren",
+  "blurb": "leather + satchel",
+  "prompt": "a woman in a brown leather jacket with a satchel and a braid",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/wren.zip",
+  "manifest": {
+   "height_m": 1.68,
+   "triangles": 58840,
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 25
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.307,
+     "left_contact_phase": 0.234
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.833,
+     "landing_s": 1.45,
+     "apex_foot_height_m": 0.629,
+     "entry_s": 0.583
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 4.062,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.353,
+     "left_contact_phase": 0.1846
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.09
+    }
+   ],
+   "prompt": "a woman in a brown leather jacket with a satchel and a braid"
+  }
+ }
+];
+/*@END_ROSTER@*/
+
+// Streamed fetch with progress, used by the Pages build.
 async function fetchGLB(url, onProgress) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(url + ' -> HTTP ' + res.status);
@@ -380,20 +553,6 @@ async function fetchGLB(url, onProgress) {
   for (const part of parts) { out.set(part, at); at += part.length; }
   return out.buffer;
 }
-
-const CHARACTER_SOURCES = {
-  char01: (p) => fetchGLB('./character.glb', p),
-  char02: (p) => fetchGLB('./char02.glb', p),
-};
-
-const CHARACTERS = [
-  { id:'char01', name:'Rowan', blurb:'green bomber',
-    prompt:'a man in a green bomber jacket with medium-length wavy hair',
-    thumb:'data:image/webp;base64,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' },
-  { id:'char02', name:'Wren', blurb:'leather + satchel',
-    prompt:'a woman in a brown leather jacket with a satchel and a braid',
-    thumb:'data:image/webp;base64,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' },
-];
 
 // ---- loading and swapping ----------------------------------------------------------------
 let activeId = null, loading = false;
@@ -422,8 +581,7 @@ function disposeCharacter() {
   }
   origMats.clear(); dqsMats.clear();
   for (const k of Object.keys(actions)) delete actions[k];
-  for (const k of Object.keys(clothAddon)) delete clothAddon[k];
-  current = null; locked = 0; speed = 0;
+  resetController();
 }
 
 function buildCharacter(gltf) {
@@ -433,7 +591,9 @@ function buildCharacter(gltf) {
       o.castShadow = true; o.receiveShadow = true;
       o.frustumCulled = false;            // skinned bounds are wrong while animating
       origMats.set(o, o.material);
+      o.material.envMapIntensity = ENV_INTENSITY;
       const d = patchDQS(o.material.clone());   // clone shares textures, not the program
+      d.envMapIntensity = ENV_INTENSITY;
       dqsMats.set(o, d);
       o.material = dqsOn ? d : o.material;
     }
@@ -443,26 +603,28 @@ function buildCharacter(gltf) {
   mixer = new THREE.AnimationMixer(model);
   for (const clip of gltf.animations) {
     const a = mixer.clipAction(clip);
-    a.enabled = true; a.setEffectiveWeight(0);
-    if (clip.name === 'jump' || clip.name === 'wave' || clip.name === 'turn') {
-      a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
-    }
-    // Cloth is exported merged into each clip now (paired NLA tracks), so a clip carries both
-    // skeleton and morph-weight channels. The separate cloth_* path is kept for exports made
-    // the old way, where it would otherwise sit at weight zero and never play.
-    if (clip.name.startsWith('cloth_')) clothAddon[clip.name.slice(6)] = a;
-    else actions[clip.name] = a;
-    a.play();
+    const once = clipInfo[clip.name] ? !clipInfo[clip.name].loop
+                                     : (clip.name === 'jump' || clip.name === 'wave');
+    if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+    a.enabled = true; a.setEffectiveWeight(0); a.play();
+    actions[clip.name] = a;
   }
-  if (actions.idle) { actions.idle.setEffectiveWeight(1); current = 'idle'; }
+  // Locomotion and jump clocks are driven by the controller, not the mixer: walk, jog and run
+  // share one stride clock so they can be blended, and the jump's clock follows the physics.
+  for (const n of ['walk', 'jog', 'run', 'jump']) if (actions[n]) actions[n].timeScale = 0;
+  if (actions.idle) actions.idle.setEffectiveWeight(1);
 
-  // Ground the model *after* the first pose is applied. Measuring the bind pose is not enough:
-  // a SkinnedMesh's bounds only reflect the posed skin once the mixer has run and the world
-  // matrices are updated, and the clips also carry a pelvis translation channel.
+  // A character built by this pipeline stands on its own origin. The playground used to measure
+  // the bounding box and push every model up to hide a pivot at the hips; that stays only as a
+  // fallback for assets from elsewhere, and says so.
   mixer.update(0);
   model.updateWorldMatrix(true, true);
   const box = new THREE.Box3().setFromObject(model, true);
-  if (isFinite(box.min.y)) model.position.y -= box.min.y;
+  if (isFinite(box.min.y) && Math.abs(box.min.y) > 0.03) {
+    console.warn(`[charforge] model origin is ${(-box.min.y).toFixed(2)} m from its feet; ` +
+                 'compensating. Assets from the current pipeline stand on their origin.');
+    model.userData.groundFix = -box.min.y;
+  } else model.userData.groundFix = 0;
 
   skeletonHelper = new THREE.SkeletonHelper(model);
   skeletonHelper.visible = !!(skeletonHelper && $('b-skel').getAttribute('aria-pressed') === 'true');
@@ -481,11 +643,12 @@ function buildCharacter(gltf) {
   $('s-clips').textContent = Object.keys(actions).length || '\u2014';
   // small debug handle: lets the state of the mixer be inspected from the console, which is
   // how the cloth-addon bug was found (17 targets loaded, every influence pinned at zero).
-  window.__cf = { scene, model, mixer, actions, clothAddon, characters: CHARACTERS,
-                  get activeId() { return activeId; }, select,
-                  garment: (() => { let g = null; model.traverse(o => {
-                    if ((o.isMesh || o.isSkinnedMesh) && o.morphTargetInfluences &&
-                        o.morphTargetInfluences.length) g = o; }); return g; })() };
+  // `tick` advances the whole simulation by a fixed step, independent of the frame loop - so the
+  // controller can be tested deterministically even where requestAnimationFrame is throttled.
+  window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick,
+                  get activeId() { return activeId; }, get clipInfo() { return clipInfo; }, select,
+                  jump: () => { wantJump = true; }, wave: () => { wantWave = true; },
+                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); } };
 }
 
 function showLoader(on, msg) {
@@ -522,10 +685,16 @@ async function select(id) {
     const gltf = await new Promise((res, rej) =>
       new GLTFLoader().parse(buf, '', res, rej));
     disposeCharacter();
+    clipInfo = {};
+    for (const c of (spec.manifest?.clips || [])) clipInfo[c.name] = c;
     buildCharacter(gltf);
+    resetController();
     activeId = id;
     for (const el of document.querySelectorAll('.card'))
       el.setAttribute('aria-current', String(el.dataset.id === id));
+    const dl = $('b-dl');
+    if (spec.download) { dl.href = spec.download; dl.hidden = false;
+      dl.title = `${spec.name}: glTF + FBX + textures + manifest`; } else dl.hidden = true;
     showLoader(false);
   } catch (err) {
     showLoader(true, 'Could not load ' + spec.name + '.<br><span style="color:var(--muted)">' +
@@ -557,33 +726,15 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('gen').hidden)
 
 select(CHARACTERS[0].id);
 
-// ---- animation blending ----------------------------------------------------
-function crossfade(name, dur = 0.22) {
-  if (!actions[name] || current === name) return;
-  // cloth follows its base clip: same weight, same clock
-  for (const k in clothAddon) clothAddon[k].setEffectiveWeight(k === name ? 1 : 0);
-  const from = actions[current], to = actions[name];
-  if (to.loop === THREE.LoopOnce) { to.reset(); }
-  to.enabled = true;
-  to.setEffectiveTimeScale(1);
-  if (from) from.crossFadeTo(to, dur, false); else to.setEffectiveWeight(1);
-  to.setEffectiveWeight(1);
-  current = name;
-}
-
-function oneShot(name, seconds) {
-  if (!actions[name] || locked > 0) return;
-  locked = seconds;
-  crossfade(name, 0.12);
-}
-
 // ---- input -----------------------------------------------------------------
 const keys = Object.create(null);
+let wantJump = false, wantWave = false;
 addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const k = e.key.toLowerCase();
+  if (k === ' ' && !e.repeat) { e.preventDefault(); wantJump = true; }
+  if (k === 'e' && !e.repeat) wantWave = true;
   keys[k] = true;
-  if (k === ' ') { e.preventDefault(); oneShot('jump', 1.6); }
-  if (k === 'e') oneShot('wave', 2.0);
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -604,17 +755,83 @@ function move(e) {
   nub.style.transform = `translate(${dx*30}px,${dz*30}px)`;
 }
 
-// ---- movement --------------------------------------------------------------
-// Ground speeds measured from the source captures at retarget time (root travel / duration).
-// Matching playback rate to these is what stops the feet skating.
-const CLIP_SPEED = { walk: 1.26, run: 6.72 };
-const WALK_SPEED = CLIP_SPEED.walk, RUN_SPEED = CLIP_SPEED.run;
-const vel = new THREE.Vector3();
-let facing = 0, speed = 0;
-const tmp = new THREE.Vector3();
+// ---- character controller ---------------------------------------------------
+// A kinematic capsule, the way most shipped games move a humanoid. Everything that used to be a
+// hard-coded constant here - gait speeds, jump timing - now comes from the character's
+// own manifest, measured from its clips when it was packaged.
+const CR = 0.28;        // capsule radius, m
+const STEP = 0.32;      // tallest ledge walked up without a jump
+const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false,
+              phase:0, loco:1, speed:0, fallHold:0 };
+function resetController() {
+  Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, loco:1, speed:0 });
+  ctl.y = groundAt(rig.position.x, rig.position.z);
+}
 
+function groundAt(x, z) {
+  let top = 0;
+  const m = CR * 0.5;   // stand on a box once the capsule centre is over it, with some forgiveness
+  for (const b of BOXES)
+    if (x > b.x0 - m && x < b.x1 + m && z > b.z0 - m && z < b.z1 + m) top = Math.max(top, b.top);
+  return top;
+}
+
+function collide(p, feet) {
+  // Push the capsule out of whatever it cannot step onto, along the contact normal. Resolving
+  // penetration this way is what makes a character slide along a wall; zeroing the move when a
+  // collision is detected - what the playground used to do - is what makes it stop dead.
+  for (const b of BOXES) {
+    if (b.top <= feet + STEP) continue;              // low enough to walk onto
+    const cx = Math.max(b.x0, Math.min(p.x, b.x1)), cz = Math.max(b.z0, Math.min(p.z, b.z1));
+    let dx = p.x - cx, dz = p.z - cz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= CR * CR) continue;
+    if (d2 > 1e-10) {
+      const d = Math.sqrt(d2), k = (CR - d) / d;
+      p.x += dx * k; p.z += dz * k;
+    } else {                                          // centre inside: leave by the nearest face
+      const pen = [[p.x - b.x0, -1, 0], [b.x1 - p.x, 1, 0], [p.z - b.z0, 0, -1], [b.z1 - p.z, 0, 1]]
+        .sort((u, v) => u[0] - v[0])[0];
+      p.x += pen[1] * (pen[0] + CR); p.z += pen[2] * (pen[0] + CR);
+    }
+  }
+  for (const c of PILLARS) {
+    const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), m = c.r + CR;
+    if (d < m && d > 1e-6) { p.x += dx / d * (m - d); p.z += dz / d * (m - d); }
+  }
+  const R = 26, d = Math.hypot(p.x, p.z);
+  if (d > R) { p.x *= R / d; p.z *= R / d; }
+}
+
+// Locomotion speeds are the character's own: each clip's ground speed as measured from its
+// planted feet when it was packaged. A controller that moves at any other speed skates.
+function speeds() {
+  const s = (n, d) => clipInfo[n]?.ground_speed_mps || d;
+  const walk = s('walk', 1.3), run = s('run', 4.0);
+  return { walk, jog: actions.jog ? s('jog', (walk + run) / 2) : null, run };
+}
+// the moving clips in speed order, for blending between neighbours
+const tiers = (sp) => [['walk', sp.walk], ...(sp.jog ? [['jog', sp.jog]] : []), ['run', sp.run]];
+
+// The jump arc comes from the jump clip itself. Takeoff, landing and how high the feet clear the
+// floor were measured from the animation when it was packaged; gravity and launch speed are then
+// solved so the physics flies exactly the arc the animation was authored with. On open ground the
+// result looks identical to the clip played in place - but the body really leaves the floor, so it
+// can land on a box, or keep falling off an edge.
+function jumpSpec() {
+  const j = clipInfo.jump;
+  if (!j || !(j.landing_s > j.takeoff_s)) return null;
+  const tAir = j.landing_s - j.takeoff_s, apex = j.apex_foot_height_m || 0.5;
+  const g = 8 * apex / (tAir * tAir);
+  return { takeoff: j.takeoff_s, landing: j.landing_s, tAir, g, v0: g * tAir / 2, dur: j.seconds,
+           entry: j.entry_s ?? 0 };
+}
+const clipArc = (J, tau) => { const t = Math.max(0, Math.min(tau, J.tAir)); return J.v0 * t - 0.5 * J.g * t * t; };
+
+const tmpV = new THREE.Vector3();
 function step(dt) {
-  // desired direction in world space, relative to where the camera is looking
+  const J = jumpSpec();
+  // ---- intent: camera-relative direction and gait ----
   let ix = 0, iz = 0;
   if (keys['w'] || keys['arrowup']) iz -= 1;
   if (keys['s'] || keys['arrowdown']) iz += 1;
@@ -622,58 +839,168 @@ function step(dt) {
   if (keys['d'] || keys['arrowright']) ix += 1;
   if (stick.active) { ix += stick.x; iz += stick.y; }
   const mag = Math.min(1, Math.hypot(ix, iz));
-
-  const running = !!(keys['shift'] || Math.hypot(stick.x, stick.y) > 0.75);
-  const target = mag > 0.05 ? (running ? RUN_SPEED : WALK_SPEED) * mag : 0;
-
+  const sp = speeds();
+  let wx = 0, wz = 0;
   if (mag > 0.05) {
-    camera.getWorldDirection(tmp); tmp.y = 0; tmp.normalize();
-    const right = new THREE.Vector3(-tmp.z, 0, tmp.x);
-    const dir = new THREE.Vector3().addScaledVector(tmp, -iz).addScaledVector(right, ix).normalize();
-    vel.copy(dir);
-    const want = Math.atan2(dir.x, dir.z);
-    let diff = want - facing;
+    camera.getWorldDirection(tmpV); tmpV.y = 0; tmpV.normalize();
+    const rx = -tmpV.z, rz = tmpV.x;
+    let dx = tmpV.x * -iz + rx * ix, dz = tmpV.z * -iz + rz * ix;
+    const n = Math.hypot(dx, dz) || 1; dx /= n; dz /= n;
+    // Keys pick a gait, as in the Unity and Unreal third-person templates: the default is the
+    // jog, Shift runs and C walks. A stick is analog: a light tilt walks, full tilt runs, and
+    // everything between blends through the jog.
+    let v;
+    if (stick.active && !keys['shift'] && !keys['c']) {
+      const pts = [[0, 0], [0.45, sp.walk], ...(sp.jog ? [[0.8, sp.jog]] : []), [1, sp.run]];
+      v = sp.run;
+      for (let k = 1; k < pts.length; k++)
+        if (mag <= pts[k][0]) {
+          const [m0, v0] = pts[k - 1], [m1, v1] = pts[k];
+          v = v0 + (v1 - v0) * (mag - m0) / (m1 - m0); break;
+        }
+    } else {
+      v = keys['shift'] ? sp.run : keys['c'] ? sp.walk : (sp.jog || sp.walk);
+    }
+    wx = dx * v; wz = dz * v;
+    let diff = Math.atan2(dx, dz) - ctl.facing;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    facing += diff * Math.min(1, dt * 11);       // turn toward heading, not snap
+    const turn = ctl.mode === 'ground' ? 11 : 3;
+    ctl.facing += diff * Math.min(1, dt * turn);
   }
-  speed += (target - speed) * Math.min(1, dt * 8);
-  if (speed < 0.02) speed = 0;
+  // quicker to get going than to stop, and far less control once airborne
+  const air = ctl.mode === 'jump' && ctl.took || ctl.mode === 'fall';
+  const busy = (ctl.mode === 'jump' && !ctl.took && !ctl.running_jump) || ctl.mode === 'emote';
+  const acc = air ? 2.0 : busy ? 14 : (Math.hypot(wx, wz) > Math.hypot(ctl.vx, ctl.vz) ? 9 : 12);
+  if (busy) { wx = 0; wz = 0; }
+  ctl.vx += (wx - ctl.vx) * Math.min(1, dt * acc);
+  ctl.vz += (wz - ctl.vz) * Math.min(1, dt * acc);
 
-  if (speed > 0) {
-    const nx = rig.position.x + vel.x * speed * dt;
-    const nz = rig.position.z + vel.z * speed * dt;
-    let blocked = false;
-    for (const o of OBSTACLES) {
-      if ((nx - o.x) ** 2 + (nz - o.z) ** 2 < (o.r + 0.34) ** 2) { blocked = true; break; }
-    }
-    const R = 26;
-    if (!blocked && nx * nx + nz * nz < R * R) { rig.position.x = nx; rig.position.z = nz; }
-  }
-  rig.rotation.y = facing;
+  const p = rig.position;
+  p.x += ctl.vx * dt; p.z += ctl.vz * dt;
+  collide(p, ctl.y);
+  ctl.speed = Math.hypot(ctl.vx, ctl.vz);
+  const floor = groundAt(p.x, p.z);
 
-  // state machine
-  if (locked > 0) {
-    locked -= dt;
-    if (locked <= 0) { locked = 0; current = null; crossfade(speed > 0.1 ? (speed > 2.4 ? 'run' : 'walk') : 'idle'); }
-  } else {
-    const want = speed > 2.4 ? 'run' : speed > 0.12 ? 'walk' : 'idle';
-    if (want !== current) crossfade(want);
-    // keep the cycle's footfalls matched to ground speed
-    if (actions.walk) actions.walk.setEffectiveTimeScale(
-      Math.min(2.2, Math.max(0.5, speed / CLIP_SPEED.walk)));
-    if (actions.run) actions.run.setEffectiveTimeScale(
-      Math.min(1.8, Math.max(0.5, speed / CLIP_SPEED.run)));
+  // ---- vertical: walking, stepping, jumping, falling ----
+  if (ctl.mode === 'ground' || ctl.mode === 'land' || ctl.mode === 'emote') {
+    if (floor < ctl.y - 0.06) { ctl.mode = 'fall'; ctl.vy = 0; ctl.t = 0; }       // off an edge
+    else ctl.y += (floor - ctl.y) * Math.min(1, dt * 18);                          // step up/down
   }
-  // keep each cloth addon in phase with the clip it belongs to
-  for (const k in clothAddon) {
-    if (actions[k] && clothAddon[k].getEffectiveWeight() > 0) {
-      clothAddon[k].time = actions[k].time % clothAddon[k].getClip().duration;
-      clothAddon[k].setEffectiveTimeScale(actions[k].getEffectiveTimeScale());
+  if (wantJump && (ctl.mode === 'ground' || ctl.mode === 'land') && J) {
+    // A captured standing jump opens with a long wind-up - this one crouches for 0.83 s - and a
+    // game that waits that long after the button feels broken. A standing jump enters the clip at
+    // the manifest's entry_s, a quarter second before takeoff and already in the crouch; a running
+    // jump enters just before takeoff and keeps its momentum.
+    ctl.running_jump = ctl.speed > 0.5 * speeds().walk;
+    ctl.mode = 'jump'; ctl.took = false;
+    ctl.t = ctl.running_jump ? Math.max(0, J.takeoff - 0.12) : J.entry;
+  }
+  if (wantWave && ctl.mode === 'ground' && ctl.speed < 0.3 && actions.wave) {
+    ctl.mode = 'emote'; ctl.t = 0; actions.wave.reset(); actions.wave.play();
+  }
+  wantJump = wantWave = false;
+
+  // Gravity is constant, so the ballistic step is integrated exactly rather than approximated.
+  // Semi-implicit Euler flew this jump 8% short (apex 0.49 m against the clip's 0.53, airtime
+  // 0.40 s against 0.43) and left the feet 8 cm off the animation's arc; the exact update and a
+  // takeoff placed at its true moment inside the frame make physics and clip agree to rounding.
+  const fly = (g, h) => { ctl.y += ctl.vy * h - 0.5 * g * h * h; ctl.vy -= g * h; };
+  if (ctl.mode === 'jump') {
+    const t0 = ctl.t;
+    ctl.t += dt;
+    let h = 0;
+    if (!ctl.took && ctl.t >= J.takeoff) {                  // leave the floor, mid-frame if need be
+      ctl.took = true; ctl.vy = J.v0; ctl.y0 = ctl.y; h = ctl.t - J.takeoff;
+    } else if (ctl.took) h = dt;
+    if (h > 0) {
+      fly(J.g, h);
+      if (ctl.vy < 0 && ctl.y <= floor) { ctl.y = floor; ctl.mode = 'land'; ctl.t = J.landing; }
+    }
+  } else if (ctl.mode === 'fall') {
+    const g = J ? J.g : 20;
+    ctl.t += dt; fly(g, dt);
+    if (ctl.y <= floor) { ctl.y = floor; ctl.mode = J ? 'land' : 'ground'; ctl.t = J ? J.landing : 0; }
+  } else if (ctl.mode === 'land') {
+    ctl.t += dt;
+    if (!J || ctl.t >= J.dur - 0.05 || (ctl.t > J.landing + 0.2 && Math.hypot(wx, wz) > 0.1))
+      ctl.mode = 'ground';
+  } else if (ctl.mode === 'emote') {
+    ctl.t += dt;
+    const dur = clipInfo.wave?.seconds || actions.wave?.getClip().duration || 1;
+    if (ctl.t >= dur || mag > 0.2) ctl.mode = 'ground';
+  }
+  p.y = ctl.y;
+  rig.rotation.y = ctl.facing;
+}
+
+// ---- animation --------------------------------------------------------------
+// Locomotion is a speed-driven blend, not states with hard switches: idle into walk up to walking
+// speed, then walk into jog into run. All three are driven from ONE stride clock, each
+// offset by where its own left heel strikes (measured at packaging), so mid-blend both clips have
+// the same foot forward - blending two unsynchronised cycles crosses the legs. The clock runs at
+// the speed-weighted stride rate, so feet stay planted at every speed in between.
+const smooth01 = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+function animate(dt) {
+  if (!mixer) return;
+  const J = jumpSpec(), sp = speeds(), v = ctl.speed;
+  const onGround = ctl.mode === 'ground';
+  ctl.loco += ((onGround ? 1 : 0) - ctl.loco) * Math.min(1, dt / 0.12);
+  const L = ctl.loco;
+
+  // weights: idle into walk up to walking speed, then between neighbouring gaits by speed
+  const T = tiers(sp);
+  const w = { idle: 1, walk: 0, jog: 0, run: 0 };
+  if (v > 0.02) {
+    // Below walking speed the walk plays slower rather than mixing in the idle: blending a
+    // standing pose into a stride drags the planted foot towards where the idle's foot is, and
+    // measured 46% slip at 0.9 m/s. Only the last 30% of the way to a stop fades to idle.
+    if (v <= sp.walk) { const t = smooth01(v / (0.3 * sp.walk)); w.idle = 1 - t; w.walk = t; }
+    else {
+      w.idle = 0; w.run = 1;
+      for (let k = 0; k < T.length - 1; k++) {
+        const [a, sa] = T[k], [b, sb] = T[k + 1];
+        if (v <= sb) { const u = smooth01((v - sa) / (sb - sa)); w.run = 0; w[a] = 1 - u; w[b] = u; break; }
+      }
     }
   }
-  $('s-state').textContent = current || '—';
-  $('s-speed').textContent = speed.toFixed(1) + ' m/s';
+  const dur = (n) => actions[n]?.getClip().duration || 1;
+  // stride period at this speed: a clip covers its measured ground speed per cycle
+  let per = 0, norm = 0;
+  for (const [n, s] of T) {
+    const wn = n === 'walk' ? w.walk + w.idle : w[n];
+    if (wn <= 0) continue;
+    per += wn * dur(n) * s / (n === 'walk' ? Math.max(v, sp.walk * 0.3) : Math.max(v, 0.1));
+    norm += wn;
+  }
+  if (norm > 0 && v > 0.02) ctl.phase = (ctl.phase + dt / (per / norm)) % 1;
+  const ph = (clip) => ((ctl.phase + (clipInfo[clip]?.left_contact_phase || 0)) % 1);
+  for (const [n] of T) if (actions[n]) { actions[n].time = ph(n) * dur(n); actions[n].setEffectiveWeight(L * w[n]); }
+  if (actions.idle) actions.idle.setEffectiveWeight(L * w.idle);
+
+  const oneShot = 1 - L;
+  if (actions.jump) {
+    const air = ctl.mode === 'jump' || ctl.mode === 'fall' || ctl.mode === 'land';
+    let t = ctl.t;
+    // in the air the clip may not start its landing crouch before the body has actually landed
+    if (ctl.mode === 'jump' && J) t = Math.min(ctl.t, J.landing - 1 / 30);
+    if (ctl.mode === 'fall' && J) t = J.takeoff + J.tAir * 0.72;       // a held falling pose
+    actions.jump.time = t;
+    actions.jump.setEffectiveWeight(air ? oneShot : 0);
+  }
+  if (actions.wave) actions.wave.setEffectiveWeight(ctl.mode === 'emote' ? oneShot : 0);
+
+  // The jump clip lifts the body along its own arc; the physics lifts it too. Subtract the clip's
+  // arc while airborne so the feet end up exactly where the physics puts them - on open ground
+  // the two cancel and the jump looks as authored, onto a box they do not and the feet land on it.
+  let lift = 0;
+  if (J && ctl.mode === 'jump' && ctl.took) lift = clipArc(J, ctl.t - J.takeoff);
+  if (J && ctl.mode === 'fall') lift = clipArc(J, J.tAir * 0.72);
+  if (model) model.position.y = (model.userData.groundFix || 0) - lift;
+
+  $('s-state').textContent = ctl.mode === 'ground'
+    ? Object.entries(w).sort((x, y) => y[1] - x[1])[0][0] : ctl.mode;
+  $('s-speed').textContent = v.toFixed(1) + ' m/s';
 }
 
 // ---- toggles ---------------------------------------------------------------
@@ -744,18 +1071,25 @@ addEventListener('resize', resize); resize();
 
 const clock = new THREE.Clock();
 let acc = 0, frames = 0;
-const camOffset = new THREE.Vector3();
-controls.addEventListener('start', () => { camOffset.copy(camera.position).sub(controls.target); });
+const camTarget = new THREE.Vector3(0, 1, 0);
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
-  step(dt);
-  if (mixer) mixer.update(dt);
+  if (!window.__cfPause) {                    // tests pause the live loop and drive __cf.tick
+    if (model) { step(dt); animate(dt); }
+    if (mixer) mixer.update(dt);
+  }
+
+  // shadow frustum and key light ride with the character
+  sun.target.position.copy(rig.position);
+  sun.position.copy(rig.position).add(SUN_OFFSET);
 
   if (followCam) {
-    // keep the orbit target on the character; the user still owns the orbit angle
-    const want = tmp.set(rig.position.x, 1.0, rig.position.z);
-    const delta = want.clone().sub(controls.target);
+    // Keep the orbit target on the character; the user still owns the orbit angle. Height is
+    // eased rather than locked, so a jump reads as a jump instead of the world bobbing.
+    camTarget.x = rig.position.x; camTarget.z = rig.position.z;
+    camTarget.y += (rig.position.y + 1.0 - camTarget.y) * Math.min(1, dt * 4);
+    const delta = camTarget.clone().sub(controls.target);
     controls.target.add(delta);
     camera.position.add(delta);
   }

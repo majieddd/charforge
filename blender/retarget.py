@@ -1,50 +1,32 @@
-"""Retarget a Mixamo clip onto the CharForge rig.
+"""Retarget Mixamo captures onto a CharForge rig, as clips a character controller can drive.
 
-The procedural gait in gait.py is sampled from published curves and reads far better than the
-eyeballed keyframes it replaced, but it is still a synthesis. Mixamo is captured motion, and the
-rig was deliberately given SMPL-H bone names precisely so captured clips could be dropped onto
-it. This does the dropping.
+Rotations. The naive version - a Copy Rotation constraint in world space per bone - copies the
+source bone's *absolute* orientation, and with it the source rig's rest pose and bone roll, so
+every limb picks up a constant twist. What is wanted is the source's change from its own rest
+pose, re-expressed in the target's rest frame:
 
-The naive version of this - a Copy Rotation constraint in world space per bone - is wrong in a
-way that is easy to miss, because it looks nearly right. It copies the source bone's *absolute*
-orientation, which silently also copies the source rig's rest pose and bone roll. Mixamo rigs
-are T-pose with their own roll conventions; this rig is A-pose with roll that came out of
-skeleton.py. Copy the absolute orientation and every limb picks up a constant twist.
+    tgt_pose_world = src_pose_world @ src_rest_world^-1 @ tgt_rest_world
 
-What is actually wanted is the source's *change from its own rest pose*, re-expressed in the
-target's rest frame:
+with every matrix in WORLD space. Mixamo FBX is Y-up and the importer puts the axis correction
+(and the 0.01 unit scale) on the armature object, so deltas computed from armature-space matrices
+mix a Y-up source with a Z-up target: the first retargeted run flew horizontally. Bones are
+posed parent-first, keeping the target's own bone heads, so the character keeps its proportions.
 
-    tgt_pose_world = src_pose_world @ src_rest_world⁻¹ @ tgt_rest_world
+Heading. A controller moves the model the way it faces, so a travelling clip is turned to face
+its own direction of travel (a stationary one by its mean hip line). Whatever angle is left
+between the two becomes a sideways foot slide of speed x sin(angle).
 
-and every one of those matrices has to be in WORLD space, not armature space. Mixamo FBX is
-Y-up; Blender is Z-up, and the importer puts that -90 deg X correction on the armature *object*
-matrix while leaving the bone rest matrices in the file's own frame. Computing the delta from
-`pose_bone.matrix` and `bone.matrix_local` - both armature-space - therefore mixes a Y-up source
-with a Z-up target, and the result is a character bent 90 degrees forward: the retargeted run
-came out horizontal, flying like Superman. Multiplying each matrix by its own armature's
-`matrix_world` first puts both rigs in the same frame, and the 0.01 unit scale cancels out of
-the delta on its own.
+Root motion. Clips ship in place, with the ground speed in the report: the runtime moves the
+character and plays the clip at the matching rate. Only the pelvis's MEAN velocity is removed -
+its surge and sway within the stride stay, or the planted feet inherit them as slide. The root is
+set through `pose_bone.matrix` in armature space; `pose_bone.location` is in the bone's own rest
+frame, and writing a world offset to it once sent a wave's vertical motion out of the frame.
 
-with the target bone's own head position preserved, so the target keeps its proportions rather
-than being stretched onto the source skeleton.
+Feet. ground_and_plant() puts the soles on the floor key by key and pins each foot where it is
+down, reading contact from the capture - see its docstring for the measurements that forced it.
 
-The root is handled separately, and deliberately not the obvious way. Two points:
-
-  * `pose_bone.location` is expressed in the *bone's own* rest frame, not world space. Assigning
-    a world offset to it sends vertical motion down whatever axis the pelvis bone happens to
-    point, which is how a wave ended up lifting the character out of frame. The root offset is
-    therefore applied through `pose_bone.matrix`, in armature space, like every other channel.
-  * horizontal root travel is measured but **not baked in**. These clips feed a playground where
-    code drives the character's position; a clip that also walks forward on its own fights it and
-    slides. What ships instead is an in-place clip plus the measured ground speed as metadata, so
-    the runtime can match playback rate to actual velocity. Vertical motion is kept, because a
-    jump has to leave the floor.
-
-Bones are processed parent-first, because setting `pose_bone.matrix` on a child depends on the
-parent already being posed.
-
-Run: blender -b -noaudio --python retarget.py -- --rig rigged.blend --clips clips.json \
-         --out animated_mixamo.glb
+Run: blender -b -noaudio --python retarget.py -- --rig rig_t.blend --clips clips.json \
+         --out animated.glb [--blend-out animated.blend] [--json report.json]
 """
 import argparse
 import json
@@ -53,6 +35,7 @@ import os
 import sys
 
 import bpy
+import numpy as np
 from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
@@ -61,8 +44,10 @@ ap.add_argument("--rig", required=True)
 ap.add_argument("--clips", required=True, help="JSON: {clip_name: fbx_path}")
 ap.add_argument("--out", required=True)
 ap.add_argument("--blend-out", default=None)
-ap.add_argument("--fps", type=int, default=30)
-ap.add_argument("--max-frames", type=int, default=120)
+ap.add_argument("--fps", type=int, default=60,
+                help="bake rate. 60: at 30 a run's ground contact is 4-6 keys, and interpolating fast leg\n"
+                     "rotations between them slid the pinned foot 13%% in the browser against 3%% at the keys")
+ap.add_argument("--max-frames", type=int, default=600)
 ap.add_argument("--json", default=None)
 ap.add_argument("--keep-root-motion", action="store_true",
                 help="bake horizontal root travel into the clip (default: in-place + metadata)")
@@ -157,6 +142,356 @@ tgt_leg = leg_length(tgt, "pelvis", "left_ankle") or 1.0
 print(f"[retarget] target rig {tgt.name}, {len(tgt.pose.bones)} bones, "
       f"leg length {tgt_leg:.3f}", flush=True)
 
+LEGS = (("left_hip", "left_knee", "left_ankle", "left_foot", 0, 1),
+        ("right_hip", "right_knee", "right_ankle", "right_foot", 2, 3))
+
+
+def sole_points(tgt, TW):
+    """The sole of each foot as a cloud of points fixed to the foot bone, at most 160 per foot.
+
+    A generated skeleton's foot joints are estimated from renders of a shoe and sit inside it. On
+    these rigs the 'ball' joint is at the instep, 9 cm above the floor (Mixamo's is on the floor),
+    and pinning that joint pinned a point in mid-air: the solver dragged the pelvis down 6-11 cm to
+    reach it. The sole is read off the mesh instead - the rest-pose vertices the foot bones own,
+    within 3 cm of the floor - and carried in the foot bone's own frame, so that at any key the
+    point of the shoe actually touching the floor is simply the lowest of them."""
+    meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"
+              and any(m.type == "ARMATURE" and m.object == tgt for m in o.modifiers)]
+    out = {}
+    for hip_b, knee_b, ank_b, ball_b, _, _ in LEGS:
+        pts = []
+        for o in meshes:
+            gi = {g.index for g in o.vertex_groups if g.name in (ank_b, ball_b)}
+            if not gi:
+                continue
+            mw = o.matrix_world
+            for vtx in o.data.vertices:
+                if sum(g.weight for g in vtx.groups if g.group in gi) > 0.5:
+                    q = mw @ vtx.co
+                    if q.z < 0.03:
+                        pts.append(q)
+        if len(pts) < 20:
+            # no sole found: stand in with points under the skeleton's own heel and ball
+            ank = TW @ tgt.data.bones[ank_b].head_local
+            bl = TW @ tgt.data.bones[ball_b].head_local
+            pts = [Vector((ank.x, ank.y, 0.0)), Vector((bl.x, bl.y, 0.0))]
+            how = "no sole vertices found - two points under the skeleton's own joints"
+        else:
+            ys = [q.y for q in pts]
+            how = f"sole from {len(pts)} vertices, {(max(ys) - min(ys))*100:.1f} cm long"
+            pts = pts[::max(1, len(pts) // 160)]
+        Minv = (TW @ tgt.data.bones[ank_b].matrix_local).inverted()
+        out[ank_b] = np.array([tuple(Minv @ q) + (1.0,) for q in pts])
+        print(f"[retarget] {ank_b}: {how}", flush=True)
+    return out
+
+
+def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, spd_thr, TW, sole):
+    """Put the feet on the floor and keep them still while they are down. Returns a stats dict.
+
+    Two defects of rotation-copy retargeting, both measured on every clip before this existed:
+
+      height  no reference taken from the capture survives contact with the floor. Frame 0 as
+              "standing" floated the run 4.8 cm, because the run starts on bent knees; the
+              capture's rest pose sank every clip 4-5 cm, because that pose does not stand on the
+              capture's own floor; and a leg of different proportions reaches the floor at
+              different heights through the stride anyway. So the floor is measured where the feet
+              are: key by key, the pelvis moves so the lowest point of a planted sole is on the
+              floor - smoothed, and interpolated through flight.
+      slip    the foot's motion relative to the hips is a sum over thigh and shin, each scaled by
+              its own length ratio, so a planted foot drifts through the stance even when its
+              average speed is right: 20-30% slip, from captures whose own feet slip under 2%.
+              The capture still knows exactly when each foot is down, so contact is read from the
+              SOURCE. A foot rolls - heel strike, flat, toe-off - so each contact has its own pivot:
+              the point of the sole lowest when the heel lands, and the point lowest when the toe
+              leaves. That point is pinned to one place in the world (which, in an in-place clip,
+              moves backwards at the ground speed) and a two-bone IK on thigh and shin reaches it,
+              keeping the knee in its animated plane and the foot at its animated angle.
+    """
+    scene = bpy.context.scene
+    TW_inv = TW.inverted()
+    up = TW_inv.to_3x3() @ Vector((0.0, 0.0, 1.0))
+    pbs = tgt.pose.bones
+    period = n - 1                                   # on a loop, key n-1 is key 0 again
+    RAMP = max(1, round(0.067 * fps))                # keys of blend either side of a contact (67 ms)
+    TWn = np.array(TW)
+
+    def at(arr, j):
+        return arr[j % period] if looping else arr[min(max(j, 0), n - 1)]
+
+    def contact(k):
+        z = [src_feet[i][k].z for i in range(n)]
+        zmin = min(z)
+        m = []
+        for i in range(n):
+            if looping and i == 0:
+                p0, p1, gap = src_feet[n - 2][k] - lap, src_feet[1][k], 2
+            elif looping and i == n - 1:
+                p0, p1, gap = src_feet[n - 2][k], src_feet[1][k] + lap, 2
+            else:
+                i0, i1 = max(i - 1, 0), min(i + 1, n - 1)
+                p0, p1, gap = src_feet[i0][k], src_feet[i1][k], i1 - i0
+            dv = p1 - p0
+            m.append(z[i] < zmin + 0.025 and math.hypot(dv.x, dv.y) * fps / max(gap, 1) < spd_thr)
+        # contacts or gaps shorter than ~1/30 s, between runs of the other kind, are noise
+        minlen = max(2, round(0.034 * fps))
+        runs, i = [], 0
+        while i < n:
+            j = i
+            while j < n and m[j] == m[i]:
+                j += 1
+            runs.append((i, j, m[i]))
+            i = j
+        for q in range(1, len(runs) - 1):
+            r0, r1, val = runs[q]
+            if r1 - r0 < minlen and runs[q - 1][2] == runs[q + 1][2] != val:
+                for j in range(r0, r1):
+                    m[j] = runs[q - 1][2]
+        if looping:
+            m[n - 1] = m[0]
+        return m
+
+    def intervals(m):
+        """Runs of contact as (key, time) lists; a run through the loop point is one run, its early
+        keys unwrapped to the next cycle."""
+        runs, cur = [], []
+        for i in range(n):
+            if m[i]:
+                cur.append(i)
+            elif cur:
+                runs.append(cur)
+                cur = []
+        if cur:
+            runs.append(cur)
+        out = [[(i, float(i)) for i in r] for r in runs]
+        if looping and len(runs) > 1 and runs[0][0] == 0 and runs[-1][-1] == n - 1:
+            out = [out[-1] + [(i, float(i + period)) for i in runs[0]]] + out[1:-1]
+        return out
+
+    def offset(i, j):
+        o = i - j
+        if looping:
+            o = (o + period // 2) % period - period // 2
+        return o
+
+    def points():
+        """Per key, per leg: (sole points in world space as an array, ankle position)."""
+        rows = []
+        for i in range(n):
+            scene.frame_set(i + 1)
+            row = []
+            for leg in LEGS:
+                ank = leg[2]
+                M = TWn @ np.array(pbs[ank].matrix)
+                row.append(((sole[ank] @ M.T)[:, :3], TW @ pbs[ank].head))
+            rows.append(row)
+        return rows
+
+    masks = [(contact(sa), contact(sb)) for (_, _, _, _, sa, sb) in LEGS]
+    down = [[ma[i] or mb[i] for i in range(n)] for ma, mb in masks]
+    n_contact = sum(1 for li in range(2) for i in range(n) if down[li][i])
+
+    # ---- height ----------------------------------------------------------------------------
+    rows = points()
+    if n_contact:
+        need = [None] * n
+        for i in range(n):
+            # the HIGHER of the planted feet comes down to the floor; the lower one is then
+            # lifted back onto it by its own leg below - a leg can always bend, not always reach
+            zs = [float(rows[i][li][0][:, 2].min()) for li in range(2) if down[li][i]]
+            need[i] = -max(zs) if zs else None
+        known = [i for i in range(n) if need[i] is not None]
+        for i in range(n):                           # through flight: interpolate between contacts
+            if need[i] is None:
+                if looping:
+                    prv = max((j for j in known if j < i), default=known[-1] - period)
+                    nxt = min((j for j in known if j > i), default=known[0] + period)
+                else:
+                    prv = max((j for j in known if j < i), default=None)
+                    nxt = min((j for j in known if j > i), default=None)
+                    prv = nxt if prv is None else prv
+                    nxt = prv if nxt is None else nxt
+                a_, b_ = at(need, prv), at(need, nxt)
+                need[i] = a_ if nxt == prv else a_ + (b_ - a_) * (i - prv) / (nxt - prv)
+        sig = max(1.0, 0.033 * fps)                  # ~33 ms of smoothing, whatever the bake rate
+        rad = int(3 * sig)
+        ks = [math.exp(-0.5 * (o / sig) ** 2) for o in range(-rad, rad + 1)]
+        need = [sum(k * at(need, i + o) for k, o in zip(ks, range(-rad, rad + 1))) / sum(ks) for i in range(n)]
+        if looping:
+            need[n - 1] = need[0]
+    else:                                            # never down: lowest sole point to the floor
+        need = [-min(float(r[li][0][:, 2].min()) for r in rows for li in range(2))] * n
+    if max(abs(x) for x in need) > 0.25:
+        print(f"[retarget]   WARNING the feet would need {max(need, key=abs)*100:+.1f} cm to reach "
+              f"the floor - height left as captured (a kneel or a fall?)", flush=True)
+        need = [0.0] * n
+    for i in range(n):
+        scene.frame_set(i + 1)
+        M = pelvis.matrix.copy()
+        M.translation = M.translation + up * need[i]
+        pelvis.matrix = M
+        bpy.context.view_layer.update()
+        pelvis.keyframe_insert("location", frame=i + 1)
+    rows = points()
+
+    # ---- pivots: where each contact rolls about ----------------------------------------------
+    # heel contacts pivot on the sole point lowest when the heel lands, ball contacts on the one
+    # lowest when the toe leaves; the ball's pivot takes over wherever both are down
+    tracks = []                                      # (leg, interval, pivot index)
+    pivot = [[None] * n for _ in range(2)]
+    for li, (ma, mb) in enumerate(masks):
+        for which, m in (("heel", ma), ("ball", mb)):
+            for iv in intervals(m):
+                key = iv[0][0] if which == "heel" else iv[-1][0]
+                idx = int(np.argmin(rows[key][li][0][:, 2]))
+                tracks.append((li, which, iv, idx))
+                for i, _ in iv:
+                    if which == "ball" or pivot[li][i] is None:
+                        pivot[li][i] = idx
+
+    def pos(rows, li, i, idx):
+        return Vector(rows[i][li][0][idx])
+
+    def vel(rows, li, i, idx):
+        if looping and i in (0, n - 1):
+            return (pos(rows, li, 1, idx) - pos(rows, li, n - 2, idx)) * (fps / 2)
+        i0, i1 = max(i - 1, 0), min(i + 1, n - 1)
+        return (pos(rows, li, i1, idx) - pos(rows, li, i0, idx)) * (fps / max(i1 - i0, 1))
+
+    def planted(rows):
+        return [(vel(rows, li, i, pivot[li][i]), pos(rows, li, i, pivot[li][i]))
+                for li in range(2) for i in range(n - 1 if looping else n) if pivot[li][i] is not None]
+
+    ps = planted(rows)
+    v = sum(p[0].y for p in ps) / len(ps) if (travelling and ps) else 0.0
+    ref = v if v >= 1.0 else 1.0
+
+    def slip_of(ps):
+        return sum(math.hypot(p[0].x, p[0].y - v) for p in ps) / len(ps) / ref if ps else None
+    slip_before = slip_of(ps)
+
+    # ---- plant ------------------------------------------------------------------------------
+    def shift(t):
+        return Vector((0.0, v * t / fps, 0.0))
+
+    lock = {(li, w): [(0.0, None, None)] * n for li in range(2) for w in ("heel", "ball")}
+    for li, which, iv, idx in tracks:
+        P = sum((pos(rows, li, i, idx) - shift(t) for i, t in iv), Vector()) / len(iv)
+        tt = dict(iv)
+        out = lock[(li, which)]
+        for i in range(n):
+            if i in tt:
+                out[i] = (1.0, P + shift(tt[i]), idx)
+                continue
+            j = min(tt, key=lambda j: abs(offset(i, j)))
+            o = offset(i, j)
+            if 0 < abs(o) <= RAMP:
+                w = 0.5 * (1 + math.cos(math.pi * abs(o) / (RAMP + 1)))
+                if w > out[i][0]:
+                    out[i] = (w, P + shift(tt[j] + o), idx)
+    if looping:
+        for k in lock:
+            lock[k][n - 1] = lock[k][0]
+
+    # keys from each key to that leg's nearest contact, around the loop on a cycle
+    dist = [[min((abs(offset(i, j)) for j in range(n) if pivot[li][j] is not None), default=99)
+             for i in range(n)] for li in range(2)]
+    goals = {}
+    for li in range(2):
+        for i in range(n):
+            (wa, pa, ia), (wb, pb_, ib) = lock[(li, "heel")][i], lock[(li, "ball")][i]
+            A = rows[i][li][1]
+            goal = A.copy()
+            if pa is not None and wa > 0:
+                goal = A.lerp(pa - (pos(rows, li, i, ia) - A), wa)
+            if pb_ is not None and wb > 0:
+                goal = goal.lerp(pb_ - (pos(rows, li, i, ib) - A), wb)
+            # height. While the foot is down its lowest sole point sits ON the floor - not the
+            # pivot, which holds a rolling foot still sideways but would drive the rest of the
+            # sole through the floor as it turns. While it is up it may never go below the floor,
+            # and keeps a clearance that eases in from contact (15 cm/s, up to 15 mm): without
+            # it the retargeted swing foot brushed the floor two keys before landing, lifted, and
+            # landed again, and dipped 3 cm through it just after toe-off - both invisible to a
+            # contact-only solve, both plain on the mesh.
+            low = float(rows[i][li][0][:, 2].min())
+            if pivot[li][i] is not None:
+                goal.z = A.z - low
+            else:
+                goal.z = A.z + max(0.0, min(0.015, 0.15 * dist[li][i] / fps) - low)
+            if (goal - A).length > 1e-5:
+                goals.setdefault(i, {})[li] = goal
+
+    locked = 0
+    for i in sorted(goals):
+        scene.frame_set(i + 1)
+        for li, goal in goals[i].items():
+            hip_b, knee_b, ank_b = (pbs[k] for k in LEGS[li][:3])
+            fk_euler = {b.name: b.rotation_euler.copy() for b in (hip_b, knee_b, ank_b)}
+            foot_fk = ank_b.matrix.copy()
+            H, K, Aa = hip_b.head.copy(), knee_b.head.copy(), ank_b.head.copy()
+            T = TW_inv @ goal
+            L1, L2 = (K - H).length, (Aa - K).length
+            u = T - H
+            dist = min(max(u.length, abs(L1 - L2) + 1e-4), (L1 + L2) * 0.9995)
+            u.normalize()
+            wv = (K - H) - (K - H).dot(u) * u        # the knee stays in its animated plane
+            if wv.length < 1e-6:
+                continue
+            wv.normalize()
+            ca = max(-1.0, min(1.0, (L1 * L1 + dist * dist - L2 * L2) / (2 * L1 * dist)))
+            K2 = H + L1 * (ca * u + math.sqrt(max(0.0, 1 - ca * ca)) * wv)
+            A2 = H + dist * u
+            q1 = (K - H).normalized().rotation_difference((K2 - H).normalized())
+            hip_b.matrix = (Matrix.Translation(H) @ q1.to_matrix().to_4x4()
+                            @ Matrix.Translation(-H) @ hip_b.matrix)
+            bpy.context.view_layer.update()
+            Kc, Ac = knee_b.head.copy(), ank_b.head.copy()
+            q2 = (Ac - Kc).normalized().rotation_difference((A2 - Kc).normalized())
+            knee_b.matrix = (Matrix.Translation(Kc) @ q2.to_matrix().to_4x4()
+                             @ Matrix.Translation(-Kc) @ knee_b.matrix)
+            bpy.context.view_layer.update()
+            foot_fk.translation = ank_b.head.copy()   # the foot keeps its animated angle
+            ank_b.matrix = foot_fk
+            bpy.context.view_layer.update()
+            for b in (hip_b, knee_b, ank_b):
+                # the same rotation, in the Euler branch of the key it replaces, so the curve does
+                # not spin through 360 degrees between this key and its neighbours
+                e = b.rotation_euler.copy()
+                e.make_compatible(fk_euler[b.name])
+                b.rotation_euler = e
+                b.keyframe_insert("rotation_euler", frame=i + 1)
+            locked += 1
+
+    rows = points()
+    if os.environ.get("CF_DEBUG_FEET"):
+        for i in range(n):
+            print("[feet-debug] key %2d need %+.3f | " % (i, need[i]) + " | ".join(
+                f"{'LR'[li]} down {int(down[li][i])} piv {pivot[li][i]} low {float(rows[i][li][0][:, 2].min())*100:+5.1f}cm"
+                f" goal {'y' if (i in goals and li in goals[i]) else '-'}" for li in range(2)), flush=True)
+    ps = planted(rows)
+    zs = [p[1].z for p in ps]
+    lowest = min(float(r[li][0][:, 2].min()) for r in rows for li in range(2))
+    # airborne: both soles clear of the floor - what a controller launches and lands on
+    sole_z = [min(float(rows[i][li][0][:, 2].min()) for li in range(2)) for i in range(n)]
+    flights, start = [], None
+    for i in range(n):
+        if sole_z[i] > 0.02 and start is None:
+            start = i
+        elif sole_z[i] <= 0.02 and start is not None:
+            flights.append([start, i])
+            start = None
+    if start is not None:
+        flights.append([start, n])
+    return {"speed": v, "slip_before": slip_before, "slip": slip_of(ps), "locked": locked,
+            "looping": looping, "contact_keys": n_contact,
+            "planted_height_cm": (round(100 * sum(abs(z) for z in zs) / len(zs), 2) if zs else None),
+            "planted_height_range_cm": ([round(100 * min(zs), 2), round(100 * max(zs), 2)] if zs else None),
+            "sole_lowest_cm": round(100 * lowest, 2),
+            "flights": flights, "apex_sole_m": round(max(sole_z), 3),
+            "pelvis_adjust_cm": [round(100 * min(need), 2), round(100 * max(need), 2)]}
+
+
+SOLE = sole_points(tgt, tgt.matrix_world.copy())
 clips = json.load(open(a.clips))
 report = {}
 
@@ -241,10 +576,76 @@ for clip_name, fbx in clips.items():
         pb.rotation_mode = "XYZ"
 
     SW = src.matrix_world.copy()
+
+    # ---- heading ------------------------------------------------------------------------------
+    # A character controller moves the model along the way it faces, so a travelling clip must
+    # travel along the character's forward: any angle between the two becomes a sideways foot
+    # slide of speed x sin(angle). Copying world-space rotations copies the capture's heading, and
+    # a capture is not always recorded facing its own direction of travel. The first attempt at
+    # this removed the mean HIP-LINE heading instead - and turned a walk that travelled dead
+    # straight 13 degrees off course, because that capture walks with its pelvis turned. The body
+    # cues (hips, shoulders, feet) disagree with each other by up to 25 degrees on the same clip;
+    # the travel direction is the one thing the controller and the planted feet both depend on.
+    # So: a travelling clip is turned to face its travel; a stationary one by its mean hip line.
+    s_lup, s_rup = src_name(src, "LeftUpLeg"), src_name(src, "RightUpLeg")
+
+    def heading(lp, rp):
+        side = lp - rp
+        return math.atan2(side.y, side.x)          # facing is perpendicular; offsets cancel below
+    rest_h = heading((SW @ src_rest[s_lup]).to_translation(), (SW @ src_rest[s_rup]).to_translation())
+    rest_fwd = rest_h - math.pi / 2                 # side x up: the rest pose's forward, in the plane
+    ss, cs = 0.0, 0.0
+    hips_path = []
+    s_feet = [src_name(src, k) for k in ("LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase")]
+    src_feet = []
+    for i in range(n):
+        t = f0 + i * step
+        scene.frame_set(int(math.floor(t)), subframe=float(t - math.floor(t)))
+        h = heading(SW @ src.pose.bones[s_lup].head, SW @ src.pose.bones[s_rup].head) - rest_h
+        ss += math.sin(h); cs += math.cos(h)
+        hips_path.append((SW @ src.pose.bones[hips].head).copy())
+        if all(s_feet):
+            src_feet.append([(SW @ src.pose.bones[k].head).copy() for k in s_feet])
+    hip_yaw = math.atan2(ss, cs)
+    d = hips_path[-1] - hips_path[0]
+    d.z = 0.0
+    src_hip_h = (SW @ src_rest[hips]).to_translation().z
+    travelling = d.length > 0.25 * src_hip_h and d.length / max((n - 1) / a.fps, 1e-6) > 0.3 * src_hip_h
+    if travelling:
+        yaw = math.atan2(math.sin(math.atan2(d.y, d.x) - rest_fwd), math.cos(math.atan2(d.y, d.x) - rest_fwd))
+        how = f"travel direction (hip line says {math.degrees(hip_yaw):+.1f})"
+    else:
+        yaw = hip_yaw
+        how = "mean hip line (stationary clip)"
+    UNYAW = Matrix.Rotation(-yaw, 4, "Z")
+    print(f"[retarget]   heading {math.degrees(yaw):+.1f} deg off forward by {how} - removed", flush=True)
+
+    # ---- root motion ----------------------------------------------------------------------------
+    # A character controller moves the model at a constant velocity, so an in-place clip must keep
+    # everything the pelvis does EXCEPT that velocity. The first in-place version pinned the pelvis
+    # outright, which also threw away its surge and sway within each stride, and the planted feet
+    # inherited both as slide: 10-30% of ground speed on clips whose source feet slip under 2%.
+    # Removing only the straight line from the first frame's position to the last keeps the sway,
+    # and on a clip that is one whole cycle the residual is zero at both ends, so it still loops.
     TW = tgt.matrix_world.copy()
     TW_inv = TW.inverted()
-    root_ref = None
-    min_off = max_off = None
+    R3 = UNYAW.to_3x3()
+    rest_hips_z = (SW @ src_rest[hips]).to_translation().z
+    offs = [R3 @ ((p - hips_path[0]) * scale) for p in hips_path]   # character frame, target scale
+    last = offs[-1].copy()
+    last.z = 0.0
+    travel = last.length
+    dur = max((n - 1) / a.fps, 1e-6)                 # n keys span n-1 intervals
+    per_sec = travel / dur / tgt_leg
+
+    def root_offset(i):
+        o = offs[i].copy()
+        if not a.keep_root_motion:
+            o -= last * (i / max(n - 1, 1))          # the mean velocity goes; the sway stays
+        o.z = (hips_path[i].z - rest_hips_z) * scale # height: re-referenced to the floor below
+        return o
+
+    pelvis = tgt.pose.bones.get("pelvis")
     for i in range(n):
         t = f0 + i * step
         scene.frame_set(int(math.floor(t)), subframe=float(t - math.floor(t)))
@@ -258,7 +659,7 @@ for clip_name, fbx in clips.items():
             src_pose_w = SW @ spb.matrix
             src_rest_w = SW @ src_rest[spb.name]
             tgt_rest_w = TW @ tgt_rest[tname]
-            M_world = src_pose_w @ src_rest_w.inverted() @ tgt_rest_w
+            M_world = UNYAW @ src_pose_w @ src_rest_w.inverted() @ tgt_rest_w
             M = TW_inv @ M_world
             # normalise: the source's unit scale must not ride along into the target
             M = Matrix.LocRotScale(M.to_translation(), M.to_quaternion(), Vector((1, 1, 1)))
@@ -268,20 +669,9 @@ for clip_name, fbx in clips.items():
             bpy.context.view_layer.update()
 
         # root translation, in armature space, via the matrix - not via pose_bone.location
-        pelvis = tgt.pose.bones.get("pelvis")
-        shp = src.pose.bones[hips]
-        world = (src.matrix_world @ shp.head)
-        if root_ref is None:
-            root_ref = world.copy()
-        off = (world - root_ref) * scale
-        flat = math.hypot(off.x, off.y)
-        min_off = flat if min_off is None else min(min_off, flat)
-        max_off = flat if max_off is None else max(max_off, flat)
         if pelvis is not None:
-            applied = Vector((off.x, off.y, off.z)) if a.keep_root_motion \
-                else Vector((0.0, 0.0, off.z))
             M = pelvis.matrix.copy()
-            M.translation = tgt_rest["pelvis"].to_translation() + applied
+            M.translation = tgt_rest["pelvis"].to_translation() + TW_inv.to_3x3() @ root_offset(i)
             pelvis.matrix = M
             bpy.context.view_layer.update()
 
@@ -298,16 +688,52 @@ for clip_name, fbx in clips.items():
             pb.keyframe_insert("rotation_euler", frame=1)
             pb.keyframe_insert("rotation_euler", frame=n)
 
-    # Stride check: how far the root actually travelled, in leg-lengths. A walk should cover
-    # something on the order of one leg length per second; a clip that retargets to ~0 has been
-    # scaled into nothing even though every bone "mapped" fine.
-    travel = (max_off - min_off) if (max_off is not None and min_off is not None) else 0.0
-    per_sec = travel / max(n / a.fps, 1e-6) / tgt_leg
-    report[clip_name] = {"frames": n, "bones_mapped": len(pairs), "scale": round(scale, 5),
+    # ---- feet: on the floor, and still while they are down (see ground_and_plant) -------------
+    rel0 = [src_feet[0][k] - hips_path[0] for k in range(4)] if src_feet else []
+    rel1 = [src_feet[-1][k] - hips_path[-1] for k in range(4)] if src_feet else []
+    looping = bool(rel0) and max((x - y).length for x, y in zip(rel0, rel1)) < 0.01 * src_hip_h
+    st = {}
+    if pelvis is not None and len(src_feet) == n:
+        cap_src = d.length / dur if travelling else 0.0
+        st = ground_and_plant(tgt, pelvis, n, float(a.fps), travelling, src_feet,
+                              hips_path[-1] - hips_path[0], looping, max(0.25, 0.12 * cap_src),
+                              TW, SOLE)
+    stride = st.get("speed") if travelling else None
+    if travelling and stride and not (0.6 * travel / dur < stride < 1.4 * travel / dur):
+        print(f"[retarget]   WARNING the feet say {stride:.2f} m/s against {travel/dur:.2f} "
+              f"captured", flush=True)
+    unit = "%" if (stride or 0) >= 1.0 else " m/s"
+    fmt = (lambda x: f"{x*100:.1f}%") if (stride or 0) >= 1.0 else (lambda x: f"{x:.3f} m/s")
+    if st:
+        print(f"[retarget]   feet: pelvis moved {st['pelvis_adjust_cm'][0]:+.1f}..{st['pelvis_adjust_cm'][1]:+.1f} cm "
+              f"to put the planted sole on the floor (now {st['planted_height_cm']} cm off it on average); "
+              f"{st['locked']} leg-keys planted, slip "
+              + (f"{fmt(st['slip_before'])} -> {fmt(st['slip'])}" if st.get('slip') is not None else "n/a"),
+              flush=True)
+    report[clip_name] = {"frames": n, "fps": a.fps, "bones_mapped": len(pairs), "scale": round(scale, 5),
                          "curves": len(action_fcurves(act)), "source": os.path.basename(fbx),
                          "root_travel_m": round(travel, 3),
+                         "capture_speed_mps": round(travel / dur, 3),
+                         "stride_speed_mps": round(stride, 3) if stride else None,
+                         "looping": st.get("looping"),
+                         "foot_slip": round(st["slip"], 4) if st.get("slip") is not None else None,
+                         "foot_slip_before_planting": round(st["slip_before"], 4) if st.get("slip_before") is not None else None,
+                         "planted_height_cm": st.get("planted_height_cm"),
+                         "planted_height_range_cm": st.get("planted_height_range_cm"),
+                         "pelvis_adjust_cm": st.get("pelvis_adjust_cm"),
+                         "sole_lowest_cm": st.get("sole_lowest_cm"),
+                         # airborne spans, in seconds from the first key; a key at frame f is at
+                         # (f - 1) / fps once the exporter slides the clip to start at zero
+                         "flights_s": [[round(f0_ / a.fps, 3), round(f1_ / a.fps, 3)]
+                                       for f0_, f1_ in st.get("flights", [])],
+                         "apex_sole_m": st.get("apex_sole_m"),
+                         "feet_planted_keys": st.get("locked"),
+                         "heading_removed_deg": round(math.degrees(yaw), 2),
+                         "heading_from": "travel" if travelling else "hip line",
+                         "body_vs_travel_deg": round(math.degrees(math.atan2(math.sin(hip_yaw - yaw), math.cos(hip_yaw - yaw))), 1) if travelling else None,
                          "leg_lengths_per_sec": round(per_sec, 3)}
-    print(f"[retarget]   root travel {travel:.3f} m ({per_sec:.2f} leg-lengths/s)", flush=True)
+    print(f"[retarget]   root travel {travel:.3f} m ({per_sec:.2f} leg-lengths/s)"
+          + (f"; ground speed {stride:.2f} m/s (capture {travel/dur:.2f})" if stride else ""), flush=True)
     print(f"[retarget]   -> action '{clip_name}': {report[clip_name]['curves']} curves",
           flush=True)
 

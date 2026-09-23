@@ -246,7 +246,7 @@ def clips_manifest(r: Run) -> Path:
 def s_animate(r: Run):
     r.bl("animate", "retarget.py", "--rig", r.path("rig_t.blend"), "--clips", clips_manifest(r),
          "--out", r.work / "animated.glb", "--blend-out", r.path("animated.blend"),
-         "--json", r.work / "retarget.json", keep=("leg-lengths/s", "clips ->"))
+         "--json", r.work / "retarget.json", keep=("heading", "feet:", "leg-lengths/s", "WARNING", "clips ->"))
 
 
 def s_smooth(r: Run):
@@ -267,6 +267,8 @@ def s_package(r: Run):
 def s_web(r: Run):
     r.sh("web", [sys.executable, ROOT / "tools" / "optimize_glb.py", "--in", r.path("PACKAGE"),
                  "--out", r.path("WEB"), "--res", 2048], keep=("->",))
+    r.bl("thumb", "thumbnail.py", "--blend", r.path("final.blend"),
+         "--out", r.out / f"{r.a.name}_thumb.png", keep=("[thumb]",))
 
 
 BODY = {n: globals()[f"s_{n}"] for n in NAMES}

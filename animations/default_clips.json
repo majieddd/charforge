@@ -1,10 +1,17 @@
 {
-  "about": "Default clip set, by Mixamo file hash in the jasongzy/Mixamo mirror. Each was chosen by motion and posture features (blender/scan_mixamo.py, blender/scan_posture.py) and checked to loop cleanly in the source (blender/loop_quality.py: walk and run both close with a 0.00x seam). Replace any entry with your own Mixamo download to change the character's moves.",
+  "about": "Default clip set, by Mixamo file hash in the jasongzy/Mixamo mirror (which names nothing). Locomotion was chosen by blender/scan_locomotion.py, which graded all 2,147 short clips on what a character controller needs: the body faces the way it travels (hips, shoulders and planted feet within a few degrees of the travel direction), the path is straight, the source feet do not slip, and the clip closes as a cycle. The previous run travelled at 45 degrees to its own facing and could not be planted by any rotation; the previous walk crabbed 13 degrees. Finalists were then retargeted and judged by eye on side and front filmstrips, because a clean score does not rule out a sneak, a zombie shamble or a sprint start. The jump starts and ends standing and tucks naturally; its long anticipation is handled by the manifest's entry_s. Replace any entry with your own Mixamo download to change the character's moves.",
   "clips": {
     "idle": "143d71a6e2e5896c4898437f7d700b0e.fbx",
-    "walk": "1c287bc16d5848a3aed9b3ed45a6eb99.fbx",
-    "run":  "1742210a6aadf79943aee5f7b46c50be.fbx",
-    "jump": "18a7360190366a0fe6e37666caf09858.fbx",
+    "walk": "d8dc42834a149287cc1f8a519154f300.fbx",
+    "jog":  "8e0be3b72179cb410c90913966fae114.fbx",
+    "run":  "f15bb30accd3fb96b8d6c2f731cd94a2.fbx",
+    "jump": "da212020f02358f4f5c822d99b97cac2.fbx",
     "wave": "19d1ded9a44672ea47e82f6fc1e34bf4.fbx"
+  },
+  "grades": {
+    "walk": "1.46 m/s captured, hips -1.3 deg / shoulders -0.9 / feet +1.6 from travel, source slip 1.3%",
+    "jog":  "2.34 m/s captured, hips -1.1 / shoulders -4.8 / feet +0.6, source slip 2.8%",
+    "run":  "4.45 m/s captured, hips +3.4 / shoulders +4.0 / feet +2.3, source slip 1.9%",
+    "jump": "standing start and finish, 0.58 s airborne, feet 0.74 m at apex"
   }
 }
