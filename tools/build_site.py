@@ -52,7 +52,7 @@ def thumb_uri(png: Path) -> str:
 
 def page_manifest(m: dict) -> dict:
     """The subset the playground reads: clip timing and speeds, and the facts on the stats panel."""
-    return {"height_m": m["height_m"], "triangles": m["triangles"],
+    return {"height_m": m["height_m"], "triangles": m["triangles"], "capsule": m.get("capsule"),
             "skeleton": {k: m["skeleton"][k] for k in ("convention", "bones")},
             "clips": m["clips"], "prompt": (m.get("source") or {}).get("prompt")}
 

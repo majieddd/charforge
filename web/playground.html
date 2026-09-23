@@ -547,6 +547,7 @@ async function select(id) {
     disposeCharacter();
     clipInfo = {};
     for (const c of (spec.manifest?.clips || [])) clipInfo[c.name] = c;
+    CR = spec.manifest?.capsule?.radius_m || 0.28;
     buildCharacter(gltf);
     resetController();
     activeId = id;
@@ -619,7 +620,7 @@ function move(e) {
 // A kinematic capsule, the way most shipped games move a humanoid. Everything that used to be a
 // hard-coded constant here - gait speeds, jump timing - now comes from the character's
 // own manifest, measured from its clips when it was packaged.
-const CR = 0.28;        // capsule radius, m
+let CR = 0.28;          // capsule radius, m - replaced by the character's own, from its manifest
 const STEP = 0.32;      // tallest ledge walked up without a jump
 const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false,
               phase:0, loco:1, speed:0, fallHold:0 };

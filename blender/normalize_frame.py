@@ -56,10 +56,17 @@ V = np.vstack([np.array([v.co[:] for v in o.data.vertices]) for o in meshes])
 lo, hi = V.min(0), V.max(0)
 h0 = float(hi[2] - lo[2])
 k = a.height / h0
-# origin on the floor, centred between the feet in plan
+# Origin on the floor, under the root joint. It used to be the median of the vertices near the
+# floor, which is the median of a two-lump distribution - one lump per foot - and lands at the
+# inner edge of whichever foot has more vertices: 9 cm off-centre on one character, 12 cm the
+# other way on the next. An engine turns a character about its origin, so every turn in place
+# orbited a point beside the body. The root joint is where the body's own pivot is.
+root = next(b for b in rig.data.bones if b.parent is None)
+rh = rig.matrix_world @ root.head_local
 feet = V[V[:, 2] < lo[2] + 0.05 * h0]
-cx, cy = float(np.median(feet[:, 0])), float(np.median(feet[:, 1]))
-origin = np.array([cx, cy, float(lo[2])])
+print(f"[frame] origin under the root joint '{root.name}'; the median-of-feet rule would have put it "
+      f"{float(np.median(feet[:, 0]) - rh.x) / h0 * a.height * 100:+.1f} cm off in x", flush=True)
+origin = np.array([float(rh.x), float(rh.y), float(lo[2])])
 print(f"[frame] rest height {h0:.3f} units, origin was {float(-lo[2]):.3f} above the soles; "
       f"scaling x{k:.4f} to {a.height:.2f} m and dropping the soles to z=0", flush=True)
 

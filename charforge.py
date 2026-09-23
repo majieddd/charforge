@@ -216,7 +216,7 @@ def s_rig(r: Run):
 
 def s_frame(r: Run):
     r.bl("frame", "normalize_frame.py", "--blend", r.path("rig.blend"), "--out",
-         r.path("rig_m.blend"), "--height", r.a.height, keep=("[frame] now",))
+         r.path("rig_m.blend"), "--height", r.a.height, keep=("[frame] now", "[frame] origin"))
 
 
 def s_tpose(r: Run):
@@ -261,7 +261,7 @@ def s_package(r: Run):
         args += ["--prompt", r.a.prompt]
     args += ["--image", r.path("reference.png")]
     r.bl("package", "package.py", *args,
-         keep=("renamed", "glTF ->", "FBX  ->", "manifest:", "[pkg]    "))
+         keep=("renamed", "glTF ->", "FBX  ->", "FBX LODs", "manifest:", "capsule:", "[pkg]    "))
 
 
 def s_web(r: Run):

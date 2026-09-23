@@ -43,6 +43,8 @@ ap.add_argument("--image", default=None)
 ap.add_argument("--tex", type=int, default=0,
                 help="downscale textures to this edge; 0 keeps the bake resolution (the web build is 2K)")
 ap.add_argument("--no-fbx", action="store_true")
+ap.add_argument("--lods", default="0.4,0.15",
+                help="FBX level-of-detail ratios (triangle fraction of LOD0); empty for none")
 a = ap.parse_args(argv)
 
 LOOPING = {"idle", "walk", "run", "jog", "sprint", "crouch_walk", "strafe_left", "strafe_right"}
@@ -211,6 +213,34 @@ for act in actions:
         entry["apex_foot_height_m"] = info.get("apex_sole_m")
         entry["entry_s"] = round(max(0.0, t0 - 0.25), 3)
     clips.append(entry)
+
+# ---- collision capsule ---------------------------------------------------------------------------
+# What a CharacterController or a capsule component is sized from, measured on the idle pose with
+# the arms down: the T-pose rest spreads the arms 1.7 m wide and says nothing about how wide the
+# character stands. Radius is the 98th percentile of distance from the vertical axis through the
+# origin, between 10% and 90% of height, so a stray strand of hair does not set it.
+capsule = None
+if bpy.data.actions.get("idle"):
+    set_action(bpy.data.actions["idle"])
+    scene.frame_set(int(bpy.data.actions["idle"].frame_range[0]))
+    dg = bpy.context.evaluated_depsgraph_get()
+    pts = []
+    for o in meshes:
+        ev = o.evaluated_get(dg)
+        m = ev.to_mesh()
+        X = np.empty(len(m.vertices) * 3)
+        m.vertices.foreach_get("co", X)
+        mw = np.array(o.matrix_world)
+        pts.append(X.reshape(-1, 3) @ mw[:3, :3].T + mw[:3, 3])
+        ev.to_mesh_clear()
+    P = np.vstack(pts)
+    z0, z1 = float(P[:, 2].min()), float(P[:, 2].max())
+    band = P[(P[:, 2] > z0 + 0.1 * (z1 - z0)) & (P[:, 2] < z0 + 0.9 * (z1 - z0))]
+    r = float(np.percentile(np.hypot(band[:, 0], band[:, 1]), 98))
+    capsule = {"radius_m": round(r, 3), "height_m": round(z1 - z0, 3),
+               "center_m": [0.0, round((z1 - z0) / 2, 3), 0.0],
+               "note": "glTF axes (Y up); measured on the first idle frame"}
+    print(f"[pkg] capsule: radius {r:.3f} m, height {z1 - z0:.3f} m", flush=True)
 if rig.animation_data:
     rig.animation_data.action = None
 
@@ -288,11 +318,45 @@ bpy.ops.export_scene.gltf(
     export_anim_slide_to_zero=True)
 print(f"[pkg] glTF -> {glb} ({os.path.getsize(glb)/1e6:.1f} MB)", flush=True)
 
+# ---- levels of detail, for the FBX ---------------------------------------------------------------
+# Godot and Unreal build LODs on import; Unity does not, but it builds an LOD Group by itself from
+# sibling meshes named _LOD0, _LOD1, ... So the FBX carries decimated copies - collapse decimation,
+# which keeps UVs and interpolates the skin weights - and the glTF stays single-LOD. At 58k
+# triangles the full mesh is hero-sized; a crowd or a distant character wants a few thousand.
+lod_objs, lod_info = [], []
+ratios = [float(x) for x in a.lods.split(",") if x.strip()] if not a.no_fbx else []
+if ratios:
+    for o in meshes:
+        base = o.name
+        for i, r in enumerate(ratios, start=1):
+            c = o.copy()
+            c.data = o.data.copy()
+            c.name = f"{base}_LOD{i}"
+            c.data.name = c.name
+            scene.collection.objects.link(c)
+            d = c.modifiers.new("lod", "DECIMATE")
+            d.decimate_type = "COLLAPSE"
+            d.ratio = r
+            # the decimator must run before the armature deforms the mesh, not after
+            while c.modifiers[0].name != "lod":
+                bpy.ops.object.select_all(action="DESELECT")
+                bpy.context.view_layer.objects.active = c
+                bpy.ops.object.modifier_move_up(modifier="lod")
+            bpy.context.view_layer.objects.active = c
+            bpy.ops.object.modifier_apply(modifier="lod")
+            lod_objs.append(c)
+        o.name = f"{base}_LOD0"
+    for i, r in enumerate([1.0] + ratios):
+        objs = [o for o in scene.objects if o.type == "MESH" and o.name.endswith(f"_LOD{i}")]
+        t = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objs)
+        lod_info.append({"lod": i, "ratio": r, "triangles": t})
+    print("[pkg] FBX LODs: " + ", ".join(f"LOD{x['lod']} {x['triangles']:,} tris" for x in lod_info), flush=True)
+
 fbx = None
 if not a.no_fbx:
     fbx = os.path.join(a.out_dir, f"{a.name}.fbx")
     bpy.ops.object.select_all(action="DESELECT")
-    for o in [rig] + meshes:
+    for o in [rig] + meshes + lod_objs:
         o.select_set(True)
     bpy.context.view_layer.objects.active = rig
     bpy.ops.export_scene.fbx(
@@ -307,6 +371,11 @@ if not a.no_fbx:
         bake_anim_force_startend_keying=True, bake_anim_simplify_factor=0.0,
         path_mode="COPY", embed_textures=True)
     print(f"[pkg] FBX  -> {fbx} ({os.path.getsize(fbx)/1e6:.1f} MB)", flush=True)
+    for c in lod_objs:
+        bpy.data.objects.remove(c, do_unlink=True)
+    for o in meshes:
+        if o.name.endswith("_LOD0"):
+            o.name = o.name[:-5]
 
 if a.image and os.path.exists(a.image):
     shutil.copy(a.image, os.path.join(a.out_dir, "reference" + os.path.splitext(a.image)[1]))
@@ -315,7 +384,8 @@ manifest = {
     "name": a.name,
     "source": {"prompt": a.prompt, "image": os.path.basename(a.image) if a.image else None},
     "units": "metres, Y-up in glTF / Z-up in Blender, facing +Z (glTF)",
-    "origin": "on the floor, between the feet",
+    "origin": "on the floor, under the root (pelvis) joint - the pivot a turn in place rotates about",
+    "capsule": capsule,
     "height_m": round(height, 3),
     "triangles": tris,
     "skeleton": {"convention": "Mixamo", "prefix": PREFIX, "bones": len(rig.data.bones),
@@ -324,6 +394,10 @@ manifest = {
     "clips": clips,
     "files": {"gltf": os.path.basename(glb), "fbx": os.path.basename(fbx) if fbx else None,
               "textures": written},
+    "lods": {"fbx": lod_info,
+             "note": "the FBX meshes are named _LOD0/_LOD1/_LOD2, which Unity turns into an LOD "
+                     "Group on import; the glTF carries LOD0 only - Godot and Unreal generate "
+                     "their own LODs on import"} if lod_info else None,
     "materials": {
         "workflow": "metallic-roughness",
         "maps": {"albedo": "sRGB", "normal": "tangent space, OpenGL (+Y)",
