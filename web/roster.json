@@ -16,6 +16,12 @@
       "id": "juno",
       "name": "Juno",
       "blurb": "red windbreaker"
+    },
+    {
+      "id": "vex",
+      "name": "Vex",
+      "blurb": "from a painting",
+      "prompt": "made from a painted concept image, no prompt"
     }
   ]
 }

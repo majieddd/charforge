@@ -80,12 +80,18 @@ try:
 except md.PackageNotFoundError:
     note(WARN, "mlx", "needed only for the generation stage; lives with trellis2mlx")
 
-# ---- the character that ships --------------------------------------------------------------
-glb = os.path.join(root, "docs", "character.glb")
-if os.path.exists(glb):
-    note(OK, "docs/character.glb", f"{os.path.getsize(glb)/1e6:.2f} MB")
-else:
-    note(WARN, "docs/character.glb", "absent; the playground has nothing to load")
+# ---- the characters the playground ships ------------------------------------------------------
+import json as _json
+roster = os.path.join(root, "web", "roster.json")
+ids = [c["id"] for c in _json.load(open(roster))["characters"]] if os.path.exists(roster) else []
+for cid in ids:
+    glb = os.path.join(root, "docs", f"{cid}.glb")
+    if os.path.exists(glb):
+        note(OK, f"docs/{cid}.glb", f"{os.path.getsize(glb)/1e6:.2f} MB")
+    else:
+        note(WARN, f"docs/{cid}.glb", "absent; run tools/build_site.py after building it")
+if not ids:
+    note(WARN, "web/roster.json", "no roster; the playground has nothing to load")
 
 w = max(len(r[1]) for r in rows)
 print()

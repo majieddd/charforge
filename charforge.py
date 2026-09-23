@@ -219,7 +219,9 @@ def s_skeleton(r: Run):
 def s_retopo(r: Run):
     r.bl("retopo", "retopo.py", "--mesh", r.path("mesh.glb"), "--out", r.path("retopo.glb"),
          "--bake-res", 4096, "--cage-extrusion", 0.10, "--ray-distance", 0.14,
-         keep=("source winding", "UVs:", "AO mean", "AO bake", "normal map:", "normal median", "ORM:"))
+         "--joints", r.path("joints.json"),
+         keep=("source winding", "legs:", "UVs:", "AO mean", "AO bake", "normal map:",
+               "normal median", "ORM:"))
 
 
 def s_labels(r: Run):

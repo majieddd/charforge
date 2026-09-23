@@ -127,14 +127,30 @@ def main(a):
         if hm.sum() > 50:
             hl = lab_col[hm]
             hair_seed = hl[hl[:, 0] <= np.percentile(hl[:, 0], 10)].mean(0)
-            cand = hl[(hl[:, 1] >= np.percentile(hl[:, 1], 90)) &
-                      (hl[:, 0] >= np.percentile(hl[:, 0], 50))]
-            if len(cand) < 20:
-                cand = hl[hl[:, 0] >= np.percentile(hl[:, 0], 90)]
-            skin_seed = cand.mean(0)
+            # The skin reference is the character's own skin - body vertices with a skin-like
+            # chroma - not the brightest, reddest part of the hair group. That older seed assumed
+            # dark hair: on Vex's pink hair the bright pink WAS the reddest part, and 89% of the
+            # hair was moved into the face. A hair vertex now moves only if it is close to real
+            # skin in absolute terms, and nearer to it than to the hair.
+            bm = lab == gid["body"]
+            bl = lab_col[bm]
+            bl = bl[(bl[:, 1] > 4) & (bl[:, 2] > 4) & (bl[:, 0] > 25) & (bl[:, 0] < 90)]
+            if len(bl) >= 50:
+                skin_seed = np.median(bl, axis=0)
+            else:                                   # no usable body colour: the old in-group seed
+                cand = hl[(hl[:, 1] >= np.percentile(hl[:, 1], 90)) &
+                          (hl[:, 0] >= np.percentile(hl[:, 0], 50))]
+                if len(cand) < 20:
+                    cand = hl[hl[:, 0] >= np.percentile(hl[:, 0], 90)]
+                skin_seed = cand.mean(0)
             where = np.where(hm)[0]
-            is_skin = (np.linalg.norm(lab_col[where] - skin_seed, axis=1)
-                       < np.linalg.norm(lab_col[where] - hair_seed, axis=1))
+            d_skin = np.linalg.norm(lab_col[where] - skin_seed, axis=1)
+            is_skin = (d_skin < np.linalg.norm(lab_col[where] - hair_seed, axis=1)) & (d_skin < 15.0)
+            if is_skin.mean() > 0.5:
+                # moving most of a group is not rescuing fragments: the hair is skin-coloured
+                print(f"[labels] {is_skin.mean():.0%} of the hair is close to skin tone - taking "
+                      "the hair colour to be close to skin and leaving it labelled hair", flush=True)
+                is_skin[:] = False
             lab[where[is_skin]] = gid["body"]
             moved = int(is_skin.sum())
             # re-vote so the reclassified patch has clean edges

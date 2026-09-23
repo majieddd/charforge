@@ -306,6 +306,49 @@ def proximity_weights(ob, rig_obj, power=4.0, k=4, iters=18, lam=0.7):
         print(f"[rig] {ob.name}: {side} foot rigid below the ankle - {int((t > 0.999).sum()):,} "
               f"vertices fully on the foot, {int(((t > 0) & (t <= 0.999)).sum()):,} blending", flush=True)
 
+    # ---- one leg each -----------------------------------------------------------------------------
+    # Below mid-thigh a vertex belongs to one leg. A vertex near the inner knee is about as far
+    # from one knee bone as the other, so distance weighting gives it half of each, and every
+    # stride pulls it across the gap: on a character whose knees nearly touch, a web between the
+    # shins even after the retopology cut the legs apart. Which leg a vertex belongs to is read
+    # from the surface itself - below mid-thigh each leg is its own connected piece - not from
+    # the nearer bone: the estimated knee sits a little off-centre in the leg, and nearest-bone
+    # handed a strip of one leg's inner surface to the other leg, which pulled it out into
+    # blades. The other leg's bones are dropped from every vertex of a piece.
+    legset = {sd: [n for n in (f"{sd}_hip", f"{sd}_knee", f"{sd}_ankle", f"{sd}_foot") if n in idx]
+              for sd in ("left", "right")}
+    if all(legset.values()) and "left_hip" in heads and "right_hip" in heads:
+        zc = min((heads[f"{sd}_hip"][2] + heads[f"{sd}_knee"][2]) / 2 for sd in ("left", "right"))
+        xm = (heads["left_hip"][0] + heads["right_hip"][0]) / 2
+        left_pos = heads["left_hip"][0] > xm
+        low_v = V[:, 2] < zc
+        seen = np.zeros(n, bool)
+        split = 0
+        for s0 in np.where(low_v)[0]:
+            if seen[s0]:
+                continue
+            piece, stack = [], [s0]
+            seen[s0] = True
+            while stack:
+                u = stack.pop()
+                piece.append(u)
+                for w_ in nbr[u]:
+                    if low_v[w_] and not seen[w_]:
+                        seen[w_] = True
+                        stack.append(w_)
+            piece = np.array(piece)
+            xs = V[piece, 0] - xm
+            # a piece that spans the midline is not one leg (a skirt, or legs still joined): skip
+            if (xs > 0).mean() > 0.1 and (xs < 0).mean() > 0.1:
+                continue
+            sd = "left" if (xs.mean() > 0) == left_pos else "right"
+            other = "right" if sd == "left" else "left"
+            Wm[np.ix_(piece, [idx[b] for b in legset[other]])] = 0.0
+            split += 1
+        Wm = Wm / np.maximum(Wm.sum(1, keepdims=True), 1e-9)
+        print(f"[rig] {ob.name}: {split} leg pieces below mid-thigh, each bound to its own leg only",
+              flush=True)
+
     # keep the k strongest, renormalise
     order = np.argsort(-Wm, axis=1)[:, :k]
     keep = np.zeros_like(Wm)

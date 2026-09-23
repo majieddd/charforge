@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 
 import numpy as np
 import trimesh
@@ -148,6 +149,18 @@ for i, sl in enumerate(ndimage.find_objects(comp), start=1):
         continue
     c = comp[sl] == i
     if c.sum() < 6:                                # specks are texture, not a patch
+        continue
+    # a painted skin patch is skin-coloured on the whole, even where its edges are paler; a
+    # zipper or piping that grew from a few beige texels is not - growth alone turned Vex's
+    # zipper line teal. Measured: Juno's real patches average 13.7-14.6 from her skin tone
+    # (one only 30% seeds), Vex's false ones 24-56. The seed threshold applies to the mean.
+    if os.environ.get("TEXCLEAN_DEBUG"):
+        hh, ww = c.shape
+        print(f"[texclean-debug] patch at ({sl[1].start},{sl[0].start}) {hh}x{ww} area {int(c.sum())} "
+              f"seed {flag[sl][c].mean():.2f} dSkin {d_skin[sl][c].mean():.1f} thick {c.sum()/max(hh,ww):.1f} "
+              f"fill {c.sum()/(hh*ww):.2f}", flush=True)
+    if d_skin[sl][c].mean() > a.skin_de:
+        why["not skin-coloured"] = why.get("not skin-coloured", 0) + 1
         continue
     fs = np.unique(face_px[sl][c])
     fs = fs[fs >= 0]

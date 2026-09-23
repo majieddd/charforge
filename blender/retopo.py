@@ -33,6 +33,10 @@ ap.add_argument("--ao-distance", type=float, default=0.03,
 ap.add_argument("--ao-samples", type=int, default=48)
 ap.add_argument("--no-normal-median", dest="normal_median", action="store_false",
                 help="skip the selective median on the baked normal map")
+ap.add_argument("--joints", default=None,
+                help="skeleton.py's joints.json - used to cut apart legs the voxel remesh fused")
+ap.add_argument("--legs-dry-run", action="store_true",
+                help="report fused leg faces without cutting them")
 ap.add_argument("--keep-winding", action="store_true",
                 help="skip the winding repair on the source mesh (for A/B comparison only)")
 a = ap.parse_args(argv)
@@ -187,6 +191,79 @@ def main():
             md.ratio = min(1.0, a.faces / max(1, len(low.data.polygons)))
             bpy.ops.object.modifier_apply(modifier=md.name)
         method = "voxel_remesh"
+
+    # ---- legs the remesh fused ----------------------------------------------------------------
+    # The voxel remesh rebuilds the surface from a distance field about 1 cm per voxel, so two
+    # surfaces closer than that become one. Vex stands with her knees nearly touching: the remesh
+    # welded her legs together at the knee, the rig split that weld between left and right, and
+    # every stride stretched it into a web between her shins. The skeleton is estimated before
+    # this stage, so each remeshed vertex below mid-thigh is given to the leg whose axis it is
+    # nearest; a face with vertices on both legs spans the weld and is cut, and the openings are
+    # closed - before UVs and baking, so the patch is textured like the leg around it. If the cut
+    # would be large it is not a weld but a skirt or a coat hem, and nothing is cut.
+    if a.joints and os.path.exists(a.joints):
+        import bmesh
+        J = json.load(open(a.joints))["joints"]
+        HW = np.array([(high.matrix_world @ v.co)[:] for v in high.data.vertices])
+        blo, bhi = HW.min(0), HW.max(0)
+        kk = 2.0 / float(bhi[2] - blo[2])               # skeleton.py's frame: 2 units tall, centred
+        cc = (blo + bhi) / 2
+        jp = lambda n: np.array(J[n]) / kk + cc
+        axes = {}
+        for s_ in ("left", "right"):
+            h_, k_, an_ = jp(f"{s_}_hip"), jp(f"{s_}_knee"), jp(f"{s_}_ankle")
+            floor_ = np.array([an_[0], an_[1], blo[2]])
+            axes[s_] = [(h_, k_), (k_, an_), (an_, floor_)]
+        zcut = min((jp(f"{s_}_hip")[2] + jp(f"{s_}_knee")[2]) / 2 for s_ in ("left", "right"))
+
+        def seg_d(X, p0, p1):
+            ab = p1 - p0
+            t = np.clip(((X - p0) @ ab) / max(float(ab @ ab), 1e-12), 0.0, 1.0)[:, None]
+            return np.linalg.norm(X - (p0 + t * ab), axis=1)
+
+        mw = np.array(low.matrix_world)
+        V = np.array([v.co[:] for v in low.data.vertices]) @ mw[:3, :3].T + mw[:3, 3]
+        dL = np.min([seg_d(V, *sg) for sg in axes["left"]], axis=0)
+        dR = np.min([seg_d(V, *sg) for sg in axes["right"]], axis=0)
+        side = (dR < dL).astype(np.int8)
+        below = V[:, 2] < zcut
+        bm = bmesh.new()
+        bm.from_mesh(low.data)
+        bm.faces.ensure_lookup_table()
+        n_below = sum(1 for f in bm.faces if all(below[v.index] for v in f.verts))
+        weld = [f for f in bm.faces if all(below[v.index] for v in f.verts)
+                and len({int(side[v.index]) for v in f.verts}) == 2]
+        share = len(weld) / max(n_below, 1)
+        if not weld:
+            print("[retopo] legs: separate below mid-thigh, nothing to cut", flush=True)
+        elif share > 0.02:
+            print(f"[retopo] legs: {len(weld):,} faces span both legs ({share:.1%} of the legs) - "
+                  "too many for a weld; taking it to be a skirt or coat and cutting nothing", flush=True)
+        elif a.legs_dry_run:
+            print(f"[retopo] legs: {len(weld):,} faces span both legs (dry run - not cut)", flush=True)
+        else:
+            # the vertices the weld touched, before it goes, so the scar can be smoothed after
+            scar = {v for f in weld for v in f.verts}
+            bmesh.ops.delete(bm, geom=weld, context="FACES")
+            edges = [e for e in bm.edges if e.is_boundary]
+            filled = bmesh.ops.holes_fill(bm, edges=edges, sides=0)
+            bmesh.ops.triangulate(bm, faces=filled["faces"])
+            # Each leg keeps half of the old weld's saddle, which flares toward the other leg and
+            # rides along as a fin. Smoothing the scar and three rings around it lays the fin
+            # back into the leg; nothing else on the mesh moves.
+            ring = {v for v in scar if v.is_valid} | {v for f in filled["faces"] for v in f.verts}
+            for _ in range(3):
+                ring |= {e.other_vert(v) for v in list(ring) for e in v.link_edges}
+            bmesh.ops.smooth_vert(bm, verts=list(ring), factor=0.5, use_axis_x=True,
+                                  use_axis_y=True, use_axis_z=True)
+            for _ in range(11):
+                bmesh.ops.smooth_vert(bm, verts=list(ring), factor=0.5, use_axis_x=True,
+                                      use_axis_y=True, use_axis_z=True)
+            bm.to_mesh(low.data)
+            low.data.update()
+            print(f"[retopo] legs: cut {len(weld):,} faces where the remesh had welded the legs "
+                  f"together, closed {len(filled['faces']):,} openings", flush=True)
+        bm.free()
 
     # Smooth shading before baking. On a flat-shaded cage every face carries its own tangent
     # basis, so the baked normal map encodes the facet angle rather than surface detail - which
