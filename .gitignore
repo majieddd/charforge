@@ -26,3 +26,5 @@ report.html
 
 # built characters (published copies live in docs/)
 out/
+dist/
+web/dist/
