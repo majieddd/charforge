@@ -79,6 +79,9 @@ speed, so a character accelerating through a jog looks like a jog.
 **12. The run cycle pops every half second.** At the loop point the knee jumps 20 cm, twice a
 normal frame step, and no earlier end frame closes it: the source clip is not a whole cycle.
 Walk and idle loop cleanly (seams 0.4× a frame step).
+*Correction, found while fixing it: the diagnosis was wrong. The source run closes with a 0.00×
+seam. The pop was the export — clips keyed from Blender frame 1 are written starting at
+t = 1/30 s, so every loop held its first pose for a frame. Fixed by sliding each clip to t = 0.*
 
 **13. The lighting is not PBR lighting.** A hemisphere, a sun and a rim light with no
 environment map. Physically based materials reflect their surroundings; with nothing to reflect,
@@ -123,3 +126,82 @@ everything looked like the same plastic.
 4. A playground that behaves like a game: gravity and airtime, sliding collision, speed-blended
    locomotion, environment lighting, and a way to download what you are looking at.
 5. Dead code moved out of the main path, so the repository describes one pipeline.
+
+---
+
+# Second pass — after the rebuild
+
+The rebuild above was measured the way this project measures everything, and measuring it found
+a second layer of problems, almost all in animation. They were invisible in a turntable and
+obvious the moment a controller moved the character: feet that skated, a run that went sideways.
+
+## Status of the first review
+
+| # | finding | status |
+|---|---|---|
+| 1 | entry point runs the rejected pipeline | fixed — `charforge.py`; the old path is in `attic/` |
+| 2 | image input not first-class | fixed — `--image`; TRELLIS removes the background |
+| 3 | 2.00 m tall | fixed — real height in metres (`normalize_frame.py`) |
+| 4 | origin at the hips | fixed — on the floor; then fixed again, see 19 |
+| 5 | no standard skeleton | fixed — Mixamo names, curves rewritten to follow |
+| 6 | roughness and metallic thrown away | fixed — baked from the generator's own material |
+| 7 | 64% of the atlas empty | improved — texel density +60%, islands 4.7x fewer |
+| 8 | GLB only | fixed — FBX, per-engine textures, manifest |
+| 9 | jump is cosmetic | fixed — gravity and airtime solved from the clip |
+| 10 | collision stops dead | fixed — push-out sliding, stairs |
+| 11 | hard walk/run switch | fixed — speed blend on a shared stride clock; now three gaits |
+| 12 | run pops at the loop | fixed — it was the export offset (corrected above) |
+| 13 | no environment lighting | fixed — image-based lighting |
+
+## New findings
+
+**14. The run ran diagonally.** It travelled at exactly 45 degrees to the direction its body
+faced; the walk crabbed at 13. The clips had been picked by how they moved — speed, flight time,
+bob — which finds clips that move like a run, not clips a controller can drive. A controller
+moves the character the way it faces, so a clip whose travel disagrees with its body slides
+sideways at speed × sin(angle), whatever else is done. Replaced by grading all 2,147 clips on
+body/travel agreement (`blender/scan_locomotion.py`) and choosing a new walk, jog, run and jump.
+
+**15. The character floated and sank.** Every clip was 4–5 cm off the floor: the vertical
+reference was taken from the capture (first frame, then its rest pose), and neither stands on the
+capture's own floor. Now measured where the feet are, key by key.
+
+**16. Planted feet skated.** 30% of ground speed in the walk and 79% in the run, in the browser.
+Two causes stacked: making clips in place by pinning the pelvis threw away the stride's surge and
+sway, and copying joint rotations onto legs of different proportions drifts a planted foot
+through the stance even when its average speed is right. Fixed by reading contact from the
+capture and planting it with leg IK on the mesh's own sole; now 1–3%.
+
+**17. The manifest's run speed was wrong.** 5.84 m/s, measured from hip travel — which ran along
+the diagonal. The character's stride supported about 3.5. Speeds now come from the planted soles.
+
+**18. The shoes were rubber.** The skinning diffused the shin's weight down into the shoe, so it
+bent at every ankle flex, and gave foot planting no fixed point to hold. Below the ankle the
+foot's bones now own the shoe.
+
+**19. The origin was 9–12 cm off-centre.** The median of the vertices near the floor is the
+median of a two-lump distribution and lands at the inner edge of the denser foot; every turn in
+place orbited a point beside the body. It now sits under the pelvis.
+
+**20. A standing jump waited two thirds of a second.** The capture's anticipation, played in
+full. The manifest now gives an entry point a quarter second before takeoff.
+
+**21. Slow walking skated.** Below walking speed the playground mixed the idle into the walk,
+dragging the planted foot toward a standing pose: 46% slip at 0.9 m/s. It now slows the walk.
+
+**22. No LODs, no capsule.** A game sizes its collider from the character and swaps meshes with
+distance. The manifest carries a capsule measured on the idle pose; the FBX carries three LODs
+named for Unity's automatic LOD Group.
+
+**23. The generator paints skin onto clothing.** Juno's second, multi-view pass - and only the
+second - put hand-sized patches of skin tone on the outside and back of both trouser legs, where
+the conditioning views disagreed. Found by looking at a close-up, not by any metric. A new stage
+(`pipeline/texture_cleanup.py`) finds islands of the character's own skin tone inside a garment
+and fills them from the surrounding fabric. Its first version also "fixed" every cuff and
+neckline, where the part labels are a few texels off the skin's true edge; whether a patch
+touches skin is now asked on the 3D mesh, not in the atlas. On Rowan it changes nothing.
+
+## Still out of reach
+
+Hands are fused, so there are no finger bones; there is no face rig; six clips are a working set,
+not a full locomotion set; text-to-motion waits on a weight download. See CONTRIBUTING.md.

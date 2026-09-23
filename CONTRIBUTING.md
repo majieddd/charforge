@@ -16,10 +16,10 @@ Run these two before and after. Both take a built `.blend`:
 
 ```bash
 # per-bone deformation over every frame of every clip
-blender -b -noaudio --python blender/deform_audit.py -- --blend work/char01/final.blend --out audit.json
+blender -b -noaudio --python blender/deform_audit.py -- --blend work/rowan/final.blend --out audit.json
 
 # linear blend vs dual quaternion, same weights
-blender -b -noaudio --python blender/dqs_test.py -- --blend work/char01/final.blend
+blender -b -noaudio --python blender/dqs_test.py -- --blend work/rowan/final.blend
 ```
 
 Then **render at full resolution and look at it**. Thumbnails actively mislead — a build that
@@ -37,52 +37,128 @@ Metrics that do **not** matter on their own: `spread>=3` (vertices blending bone
 apart), cross-midline binding count, unweighted-vertex count. These are proxies. Driving
 `spread>=3` from 8.69% to 0% took visual quality sharply *down*.
 
+**For anything touching animation**, run the foot audit too - it plays every clip on the deformed
+mesh at the ground speed the manifest states, the way a controller moves the character:
+
+```bash
+blender -b -noaudio --python blender/foot_audit.py -- --blend work/rowan/final.blend \
+    --report work/rowan/retarget.json
+```
+
+and in the playground's console, `await __cf.footAudit()` measures the same in the browser, with
+the real controller, blending and interpolation in the loop. The browser number is the one that
+counts: a 30 fps bake measured 3% at the keys and 13% in the browser.
+
 ---
 
 ## Open — ranked by expected impact
 
-### 1. Improve face shape in the retopology
-Aspect ratio is the single strongest factor, but the mesh is not pathological: p50 aspect is
-1.66, p90 is 2.20, and only 2.75% of faces exceed 3. So this is not about fixing slivers, it is
-about pushing an already-decent mesh toward more uniform quads. A relax-and-reproject pass
-(tangential smoothing, then shrinkwrap back onto the original high-resolution surface) is the
-standard move and does not change the silhouette.
+### 1. Hands
+The generator fuses the fingers, so the rig has one stub past each wrist. A character that holds
+a weapon or a phone needs at least a hand socket and ideally a thumb and a finger chain. Two
+routes: split the fingers geometrically in the retopology (the hand is a small, well-lit region
+of every orbit render, so a hand-pose estimator can place finger joints), or condition the
+reference image on an open hand so the generator separates them itself.
 
-### 2. Pose-space correctives for shoulder and elbow
-What AAA does. glTF morph targets are applied *before* skinning so a standard viewer cannot do
-pose-space deformation, but the playground drives its own shader and can. Drive a corrective
-shape from joint angle to restore volume on the inside of a deep bend. Still worth doing even
-though the collapse turned out not to be joint-centred — the shoulder is where the two largest
-per-bone figures sit.
+### 2. A face rig
+The head moves as one piece. A jaw bone and eye bones from face landmarks on the frontal render
+are the minimum for dialogue; ARKit-style blendshapes are the AAA bar.
 
-### 3. Strip occluded interior geometry
-44% of collapsing faces are never seen — the t-shirt sleeve under the jacket, the jacket's inner
-lining. Note this is now a *metric hygiene* task, not a size one: geometry and animation are only
-3.17 MB of the GLB, so culling saves well under a megabyte. Do it to stop the audit reporting
-damage nobody can see, not to shrink the download.
+### 3. The rest of a locomotion set
+Six clips move a character around a level. A shipped third-person character also has turn in
+place, start and stop transitions, strafes and a crouch. `blender/scan_locomotion.py` already
+grades travel direction against body facing, so a strafe is a clip that travels at ±90 degrees
+with the body facing forward - finding them is a query over `work/loco_scan.jsonl`, then a look
+at the filmstrips.
 
-### 4. Raise generative fidelity
-Hair reads as a solid mass; the face is smooth rather than sculpted. Levers: more conditioning
-views into the stochastic multi-view pass, or a higher TRELLIS sampling grid. This is the
-generation stage, not the pipeline.
+### 4. Text-to-motion
+Everything animated comes from the Mixamo library. HY-Motion (text to motion) is vendored but its
+weight download failed at 63 MB of several GB. With it, "a character who limps" is a prompt, not
+a search. Re-fetch the weights, then retarget its output through the same `ground_and_plant`.
 
-### 5. Make the pipeline reproducible end-to-end from a clean checkout
-`run_pipeline.sh` assumes a populated `vendor/` and downloaded weights. Needs a bootstrap script
-and a `requirements.txt` that is actually pinned.
+### 5. Runtime foot IK for slopes and stairs
+The clips are planted on a flat floor. On stairs the playground steps the whole capsule; a
+two-bone IK on each leg at runtime, reusing the manifest's contact phases, would put each foot
+on its own step.
 
-### 6. Third character, and a different body type
-A second character (Wren) now exists and the pipeline reproduced her without a parameter change,
-which is the first evidence anything here generalises. But both subjects are adult humans of
-similar proportion in a jacket and trousers. The constants that would actually break — the
-lateral-frac midline test, the weld tolerance, the bone-graph spread bound — need a subject that
-stresses them: very different proportions, a skirt or a coat that breaks the two-leg assumption,
-or a non-human silhouette.
+### 6. Raise generative fidelity
+Hair reads as a solid mass; faces are smooth rather than sculpted. More conditioning views into
+the multi-view pass, or a finer TRELLIS sampling grid. This is the generation stage, not the
+pipeline.
+
+### 7. A different body type
+Three characters, all adult humans of similar proportion in jackets and trousers. The constants
+that would actually break - the weld tolerance, the rigid-foot band, the capsule's height band -
+need a subject that stresses them: a child's proportions, a long skirt or coat that breaks the
+two-leg assumption, a non-human silhouette.
+
+### 8. Pose-space correctives for shoulder and elbow
+glTF morph targets are applied before skinning, so a standard viewer cannot do pose-space
+deformation, but the playground drives its own shader and can. The shoulder is where the two
+largest per-bone deformation figures sit.
+
+### 9. A learned rig (UniRig)
+8.2 GB of UniRig weights are on disk, but it depends on `flash_attn` and sparse convolutions,
+both CUDA-only. A port to Apple Silicon is a research project; the proximity-plus-smoothing
+weights it would replace are measured and adequate.
+
+### 10. Reproducible from a clean checkout
+`charforge.py` assumes a populated `vendor/`, downloaded weights and a running ComfyUI. Needs a
+bootstrap script and a pinned `requirements.txt`.
 
 ---
 
 ## Done
 
 Newest first. Each of these has a script and a measurement.
+
+- **Skin painted onto clothing, removed.** TRELLIS's multi-view pass can decode the body's colour
+  into a garment where its conditioning views disagree (Juno's trouser legs). `pipeline/texture_cleanup.py`
+  flags clothing texels near the character's own skin tone and far from the fabric around them,
+  grows each into the whole patch, and fills only patches whose faces are at least ~4 cm from any
+  body vertex *on the mesh* - the UV-space version painted jacket onto every cuff. Juno: 10
+  patches filled; Rowan: none; Wren: 16 specks. Skips entirely if >4% of the clothing matches the
+  skin (a tan coat).
+- **Origin, capsule, LODs.** The origin was the median of the vertices near the floor - the
+  median of a two-lump distribution, one lump per foot - and landed at the inner edge of the
+  denser foot: 9.3 cm off-centre on Rowan, 12.0 cm on Wren, so every turn in place orbited a
+  point beside the body. It now sits under the pelvis (`blender/normalize_frame.py`). The
+  manifest carries a collision capsule measured on the idle pose, and the FBX carries LOD1 (40%)
+  and LOD2 (15%) named for Unity's automatic LOD Group (`blender/package.py`).
+- **Locomotion that plants its feet.** Browser-measured contact slip went from 30% (walk) and 79%
+  (run) to 2.2% / 2.5% / 1.6% for walk / jog / run, with soles within 3 mm of the floor.
+  Each step was a separate defect, found by measuring the previous fix:
+  - *Clip choice.* The shipped run travelled at 45 degrees to its own body and the walk at 13.
+    `blender/scan_locomotion.py` graded 2,147 clips on body/travel agreement, straightness,
+    source slip and cycle closure; finalists judged on filmstrips. New walk, jog, run and jump.
+  - *Heading from travel* (not the hip line), and *in place without pinning the pelvis* - only
+    the mean velocity is removed, the stride's surge and sway stay.
+  - *Height from the floor, key by key*: the pelvis follows the higher planted sole down to it.
+  - *Contact from the capture, planted with leg IK*: each contact pins the sole point the foot
+    rolls on - lowest at heel strike, lowest at toe-off - read off the mesh, because the rig's
+    "ball" joint sits 9 cm up inside the shoe. Soles never cross the floor; swing feet keep a
+    clearance that eases in from contact. Ground speed comes from the planted soles.
+  - *Rigid shoes*: below the ankle the foot's bones own the shoe (`blender/rig_retopo.py`); it had
+    been skinned half to the shin and bent like rubber.
+  - *60 fps*: at 30 a run's contact is 4-6 keys and interpolating between them slid the foot.
+  - *Playground*: three gaits blended by speed on one stride clock; below walking speed the walk
+    slows instead of mixing in the idle (46% slip at 0.9 m/s); the jump enters at the manifest's
+    `entry_s`, 0.25 s before takeoff instead of 0.67 s.
+- **One entry point, text or image.** `charforge.py make --prompt | --image` runs fifteen cached,
+  resumable stages; `run_pipeline.sh` (which ran the rejected procedural pipeline) is in `attic/`.
+- **Engine conventions.** Real height in metres, origin on the floor, Mixamo bone names (with the
+  animation curves rewritten - Blender 5's layered actions do not follow a bone rename, and the
+  first build shipped every clip bound to nothing), FBX beside glTF, Unity and Unreal texture
+  variants, a manifest. Verified by importing both files cold.
+- **Real PBR, twice the texel density.** Roughness and metallic baked from the generator's own
+  material instead of a flat 0.5; UVs smoothed, unwrapped and concave-packed (median texel
+  density +60%, 4.7x fewer islands); TRELLIS's inconsistently wound shells fixed face by face with
+  a ray test, which restored the missing normal detail (46% flat -> 6%); the AO bake that Metal
+  silently corrupts is validated and redone on the CPU.
+- **A playground that behaves like a game.** Gravity and airtime solved from the jump clip,
+  sliding collision, stairs, a speed-blended gait, environment lighting, per-character capsule.
+- **Build tooling.** `tools/build_site.py` generates the Pages site, the single-file artifact and
+  the release zips from `out/`; nothing is assembled by hand.
 
 - **Targeted weight-gradient smoothing.** The steepness of the weight field across a face
   carries a lift of 2.48x on collapse, so it is softened — but only where it is steep, and by a
@@ -158,7 +234,18 @@ Newest first. Each of these has a script and a measurement.
 | QuadriFlow remesh | silent no-op | same reason; decimation preserves the shell |
 | Joint-aligned edge loops as the fix for cloth collapse | faces near a joint are **less** likely to collapse (lift 0.49x, only 4.9% of collapses) | this was item #1 on the roadmap for a week. It is not candy-wrapper: collapsing faces are *further* from joints than average (29.9 vs 26.0 face widths) and *larger* than average. Measure before building |
 | Aggressive weight smoothing (even when targeted) | strong setting: cloth median p99 62.0% → 67.1%, worst 131% → 168% | the mild setting is the whole win. Past it you trade real stretch for a rounding error of collapse |
-| A vision model as a quality gate | misdescribes A-pose and side lighting | see `pipeline/gates.py`; caps anything built on it |
+| Choosing locomotion clips by speed and flight time alone | a run at 45 degrees to its own facing, a walk at 13 | the features find clips that move like a run, not ones a controller can drive; grade body/travel agreement |
+| Removing a clip's mean hip-line heading | turned a dead-straight walk 13 degrees off course | a capture's pelvis need not face its travel; the travel direction is what the controller and the planted feet depend on |
+| Pinning the pelvis to make clips in place | 20-30% foot slip | discards the stride's surge and sway, which the planted feet then inherit |
+| A height reference from the capture (frame 0, or its rest pose) | run floated 4.8 cm / every clip sank 4-5 cm | neither stands on the capture's floor; measure the floor where the feet are |
+| Pinning the skeleton's ball joint | pelvis dragged down 6-11 cm | on a generated rig it sits at the instep, 9 cm up inside the shoe |
+| Holding the rolling pivot at floor height | sole 3-4 cm through the floor on 40% of walk keys | the rest of the sole rotates through the floor; put the lowest sole point on it instead |
+| Blending the idle into the walk below walking speed | 46% slip at 0.9 m/s | play the walk slower; fade to idle only near a stop |
+| A 30 fps bake | run slid 13% in the browser, 3% at the keys | a run's contact is 4-6 keys at 30 fps; interpolation between them moves the pinned foot |
+| `recalc_face_normals` on TRELLIS shells | normal-map repairs 27% -> 42%, AO black | the shells are double-walled with inconsistent winding; flip faces by a per-face ray test instead |
+| Smoothing the source surface before baking | high-frequency normal energy -9%, dead texels up | no benefit to faceting |
+| The median of floor vertices as the origin | 9-12 cm off-centre | a two-foot distribution's median lands at the inner edge of the denser foot |
+| A vision model as a quality gate | misdescribes A-pose and side lighting | see `attic/pipeline/gates.py`; caps anything built on it |
 
 ---
 
