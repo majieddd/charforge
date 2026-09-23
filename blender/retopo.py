@@ -26,6 +26,15 @@ ap.add_argument("--bake-res", type=int, default=2048)
 ap.add_argument("--cage-extrusion", type=float, default=0.08)
 ap.add_argument("--ray-distance", type=float, default=0.12)
 ap.add_argument("--no-normal-map", action="store_true", help="bake the normal map but leave it unwired")
+ap.add_argument("--uv-smooth", type=int, default=20,
+                help="smoothing iterations on the twin the UVs are unwrapped from (see the table)")
+ap.add_argument("--ao-distance", type=float, default=0.03,
+                help="ambient occlusion reach as a fraction of character height")
+ap.add_argument("--ao-samples", type=int, default=48)
+ap.add_argument("--no-normal-median", dest="normal_median", action="store_false",
+                help="skip the selective median on the baked normal map")
+ap.add_argument("--keep-winding", action="store_true",
+                help="skip the winding repair on the source mesh (for A/B comparison only)")
 a = ap.parse_args(argv)
 
 
@@ -55,11 +64,66 @@ def import_one(path):
     return bpy.context.view_layer.objects.active
 
 
+def fix_winding(ob):
+    """Flip exactly the faces that are on the outside of the character but wound inward.
+
+    A bake ray arrives from outside and lands on the outermost surface. Where that face is
+    wound backwards, its normal points into the body, the baker records an inverted normal, and
+    the repair step flattens it to "no detail". Measured by casting rays both ways off every
+    face, area-weighted:
+
+        character   exterior, correct   exterior, BACKWARDS   interior (never seen)
+        Rowan             84.0%               1.0%                 14.2%
+        Wren              36.0%              23.7%                 39.8%
+
+    which is why 46% of Wren's normal map carried no detail while Rowan's was fine.
+
+    The obvious repair - recalc_face_normals - was tried and made it worse (repairs 27% -> 42%,
+    ambient occlusion collapsing to black). It decides "outside" from connectivity, and these
+    are leaky double-walled shells with tens of thousands of non-manifold edges, so it turned
+    most of the outer wall inward. Asking each face directly which of its sides can see out
+    involves no heuristic: flip a face only when its back escapes and its front does not."""
+    import bmesh
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    me = ob.data
+    bvh = BVHTree.FromObject(ob, bpy.context.evaluated_depsgraph_get())
+    V = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get("co", V)
+    ext = float(np.linalg.norm(np.ptp(V.reshape(-1, 3), axis=0)))
+    eps, reach = ext * 2e-4, ext * 1.5
+    C = np.empty(len(me.polygons) * 3)
+    me.polygons.foreach_get("center", C)
+    N = np.empty(len(me.polygons) * 3)
+    me.polygons.foreach_get("normal", N)
+    C, N = C.reshape(-1, 3), N.reshape(-1, 3)
+    flip = []
+    for i in range(len(C)):
+        c, n = Vector(C[i]), Vector(N[i])
+        if bvh.ray_cast(c + n * eps, n, reach)[0] is None:
+            continue                                    # front sees out: correct already
+        if bvh.ray_cast(c - n * eps, -n, reach)[0] is None:
+            flip.append(i)                              # only the back sees out: wound inward
+    if flip:
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.reverse_faces(bm, faces=[bm.faces[i] for i in flip], flip_multires=False)
+        bm.to_mesh(me)
+        bm.free()
+        me.update()
+    return len(flip)
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     high = import_one(a.mesh)
     high.name = "high"
     hi_tris = len(high.data.polygons)
+    if not a.keep_winding:
+        n = fix_winding(high)
+        print(f"[retopo] source winding: {n:,} of {len(high.data.polygons):,} faces "
+              f"({100*n/max(1,len(high.data.polygons)):.1f}%) turned to face outward", flush=True)
 
     # The pre-simplification mesh carries detail the exported GLB already threw away, so it is
     # the right normal-bake source. It has no texture, hence two sources: albedo from the
@@ -68,6 +132,8 @@ def main():
     if a.highres and os.path.exists(a.highres):
         dense = import_one(a.highres)
         dense.name = "dense"
+        if not a.keep_winding:
+            fix_winding(dense)
         bpy.ops.object.select_all(action="DESELECT")
         dense.select_set(True)
         bpy.context.view_layer.objects.active = dense
@@ -131,11 +197,67 @@ def main():
     bpy.context.view_layer.objects.active = low
     bpy.ops.object.shade_smooth()
 
-    # fresh UVs for the baked maps
+    # Fresh UVs for the baked maps, unwrapped on a smoothed twin and copied back.
+    #
+    # smart_project cuts wherever the surface normal turns sharply, and a voxel-remeshed surface
+    # turns sharply everywhere at the scale of one voxel. Unwrapped directly it produced 2,746
+    # islands, 2,479 of them under ten faces, filling 20% of the atlas - the texture was mostly
+    # empty, and every tiny island bled into its neighbours at each mip level. Smoothing a copy
+    # first removes the voxel bumps without changing topology, so the loop order still matches
+    # and the UVs transfer one-to-one. Measured on Wren, texels per centimetre of surface:
+    #
+    #     layout                       islands  coverage   worst 5%   median
+    #     shipped                        2,746     0.20       9.09     10.19
+    #     repacked only                  2,746     0.32      11.57     12.98
+    #     smoothed x20 + repacked          586     0.49      10.00     16.34   <- this
+    #     smoothed x60 + repacked          439     0.51       8.93     16.68
+    #     smoothed x150 + repacked         416     0.48       7.10     15.90
+    #
+    # Past 20 iterations the smoothing distorts thin features enough that the worst regions
+    # drop below what shipped, so more is not better. At 20, nothing gets worse and the median
+    # surface gets 60% more texels from the same file.
+    import bmesh
+    twin = low.copy()
+    twin.data = low.data.copy()
+    bpy.context.collection.objects.link(twin)
+    bm = bmesh.new()
+    bm.from_mesh(twin.data)
+    for _ in range(a.uv_smooth):
+        bmesh.ops.smooth_vert(bm, verts=bm.verts, factor=0.5,
+                              use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    bm.to_mesh(twin.data)
+    bm.free()
+    bpy.ops.object.select_all(action="DESELECT")
+    twin.select_set(True)
+    bpy.context.view_layer.objects.active = twin
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.003)
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.002)
+    bpy.ops.uv.select_all(action="SELECT")
+    bpy.ops.uv.pack_islands(udim_source="CLOSEST_UDIM", rotate=True, rotate_method="ANY",
+                            scale=True, merge_overlap=False, margin_method="SCALED",
+                            margin=0.002, shape_method="CONCAVE")
     bpy.ops.object.mode_set(mode="OBJECT")
+    if not low.data.uv_layers:
+        low.data.uv_layers.new(name="UVMap")
+    src_uv, dst_uv = twin.data.uv_layers.active.data, low.data.uv_layers.active.data
+    if len(src_uv) != len(dst_uv):
+        raise SystemExit(f"[retopo] UV transfer mismatch: {len(src_uv)} vs {len(dst_uv)} loops")
+    buf = np.empty(len(src_uv) * 2, np.float32)
+    src_uv.foreach_get("uv", buf)
+    dst_uv.foreach_set("uv", buf)
+    bpy.data.objects.remove(twin, do_unlink=True)
+    uv_cov = 0.0
+    for p in low.data.polygons:
+        L = [dst_uv[li].uv for li in p.loop_indices]
+        for k in range(1, len(L) - 1):
+            x0, x1, x2 = L[0], L[k], L[k + 1]
+            uv_cov += abs((x1[0] - x0[0]) * (x2[1] - x0[1]) - (x2[0] - x0[0]) * (x1[1] - x0[1])) / 2
+    print(f"[retopo] UVs: smoothed x{a.uv_smooth} unwrap, concave repack, "
+          f"atlas coverage {uv_cov:.3f}", flush=True)
+    bpy.ops.object.select_all(action="DESELECT")
+    low.select_set(True)
+    bpy.context.view_layer.objects.active = low
 
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
@@ -163,13 +285,24 @@ def main():
     low.data.materials.append(mat)
 
     images = {}
-    for pass_name, colorspace, noncolor in (("base_color", "sRGB", False), ("normal", "Non-Color", True)):
+    # base_color and normal were the only passes until the adversarial review. TRELLIS.2 also
+    # emits a metallic-roughness map, and the bake threw it away and shipped a constant 0.5 -
+    # for Rowan the generator had asked for 0.92 (near-matte cloth), and Wren's leather, denim,
+    # skin and buckles were all flattened to the same sheen. "rm" carries that data through;
+    # "ao" adds the ambient occlusion every shipped game character carries, baked from the
+    # high-resolution surface so clothing creases read without any lighting.
+    FILL = {"base_color": (0.35, 0.33, 0.30, 1.0), "normal": (0.5, 0.5, 1.0, 1.0),
+            "rm": (1.0, 0.9, 0.0, 1.0), "ao": (1.0, 1.0, 1.0, 1.0)}
+    for pass_name, colorspace, noncolor in (("base_color", "sRGB", False),
+                                            ("normal", "Non-Color", True),
+                                            ("rm", "Non-Color", True),
+                                            ("ao", "Non-Color", True)):
         im = bpy.data.images.new(f"{pass_name}", a.bake_res, a.bake_res,
                                  alpha=False, float_buffer=False, is_data=noncolor)
         # Pre-fill, then bake without clearing. A ray that misses leaves its texel untouched;
         # left black, a normal texel decodes to a garbage direction and lights up as a white
-        # specular streak. Flat (0.5, 0.5, 1.0) is the harmless default.
-        fill = (0.5, 0.5, 1.0, 1.0) if pass_name == "normal" else (0.35, 0.33, 0.30, 1.0)
+        # specular streak, and a black ao texel is a hole. The fills are the harmless defaults.
+        fill = FILL[pass_name]
         buf = np.tile(np.array(fill, dtype=np.float32), a.bake_res * a.bake_res)
         im.pixels.foreach_set(buf)
         images[pass_name] = im
@@ -204,36 +337,104 @@ def main():
     # surface has no diffuse component, so a DIFFUSE bake returns garbage exactly where the
     # jacket is most metallic. Re-wiring the source material to emit its own base colour
     # bakes the texture itself, with no shading in the result.
-    saved = []
-    for m in list(high.data.materials):
-        if not m or not m.use_nodes:
-            continue
-        nt_h = m.node_tree
-        out_node = next((n for n in nt_h.nodes if n.type == "OUTPUT_MATERIAL"), None)
-        pbsdf = next((n for n in nt_h.nodes if n.type == "BSDF_PRINCIPLED"), None)
-        if out_node is None or pbsdf is None:
-            continue
-        link = out_node.inputs["Surface"].links[0] if out_node.inputs["Surface"].links else None
-        saved.append((nt_h, out_node, link.from_socket if link else None))
-        emit = nt_h.nodes.new("ShaderNodeEmission")
-        emit.name = "_bake_emit"
-        src = pbsdf.inputs["Base Color"]
-        if src.links:
-            nt_h.links.new(src.links[0].from_socket, emit.inputs["Color"])
-        else:
-            emit.inputs["Color"].default_value = src.default_value
-        nt_h.links.new(emit.outputs["Emission"], out_node.inputs["Surface"])
+    def emit_bake(pass_name, colour_of):
+        """Rewire every source material to emit colour_of(node_tree, bsdf) -> socket, bake it,
+        then restore the original shading. Emitting a value bakes the value itself, with no
+        lighting in it - the same trick that keeps metallic regions out of the albedo bake."""
+        saved = []
+        for m in list(high.data.materials):
+            if not m or not m.use_nodes:
+                continue
+            nt_h = m.node_tree
+            out_node = next((n for n in nt_h.nodes if n.type == "OUTPUT_MATERIAL"), None)
+            pbsdf = next((n for n in nt_h.nodes if n.type == "BSDF_PRINCIPLED"), None)
+            if out_node is None or pbsdf is None:
+                continue
+            link = out_node.inputs["Surface"].links[0] if out_node.inputs["Surface"].links else None
+            saved.append((nt_h, out_node, link.from_socket if link else None))
+            emit = nt_h.nodes.new("ShaderNodeEmission")
+            emit.name = "_bake_emit"
+            nt_h.links.new(colour_of(nt_h, pbsdf), emit.inputs["Color"])
+            nt_h.links.new(emit.outputs["Emission"], out_node.inputs["Surface"])
+        bake(pass_name, "EMIT", high)
+        for nt_h, out_node, from_sock in saved:        # restore the original shading
+            if from_sock is not None:
+                nt_h.links.new(from_sock, out_node.inputs["Surface"])
+            for name in ("_bake_emit", "_bake_rgb", "_bake_combine"):
+                n = nt_h.nodes.get(name)
+                if n:
+                    nt_h.nodes.remove(n)
 
-    bake("base_color", "EMIT", high)
+    def socket_or_constant(nt_h, sock, name):
+        """The socket feeding `sock`, or an RGB node holding its constant value."""
+        if sock.links:
+            return sock.links[0].from_socket
+        rgb = nt_h.nodes.new("ShaderNodeRGB")
+        rgb.name = name
+        v = sock.default_value
+        v = (v, v, v, 1.0) if isinstance(v, float) else tuple(v)
+        rgb.outputs[0].default_value = v
+        return rgb.outputs[0]
 
-    for nt_h, out_node, from_sock in saved:            # restore the original shading
-        if from_sock is not None:
-            nt_h.links.new(from_sock, out_node.inputs["Surface"])
-        n = nt_h.nodes.get("_bake_emit")
-        if n:
-            nt_h.nodes.remove(n)
+    def base_colour(nt_h, pbsdf):
+        return socket_or_constant(nt_h, pbsdf.inputs["Base Color"], "_bake_rgb")
+
+    def rough_metal(nt_h, pbsdf):
+        # glTF packs roughness in G and metallic in B; bake straight into that layout
+        comb = nt_h.nodes.new("ShaderNodeCombineColor")
+        comb.name = "_bake_combine"
+        comb.inputs[0].default_value = 1.0
+        for chan, key in ((1, "Roughness"), (2, "Metallic")):
+            s = pbsdf.inputs[key]
+            if s.links:
+                nt_h.links.new(s.links[0].from_socket, comb.inputs[chan])
+            else:
+                comb.inputs[chan].default_value = float(s.default_value)
+        return comb.outputs[0]
+
+    emit_bake("base_color", base_colour)
+    emit_bake("rm", rough_metal)
 
     bake("normal", "NORMAL", dense or high)
+
+    # Ambient occlusion from the high-resolution surface. The distance is local on purpose: at
+    # the default of 10 units every point on the torso "sees" the arms and the whole body goes
+    # grey. A few percent of body height captures creases, the underside of collars and the
+    # join between jacket and trousers, which is what AO is for.
+    height = float(max(low.dimensions))
+    sc.world = sc.world or bpy.data.worlds.new("bake_world")
+    sc.world.light_settings.distance = height * a.ao_distance
+    prev_samples = sc.cycles.samples
+    sc.cycles.samples = a.ao_samples
+
+    def ao_baked_mean():
+        """Mean occlusion over texels the bake actually wrote (the fill is exactly 1.0)."""
+        v = np.empty(a.bake_res * a.bake_res * 4, np.float32)
+        images["ao"].pixels.foreach_get(v)
+        v = v[0::4]
+        w = v < 0.9999
+        return float(v[w].mean()) if w.any() else 1.0, float(w.mean())
+
+    bake("ao", "AO", dense or high)
+    ao_mean, ao_cov = ao_baked_mean()
+    # Cycles on Metal can page-fault mid-bake ("Caused GPU Address Fault Error") and return a
+    # corrupted image rather than an error - it happened twice here, both times on this pass,
+    # leaving a mean occlusion of 0.34 with the darkest 5% at pure black. A GPU fault does not
+    # raise, so the only defence is to check the result: real character AO sits well above 0.5
+    # on average. If it does not, the pass is redone on the CPU.
+    if ao_mean < 0.5:
+        print(f"[retopo] AO bake looks corrupted (mean {ao_mean:.3f} over {ao_cov:.1%} of the atlas) "
+              f"- redoing it on the CPU", flush=True)
+        images["ao"].pixels.foreach_set(np.ones(a.bake_res * a.bake_res * 4, np.float32))
+        sc.cycles.device = "CPU"
+        bake("ao", "AO", dense or high)
+        sc.cycles.device = "GPU"
+        ao_mean, ao_cov = ao_baked_mean()
+        if ao_mean < 0.5:
+            raise SystemExit(f"[retopo] AO still implausible on CPU (mean {ao_mean:.3f}); "
+                             "refusing to ship it")
+    print(f"[retopo] AO mean {ao_mean:.3f} over {ao_cov:.1%} of the atlas", flush=True)
+    sc.cycles.samples = prev_samples
 
     # wire the baked maps into the material
     tex = nt.nodes["base_color"]
@@ -265,6 +466,84 @@ def main():
     nrm.update()
     print(f"[retopo] normal map: repaired {n_dead:,} unbaked texels "
           f"({100*n_dead/len(px):.1f}%)", flush=True)
+
+    # ---- selective median on the normal map -----------------------------------------------------
+    # The bake faithfully records the source's own tessellation noise as isolated outlier texels,
+    # which render as speckle. This used to be a one-off command typed into a terminal and
+    # applied to Rowan by hand - Wren never got it. A 5x5 median replaces only texels that
+    # disagree with their neighbourhood by more than 12 levels, so creases and seams survive;
+    # the result is renormalised because a median of unit vectors is not a unit vector.
+    if a.normal_median:
+        from numpy.lib.stride_tricks import sliding_window_view
+        R2 = a.bake_res
+        nv = np.empty(R2 * R2 * 4, np.float32)
+        images["normal"].pixels.foreach_get(nv)
+        nv = nv.reshape(R2, R2, 4)
+        rgb = nv[:, :, :3]
+        med = np.empty_like(rgb)
+        pad = np.pad(rgb, ((2, 2), (2, 2), (0, 0)), mode="edge")
+        for r0 in range(0, R2, 256):                    # chunked: a full 5x5 window stack is ~5 GB
+            r1 = min(R2, r0 + 256)
+            win = sliding_window_view(pad[r0:r1 + 4], (5, 5), axis=(0, 1))
+            med[r0:r1] = np.median(win.reshape(r1 - r0, R2, 3, 25), axis=3)
+        swap = (np.abs(rgb - med).max(axis=2) > 12 / 255)[:, :, None]
+        out = np.where(swap, med, rgb)
+        n3 = out * 2.0 - 1.0
+        n3 /= np.maximum(np.linalg.norm(n3, axis=2, keepdims=True), 1e-6)
+        n3[:, :, 2] = np.maximum(n3[:, :, 2], 0.25)     # nothing inward-facing
+        n3 /= np.maximum(np.linalg.norm(n3, axis=2, keepdims=True), 1e-6)
+        nv[:, :, :3] = (n3 + 1.0) * 0.5
+        images["normal"].pixels.foreach_set(nv.reshape(-1))
+        images["normal"].update()
+        print(f"[retopo] normal median: replaced {100*swap.mean():.2f}% of texels", flush=True)
+
+    # ---- pack occlusion / roughness / metallic into one texture, glTF's layout ---------------
+    R = a.bake_res
+    ao = np.empty(R * R * 4, np.float32)
+    images["ao"].pixels.foreach_get(ao)
+    ao = ao.reshape(R, R, 4)[:, :, 0]
+    # AO at a few dozen samples is grainy; it is also a low-frequency signal, so a small blur
+    # removes the grain without softening anything that should be sharp.
+    k = max(1, R // 1024)
+    for axis in (0, 1):
+        acc = np.zeros_like(ao)
+        for d in range(-k, k + 1):
+            acc += np.roll(ao, d, axis=axis)
+        ao = acc / (2 * k + 1)
+    rm = np.empty(R * R * 4, np.float32)
+    images["rm"].pixels.foreach_get(rm)
+    rm = rm.reshape(R, R, 4)
+    orm_px = np.stack([ao, rm[:, :, 1], rm[:, :, 2], np.ones_like(ao)], axis=2)
+    orm = bpy.data.images.new("orm", R, R, alpha=False, float_buffer=False, is_data=True)
+    orm.pixels.foreach_set(orm_px.reshape(-1))
+    orm.update()
+    images["orm"] = orm
+    used = np.asarray(orm_px[:, :, 1] < 0.999) | np.asarray(orm_px[:, :, 2] > 0.001)
+    print(f"[retopo] ORM: ao mean {ao.mean():.3f} (p5 {np.percentile(ao,5):.3f}), "
+          f"roughness p5/p50/p95 {np.percentile(rm[:,:,1],5):.2f}/{np.percentile(rm[:,:,1],50):.2f}/"
+          f"{np.percentile(rm[:,:,1],95):.2f}, metallic max {rm[:,:,2].max():.2f}", flush=True)
+
+    orm_node = nt.nodes.new("ShaderNodeTexImage")
+    orm_node.image = orm
+    orm_node.name = "orm"
+    sep = nt.nodes.new("ShaderNodeSeparateColor")
+    nt.links.new(orm_node.outputs["Color"], sep.inputs[0])
+    nt.links.new(sep.outputs[1], bsdf.inputs["Roughness"])
+    nt.links.new(sep.outputs[2], bsdf.inputs["Metallic"])
+    # The glTF exporter writes occlusionTexture from a node group named "glTF Material Output"
+    # with an "Occlusion" input; wired from the same image, it shares one texture with
+    # metallicRoughness instead of shipping a second file.
+    grp = bpy.data.node_groups.get("glTF Material Output")
+    if grp is None:
+        grp = bpy.data.node_groups.new("glTF Material Output", "ShaderNodeTree")
+        grp.interface.new_socket("Occlusion", in_out="INPUT", socket_type="NodeSocketFloat")
+    gnode = nt.nodes.new("ShaderNodeGroup")
+    gnode.node_tree = grp
+    nt.links.new(sep.outputs[0], gnode.inputs["Occlusion"])
+    for name in ("rm", "ao"):                         # intermediates, not shipped
+        n = nt.nodes.get(name)
+        if n:
+            nt.nodes.remove(n)
 
     out_dir = os.path.dirname(os.path.abspath(a.out))
     for name, im in images.items():

@@ -7,7 +7,7 @@ __pycache__/
 *.pyc
 .venv/
 
-# pipeline working files: multi-GB intermediates and model weights
+# pipeline working files: multi-GB intermediates, model weights, upstream clones
 work/
 models/
 vendor/
@@ -15,5 +15,14 @@ logs/
 *.blend
 *.blend1
 
-# the base64 web build is generated from character.glb by blender/web_export.py
+# generated web payloads (rebuilt from the character .glb by tools/build_web.py)
+web/*.glb
 web/model*.js
+
+# local experiments that are not part of the product
+distill/
+viewer/
+report.html
+
+# built characters (published copies live in docs/)
+out/

@@ -1,0 +1,10 @@
+{
+  "about": "Default clip set, by Mixamo file hash in the jasongzy/Mixamo mirror. Each was chosen by motion and posture features (blender/scan_mixamo.py, blender/scan_posture.py) and checked to loop cleanly in the source (blender/loop_quality.py: walk and run both close with a 0.00x seam). Replace any entry with your own Mixamo download to change the character's moves.",
+  "clips": {
+    "idle": "143d71a6e2e5896c4898437f7d700b0e.fbx",
+    "walk": "1c287bc16d5848a3aed9b3ed45a6eb99.fbx",
+    "run":  "1742210a6aadf79943aee5f7b46c50be.fbx",
+    "jump": "18a7360190366a0fe6e37666caf09858.fbx",
+    "wave": "19d1ded9a44672ea47e82f6fc1e34bf4.fbx"
+  }
+}

@@ -94,6 +94,9 @@ bpy.ops.export_scene.gltf(
     export_image_format="AUTO",
     export_morph=True,
     export_morph_normal=False,
+    # start every clip at t = 0: keyed from frame 1, a clip otherwise begins at 1/30 s and a
+    # looping player holds the first pose through that gap - a frozen frame every cycle
+    export_anim_slide_to_zero=True,
 )
 size = os.path.getsize(a.out) / 1e6
 print(f"[web] {before:,} -> {after:,} polygons, {size:.1f} MB -> {a.out}", flush=True)
