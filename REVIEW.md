@@ -218,7 +218,108 @@ own skin, a vertex must be genuinely close to it, and a rule that would move mos
 declines to move any of it. It also stops moving half of Rowan's hair, which it had been doing
 harmlessly since hair and face share one skinned mesh.
 
+# Third pass — built by hand, then turned into rules
+
+The second pass fixed animation. This one started from the other end: a character was built by
+hand in Blender - mesh, rig, weights, face, texture - by someone looking at every step at close
+range, and each decision that made it better was turned into a rule the pipeline applies. Then
+every character was rebuilt on those rules, and three new ones were made to prove they hold
+across art styles: Mara (realistic), Aoi (anime) and Pip (stylised cartoon). The new characters
+found most of what follows; none of it showed in a turntable.
+
+## Status of the second review's "out of reach"
+
+| | status |
+|---|---|
+| fused hands, no finger bones | fixed — hands cut out of the solid and modelled, 15 finger bones per hand in the Mixamo layout |
+| no face rig | fixed — jaw, mouth cut open, blink L/R, smile, brows, pucker |
+| six clips | fixed — 18: idle, walk, jog, run, sprint, back-pedals, strafes, turns, crouch idle/walk, jump, fall, land, wave |
+| hair a solid mass | improved — closed only where hair is nearest; spring chains where it hangs free (see 33) |
+
+## New findings
+
+**26. The side view's depth was mirrored.** `skeleton.py` flipped the sign of the 90-degree
+view's horizontal axis, so every joint's depth came out mirrored front to back. On slim
+characters the refinement pulled joints inside their limbs within its 7 cm search and hid it; on
+Aoi the legs were 11 cm behind themselves and no limb could be traced at all.
+
+**27. The pose model reads drawn bodies wrong.** Trained on photographs, it put Aoi's wrists at
+her jacket cuffs, 20+ cm from her fingertips, and from the side put both wrists on her ponytail.
+Joints are now found from the geometry: each limb traced through the solid to its tip, depth from
+the solid, the wrist where the palm rounds into the wrist or the hand enters its sleeve (Pip's
+cartoon hands have separate fingers, so "the thinnest section" was a finger), the elbow by
+proportion when upper arm and forearm disagree, the midline from the legs (the deepest point
+across Aoi's neck slid 9 cm into her ponytail).
+
+**28. The face was skinned to the neck.** The head joint is the ear midpoint - the pivot a nod
+turns about - and the face hangs below it. Geodesic weights gave Juno's nose 52% neck, her mouth
+61%, her chin 73%, and even her crown 22%: every head turn in every clip moved the hair and left
+the face behind. The head is now rigid above a line from under the chin to the nape, the chin
+measured from the face's profile (a crease between the lips dips back for a centimetre and
+comes forward again; the end of the chin does not).
+
+**29. Wren's hair followed her spine.** The parser labelled her dark scalp hair "hat", the
+accessory rule bound accessories to the torso, and 76% of her crown was neck and spine. The
+rigid head fixes the binding; the labels are fixed too - hair the parser calls "bag" or "hat" is
+relabelled by colour when it joins the scalp's hair (her braid read as satchel strap).
+
+**30. Every face shipped with its eyes shut.** Blender 5 creates shape keys at 1.0, glTF writes
+each key's value as the mesh's default morph weight, and every face rig loaded in an engine
+with all five shapes applied at once. The playground drove the morphs each frame and hid it.
+
+**31. Opening the jaw stretched the lower lip into a band.** A generated face is one closed
+surface with lips painted on it. The mesh is now cut along the seam between the lips (a new
+landmark: the darkest row across the mouth) and a mouth pouch is built behind the cut.
+
+**32. The face finder put Aoi's mouth on her eyelids.** On a drawn face the cheeks stand further
+forward than the nose, so "the most forward point below the eyes" was a cheek at eye level, and
+the mouth was searched below that. Landmarks are now found from the bottom up - chin (a 2-3 cm
+step back to the neck), nose, mouth - with the midline from the ears (the model's eye marks sat
+2 cm to one side of her face), and a mouth or eye that fails its order-and-size checks switches
+its shapes off instead of shipping them in the wrong place.
+
+**33. A chain on a fused part tears it.** Wren's satchel swung on a spring chain, but it is one
+surface with her hip: a 10-degree swing stretched 163 edges past twice their length (worst 19x).
+Chains are now built only for parts that meet the body at their root alone. Aoi's hair, Mara's
+braid and Wren's braid and bag were generated lying against the body and stay rigid. Carving a
+gap between a braid and a hood it sits in was tried and made hollow pockets, not a separation.
+
+**34. The face texture was as soft as the reference's face was small.** A full-body reference
+gives a face about a hundred pixels; the texture has room for ~270 texels there. The face region
+is now enlarged and detailed by image-to-image (strength 0.28 - at 0.35 the eyes changed shape)
+and read through the front view's own alignment; a separate close-up camera aligned on its own
+landed a few pixels off and doubled the eyes where the two were blended.
+
+**35. One hand could be a quarter bigger than the other.** Each side's measurement fails in its
+own way and each was clamped on its own (Aoi: 17.5 and 21.9 cm). Both hands now get one length,
+the median of the two measurements and the adult norm.
+
+**36. A rebuild from a late stage resized the character.** `--height` defaulted to 1.75 m and
+was not recorded, so rerunning Juno from the rig stage made her 1.75 m. Style, height and prompt
+are now recorded with the character.
+
+**37. A face flow gave Pip a second pair of eyes.** The finer flow that lands a photograph's
+features on the generator's geometry (it stopped Juno's lips being dragged down her chin) moves
+them 1-2% of the figure's height on realistic characters. On Pip and Aoi the generated face
+disagrees with the reference by 3.4% and 4.7%, and warping across that painted Pip's eyes twice
+and tore his face at the nose, where its crop ended. It is now left out past 2.5%.
+
+**38. Drawn eyes are not blobs the way photographed ones are.** A drawn eye is lashes, iris and
+highlight, often under a fringe of the same colour family, and big enough to run off a window
+sized for a realistic eye. On drawn styles the eye is the largest blob that is not the hair's
+colour, a blob may touch its window, and the window reaches further down (the pose model marked
+Pip's brows). Eyes it cannot find are not guessed at: no blinks, and no mouth - on a drawn face
+the mouth is placed from the eyes and nose, and a guessed eye once put Aoi's mouth on her chin.
+
+## Tried and dropped
+
+- **Hair cards.** 637 alpha-tested strands over Juno's bob softened the silhouette but speckled
+  inside the hair, ran off it across an eye, and shimmer without temporal anti-aliasing (the
+  playground has none). The solid hair looked better at game distance. `blender/hair_cards.py` is
+  kept as an experiment.
+
 ## Still out of reach
 
-Hands are fused, so there are no finger bones; there is no face rig; six clips are a working set,
-not a full locomotion set; text-to-motion waits on a weight download. See CONTRIBUTING.md.
+Hair and bags generated lying against the body cannot swing without tearing - the fix is
+upstream, in how they are generated. Generating a motion video needs a video model that is not
+installed; `pipeline/video_motion.py` covers video to motion. See CONTRIBUTING.md.

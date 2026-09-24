@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>CharForge Playground</title>
 <meta name="description" content="Drive the generated character around a world.">
 <style>
@@ -91,15 +92,15 @@
 
 <div id="title" class="hud">
   <h1>CharForge Playground</h1>
-  <p>Game characters generated from a text prompt or an image on a laptop &mdash; mesh, PBR
-  textures, skeleton, skinning and animation all local. Pick one from the roster, bottom right,
-  download its package, or see what it takes to make your own. Walk, jog and run are Mixamo
-  captures retargeted with the feet planted: the shoe touching the floor slides under 3% of
-  ground speed, and the gaits blend by speed on one stride clock.</p>
-  <p>Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers
-  apply it linearly, which hollows out the inside of every bent joint. Blending the rotations as
-  rotations instead takes jacket faces collapsed below half their rest area from 8.8% to 6.1%
-  over the walk. Toggle it to see the difference.</p>
+  <p>Game characters generated from a text prompt or an image on a laptop, in three art styles
+  &mdash; anime, realistic and stylised &mdash; by one local pipeline: the solid, modelled hands
+  with finger bones, skinning, a face that blinks and talks (hold <kbd>T</kbd>), PBR textures
+  and 18 retargeted clips. Walk, jog, run and sprint blend on one stride clock; strafes,
+  back-pedals, crouch, turns in place, jumps and falls are the controller's own clips, planted
+  so the shoe on the floor slides a few percent of ground speed at most.</p>
+  <p>Deformation uses <b>dual quaternion skinning</b>: blending rotations as rotations keeps
+  bent joints from hollowing out (jacket faces collapsed below half their area: 8.8% linear,
+  6.1% dual quaternion, over the walk). Toggle it to see the difference.</p>
   <div class="btns">
     <button id="b-dqs" aria-pressed="true">Dual-quat skin</button>
     <button id="b-parts" aria-pressed="false">Show parts</button>
@@ -119,11 +120,14 @@
 
 <div id="keys" class="hud">
   <table>
-    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move</td></tr>
-    <tr><td><kbd>Shift</kbd></td><td>run</td></tr>
-    <tr><td><kbd>C</kbd></td><td>walk</td></tr>
+    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move (jog)</td></tr>
+    <tr><td><kbd>Shift</kbd></td><td>sprint</td></tr>
+    <tr><td><kbd>X</kbd></td><td>walk</td></tr>
+    <tr><td><kbd>C</kbd></td><td>crouch</td></tr>
+    <tr><td><kbd>Q</kbd> / <kbd>right-drag</kbd></td><td>aim: strafe &amp; backpedal</td></tr>
     <tr><td><kbd>Space</kbd></td><td>jump</td></tr>
     <tr><td><kbd>E</kbd></td><td>wave</td></tr>
+    <tr><td><kbd>T</kbd> (hold)</td><td>talk</td></tr>
     <tr><td><kbd>drag</kbd></td><td>orbit camera</td></tr>
   </table>
 </div>
@@ -158,12 +162,14 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
 .venv/bin/python tools/check_env.py
 
 .venv/bin/python charforge.py make --prompt "a knight in weathered plate armour" --name knight
+.venv/bin/python charforge.py make --prompt "an anime swordswoman" --style anime --name kai
 .venv/bin/python charforge.py make --image my_concept.png --name hero --height 1.85</pre>
-    <p>About fifteen minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
+    <p>About forty minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
       engine convention: real height in metres, origin on the floor under the pelvis, a
-      Mixamo-named skeleton so any Mixamo animation applies to it, glTF and an FBX with three
-      LODs, the texture maps each engine reads &mdash; plus a manifest with the collision capsule,
-      clip timing, ground speeds and jump timing a character controller needs.</p>
+      Mixamo-named skeleton with fingers and a jaw so any Mixamo animation applies to it, face
+      morph targets, glTF and an FBX with three LODs, the texture maps each engine reads &mdash;
+      plus a manifest with the collision capsule, clip timing, ground speeds and directions, the
+      face and the art style a character controller and a renderer need.</p>
     <div class="genrow">
       <a class="btn" id="gen-repo" href="https://github.com/majieddd/charforge" target="_blank" rel="noopener">Open the repository</a>
       <a class="btn ghost" href="https://github.com/majieddd/charforge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">What&rsquo;s next / how to help</a>
@@ -207,6 +213,7 @@ const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 400);
 camera.position.set(4.2, 3.0, 5.6);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enablePan = false;       // the right button aims (strafe mode) instead
 controls.minDistance = 2; controls.maxDistance = 22;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.target.set(0, 1, 0);
@@ -385,6 +392,44 @@ function patchDQS(mat) {
 }
 
 
+// ---- anime shading ------------------------------------------------------------------------
+// A character packaged in the anime style is drawn the way cel-shaded games draw one: its base
+// colour through a three-step light ramp (MeshToonMaterial), and an ink outline from an inverted
+// hull - a copy of the skinned mesh pushed out along its normals and drawn back-faced in dark ink.
+// The hull shares the skeleton and the morph targets, so it bends, blinks and talks with the body.
+const TOON_RAMP = (() => {
+  const d = new Uint8Array([70, 70, 70, 255, 170, 170, 170, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(d, 3, 1, THREE.RGBAFormat);
+  t.magFilter = t.minFilter = THREE.NearestFilter; t.needsUpdate = true; return t;
+})();
+function toonify(root) {
+  const hulls = [];
+  root.traverse((o) => {
+    if (!o.isSkinnedMesh) return;
+    const src = origMats.get(o) || o.material;
+    const toon = new THREE.MeshToonMaterial({ map: src.map || null, color: src.color ? src.color.clone() : 0xffffff,
+                                              gradientMap: TOON_RAMP, side: src.side ?? THREE.FrontSide });
+    patchDQS(toon);
+    origMats.set(o, toon); dqsMats.set(o, toon); o.material = toon;
+    const ink = new THREE.MeshBasicMaterial({ color: 0x1b1d26, side: THREE.BackSide });
+    ink.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <skinning_pars_vertex>', '#include <skinning_pars_vertex>\n' + DQ_PARS)
+        .replace('#include <skinnormal_vertex>', DQ_NORMAL)
+        .replace('#include <skinning_vertex>', DQ_SKIN + '\ntransformed += normalize(objectNormal) * 0.0022;');
+    };
+    ink.customProgramCacheKey = () => 'cf-ink-v1';
+    const hull = new THREE.SkinnedMesh(o.geometry, ink);
+    hull.bind(o.skeleton, o.bindMatrix);
+    hull.morphTargetInfluences = o.morphTargetInfluences;      // blinks and speech reach the ink too
+    hull.morphTargetDictionary = o.morphTargetDictionary;
+    hull.frustumCulled = false; hull.castShadow = false;
+    o.parent.add(hull); hull.position.copy(o.position); hull.quaternion.copy(o.quaternion); hull.scale.copy(o.scale);
+    hulls.push(hull);
+  });
+  return hulls;
+}
+
 // ---- the character roster --------------------------------------------------------------
 // Generated by tools/build_site.py from each character's package in out/<name>/: its manifest,
 // its thumbnail, and how its bytes arrive - a streamed .glb on GitHub Pages, a lazily imported
@@ -416,7 +461,7 @@ async function fetchGLB(url, onProgress) {
 }
 
 // ---- loading and swapping ----------------------------------------------------------------
-let activeId = null, loading = false;
+let activeId = null, loading = false, loadingSpec = null;
 
 function disposeCharacter() {
   if (mixer) { mixer.stopAllAction(); mixer.uncacheRoot(mixer.getRoot()); mixer = null; }
@@ -470,9 +515,11 @@ function buildCharacter(gltf) {
     a.enabled = true; a.setEffectiveWeight(0); a.play();
     actions[clip.name] = a;
   }
-  // Locomotion and jump clocks are driven by the controller, not the mixer: walk, jog and run
-  // share one stride clock so they can be blended, and the jump's clock follows the physics.
-  for (const n of ['walk', 'jog', 'run', 'jump']) if (actions[n]) actions[n].timeScale = 0;
+  // Locomotion, jump, landing, turns and emotes are driven by the controller, not the mixer: the
+  // moving clips share one stride clock so they can be blended, the jump's clock follows the
+  // physics, and a turn's clock decides when the capsule takes over its rotation. Idles and the
+  // fall loop just play.
+  for (const n of DRIVEN) if (actions[n]) actions[n].timeScale = 0;
   if (actions.idle) actions.idle.setEffectiveWeight(1);
 
   // A character built by this pipeline stands on its own origin. The playground used to measure
@@ -486,6 +533,10 @@ function buildCharacter(gltf) {
                  'compensating. Assets from the current pipeline stand on their origin.');
     model.userData.groundFix = -box.min.y;
   } else model.userData.groundFix = 0;
+
+  if (loadingSpec?.manifest?.style === 'anime') toonify(model);
+  setupSprings(model, loadingSpec?.manifest?.springs);
+  setupFace(model, loadingSpec?.manifest?.face);
 
   skeletonHelper = new THREE.SkeletonHelper(model);
   skeletonHelper.visible = !!(skeletonHelper && $('b-skel').getAttribute('aria-pressed') === 'true');
@@ -506,10 +557,130 @@ function buildCharacter(gltf) {
   // how the cloth-addon bug was found (17 targets loaded, every influence pinned at zero).
   // `tick` advances the whole simulation by a fixed step, independent of the frame loop - so the
   // controller can be tested deterministically even where requestAnimationFrame is throttled.
-  window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick,
+  window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick, controls,
+                  setFollow: (on) => { followCam = on; },
                   get activeId() { return activeId; }, get clipInfo() { return clipInfo; }, select,
                   jump: () => { wantJump = true; }, wave: () => { wantWave = true; },
-                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); }, footAudit };
+                  crouch: () => { wantCrouch = true; }, aim: (on = true) => { ctl.strafeOn = on; },
+                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); updateFace(dt); updateSprings(dt); }, footAudit,
+                  get face() { return face; },
+                  get springs() { return springs; } };
+}
+
+// ---- face ---------------------------------------------------------------------------
+// The face rig the pipeline builds: a jaw bone and blink / smile / brows / pucker morph targets.
+// Clips never key them, so a character stays alive on top of any animation: it blinks every few
+// seconds, talks while T is held (jaw and pucker on a syllable rhythm), and smiles while waving.
+let face = null;
+const _qj = new THREE.Quaternion(), _ax = new THREE.Vector3(1, 0, 0);
+function setupFace(root, spec) {
+  face = null;
+  const meshes = [];
+  let jaw = null;
+  root.traverse((o) => {
+    if (o.isMesh && o.morphTargetDictionary && Object.keys(o.morphTargetDictionary).length) meshes.push(o);
+    if (o.isBone && o.name === 'jaw') jaw = o;
+  });
+  if (!meshes.length && !jaw) return;
+  for (const m of meshes) m.morphTargetInfluences?.fill(0);      // neutral until something drives them
+  face = { meshes, jaw, openDeg: spec?.jaw_open_deg || 18, next: 1.2, t: -1, talk: 0, ph: 0, smile: 0 };
+}
+function morph(name, v) {
+  for (const m of face.meshes) { const i = m.morphTargetDictionary[name]; if (i !== undefined) m.morphTargetInfluences[i] = v; }
+}
+function updateFace(dt) {
+  if (!face) return;
+  face.next -= dt;
+  if (face.next <= 0 && face.t < 0) { face.t = 0; face.next = 2 + Math.random() * 4; }
+  let b = 0;
+  if (face.t >= 0) {
+    face.t += dt;
+    b = face.t < 0.07 ? face.t / 0.07 : face.t < 0.17 ? 1 - (face.t - 0.07) / 0.1 : 0;
+    if (face.t >= 0.17) face.t = -1;
+  }
+  morph('blink_L', b); morph('blink_R', b);
+  face.talk += ((keys['t'] ? 1 : 0) - face.talk) * Math.min(1, dt * 8);
+  face.ph += dt * (4.5 + 1.5 * Math.sin(performance.now() / 650));
+  const open = face.talk * Math.max(0, Math.sin(face.ph * Math.PI)) ** 0.8 * (0.45 + 0.55 * Math.abs(Math.sin(face.ph * 1.7)));
+  if (face.jaw && open > 1e-3) face.jaw.quaternion.multiply(_qj.setFromAxisAngle(_ax, open * face.openDeg * Math.PI / 180));
+  morph('pucker', face.talk * 0.4 * Math.max(0, Math.sin(face.ph * 0.9 + 1.0)));
+  face.smile += ((ctl.mode === 'emote' ? 1 : 0) - face.smile) * Math.min(1, dt * 4);
+  morph('smile', 0.85 * face.smile); morph('brows_up', 0.5 * face.smile);
+}
+
+// ---- spring bones -------------------------------------------------------------
+// Chains the pipeline hung on whatever swings - a ponytail, a braid, a bag. The clips key them at
+// rest; this simulation moves them, the way VRM's spring bones do (Unity and Unreal both have
+// equivalents, and the manifest carries the same settings for them): each bone's tail is pulled
+// back toward where the animation points it (stiffness), keeps part of its last motion (drag),
+// falls (gravity), keeps its length, and is pushed out of the body's collider spheres.
+let springs = null;
+const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _sc = new THREE.Vector3();
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qc = new THREE.Quaternion();
+function setupSprings(root, spec) {
+  springs = null;
+  if (!spec || !spec.chains || !spec.chains.length) return;
+  const byName = {};
+  root.traverse((o) => { if (o.isBone) byName[o.name] = o; });
+  const find = (n) => byName[n] || byName[n.replace(/[\[\]\.:\/]/g, '')];
+  root.updateMatrixWorld(true);
+  const chains = [];
+  for (const ch of spec.chains) {
+    const bones = ch.bones.map(find);
+    if (bones.some((b) => !b)) continue;
+    const pos = bones.map((b) => b.getWorldPosition(new THREE.Vector3()));
+    const joints = bones.map((b, i) => {
+      // the bone's direction at rest, in its own space: toward the next joint (the last bone
+      // carries on the way the one before it points)
+      const wdir = i + 1 < pos.length ? pos[i + 1].clone().sub(pos[i]) : pos[i].clone().sub(pos[i - 1] || b.parent.getWorldPosition(new THREE.Vector3()));
+      wdir.normalize();
+      const axis = wdir.applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert());
+      return { bone: b, axis, len: ch.lengths_m[i], tail: new THREE.Vector3(), prev: new THREE.Vector3() };
+    });
+    chains.push({ joints, stiff: ch.stiffness, drag: ch.drag, grav: ch.gravity, r: ch.radius_m });
+  }
+  const colliders = (spec.colliders || []).map((c) => {
+    const bone = find(c.bone);
+    // a sphere around the middle of its bone (the head's around the skull, not the neck)
+    const child = bone && bone.children.find((k) => k.isBone);
+    return { bone, child, r: c.radius_m };
+  }).filter((c) => c.bone);
+  springs = { chains, colliders, fresh: true };
+}
+function resetSprings() { if (springs) springs.fresh = true; }
+function updateSprings(dt) {
+  if (!springs || !model) return;
+  dt = Math.min(Math.max(dt, 1e-3), 1 / 30);
+  model.updateMatrixWorld(true);
+  const cols = springs.colliders.map((c) => {
+    const p = c.bone.getWorldPosition(new THREE.Vector3());
+    if (c.child) p.add(c.child.getWorldPosition(_sc)).multiplyScalar(0.5);
+    return [p, c.r];
+  });
+  for (const ch of springs.chains) {
+    for (const j of ch.joints) {
+      const b = j.bone;
+      const head = b.getWorldPosition(new THREE.Vector3());
+      const parentQ = b.parent.getWorldQuaternion(_qa);
+      const animQ = _qb.copy(parentQ).multiply(b.quaternion);          // as the clip poses it
+      const animAxis = _sa.copy(j.axis).applyQuaternion(animQ);
+      if (springs.fresh) { j.tail.copy(head).addScaledVector(animAxis, j.len); j.prev.copy(j.tail); }
+      const next = _sb.copy(j.tail).sub(j.prev).multiplyScalar(1 - ch.drag).add(j.tail)
+        .addScaledVector(animAxis, ch.stiff * dt * 4.0)
+        .add(_sc.set(0, -ch.grav * dt * 1.5, 0));
+      next.sub(head).setLength(j.len).add(head);
+      for (const [cp, r] of cols) {
+        const min = r + ch.r, d = next.distanceTo(cp);
+        if (d < min) { next.sub(cp).setLength(min).add(cp); next.sub(head).setLength(j.len).add(head); }
+      }
+      j.prev.copy(j.tail); j.tail.copy(next);
+      const want = next.clone().sub(head).normalize();
+      const worldQ = _qc.setFromUnitVectors(animAxis.normalize(), want).multiply(animQ);
+      b.quaternion.copy(parentQ.invert().multiply(worldQ));
+      b.updateMatrixWorld(true);
+    }
+  }
+  springs.fresh = false;
 }
 
 // ---- foot audit ------------------------------------------------------------------------------
@@ -535,11 +706,18 @@ async function footAudit(lane = [6, 14]) {
   }
   const at = ([sk, i]) => { sk.getVertexPosition(i, v); v.applyMatrix4(sk.matrixWorld); return { x: v.x, y: v.y, z: v.z, ref: [sk, i] }; };
   const lowest = (s) => sole[s].map(at).reduce((a, b) => (b.y < a.y ? b : a));
-  const tick = () => { step(1 / 60); animate(1 / 60); mixer.update(1 / 60); scene.updateMatrixWorld(true); };
-  const home = () => { rig.position.x = lane[0]; rig.position.z = lane[1]; scene.updateMatrixWorld(true); };
+  const tick = () => { step(1 / 60); animate(1 / 60); mixer.update(1 / 60); updateSprings(1 / 60); scene.updateMatrixWorld(true); };
+  const home = () => { rig.position.x = lane[0]; rig.position.z = lane[1]; resetSprings(); scene.updateMatrixWorld(true); };
   const out = [];
-  for (const [gait, held] of [['walk', ['w', 'c']], ['jog', ['w']], ['run', ['w', 'shift']]]) {
-    for (const k of ['w', 'shift', 'c']) keys[k] = false;
+  const sp0 = speeds();
+  const gaits = [['walk', ['w', 'x']], ['jog', ['w']], ['run', ['w'], { forceSpeed: sp0.run }],
+                 ...(sp0.sprint ? [['sprint', ['w', 'shift']]] : []),
+                 ...(canStrafe() ? [['walk_back', ['s'], { strafeOn: true }], ['strafe_left', ['a'], { strafeOn: true }],
+                                    ['strafe_right', ['d'], { strafeOn: true }]] : []),
+                 ...(sp0.crouch ? [['crouch_walk', ['w'], { crouch: true }]] : [])];
+  for (const [gait, held, opt = {}] of gaits) {
+    for (const k of ['w', 'a', 's', 'd', 'x', 'shift']) keys[k] = false;
+    Object.assign(ctl, { forceSpeed: null, strafeOn: false, crouch: false }, opt);
     home(); for (let k = 0; k < 90; k++) tick();
     for (const k of held) keys[k] = true;
     for (let k = 0; k < 120; k++) { tick(); if (k % 30 === 29) home(); }
@@ -559,6 +737,7 @@ async function footAudit(lane = [6, 14]) {
       if (k % 30 === 29) { home(); prev = { L: lowest('L'), R: lowest('R') }; }   // stay on the open lane
     }
     for (const k of held) keys[k] = false;
+    Object.assign(ctl, { forceSpeed: null, strafeOn: false, crouch: false });
     out.push({ gait, speed_mps: +speed.toFixed(2), slip_pct: +(100 * slide / Math.max(n, 1) / Math.max(speed, 1)).toFixed(1),
                on_floor: +(down / 480).toFixed(2), deepest_cm: +(100 * deepest).toFixed(2) });
   }
@@ -603,6 +782,7 @@ async function select(id) {
     clipInfo = {};
     for (const c of (spec.manifest?.clips || [])) clipInfo[c.name] = c;
     CR = spec.manifest?.capsule?.radius_m || 0.28;
+    loadingSpec = spec;
     buildCharacter(gltf);
     resetController();
     activeId = id;
@@ -644,16 +824,22 @@ select(CHARACTERS[0].id);
 
 // ---- input -----------------------------------------------------------------
 const keys = Object.create(null);
-let wantJump = false, wantWave = false;
+let wantJump = false, wantWave = false, wantCrouch = false, wantStrafe = false, aimHeld = false;
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const k = e.key.toLowerCase();
   if (k === ' ' && !e.repeat) { e.preventDefault(); wantJump = true; }
   if (k === 'e' && !e.repeat) wantWave = true;
+  if (k === 'c' && !e.repeat) wantCrouch = true;
+  if (k === 'q' && !e.repeat) wantStrafe = true;
   keys[k] = true;
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; aimHeld = false; });
+// hold the right mouse button to aim: the character faces where the camera looks and strafes
+renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+renderer.domElement.addEventListener('pointerdown', (e) => { if (e.button === 2) aimHeld = true; });
+addEventListener('pointerup', (e) => { if (e.button === 2) aimHeld = false; });
 
 // touch stick for phones
 const stick = { x:0, y:0, active:false };
@@ -673,14 +859,19 @@ function move(e) {
 
 // ---- character controller ---------------------------------------------------
 // A kinematic capsule, the way most shipped games move a humanoid. Everything that used to be a
-// hard-coded constant here - gait speeds, jump timing - now comes from the character's
-// own manifest, measured from its clips when it was packaged.
+// hard-coded constant here - gait speeds, jump timing, which way each clip travels, how far a
+// turn turns - comes from the character's own manifest, measured from its clips when it was
+// packaged.
 let CR = 0.28;          // capsule radius, m - replaced by the character's own, from its manifest
 const STEP = 0.32;      // tallest ledge walked up without a jump
-const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false,
-              phase:0, loco:1, speed:0, fallHold:0 };
+const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false, phase:0, speed:0,
+              crouch:false, strafeOn:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0,
+              turnClip:null, turnRate:1, airTime:0, snap:false, forceSpeed:null };
 function resetController() {
-  Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, loco:1, speed:0 });
+  if (typeof resetSprings === 'function') resetSprings();
+  Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, speed:0,
+                       crouch:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0, turnClip:null,
+                       airTime:0, snap:false });
   ctl.y = groundAt(rig.position.x, rig.position.z);
 }
 
@@ -724,10 +915,17 @@ function collide(p, feet) {
 function speeds() {
   const s = (n, d) => clipInfo[n]?.ground_speed_mps || d;
   const walk = s('walk', 1.3), run = s('run', 4.0);
-  return { walk, jog: actions.jog ? s('jog', (walk + run) / 2) : null, run };
+  return { walk, jog: actions.jog ? s('jog', (walk + run) / 2) : null, run,
+           sprint: actions.sprint ? s('sprint', run * 1.3) : null,
+           back: actions.walk_back ? s('walk_back', 1.1) : null,
+           jogBack: actions.jog_back ? s('jog_back', 2.0) : null,
+           strafe: actions.strafe_left && actions.strafe_right ? s('strafe_left', 1.0) : null,
+           crouch: actions.crouch_walk ? s('crouch_walk', 1.0) : null };
 }
-// the moving clips in speed order, for blending between neighbours
-const tiers = (sp) => [['walk', sp.walk], ...(sp.jog ? [['jog', sp.jog]] : []), ['run', sp.run]];
+// the forward clips in speed order, for blending between neighbours
+const tiers = (sp) => [['walk', sp.walk], ...(sp.jog ? [['jog', sp.jog]] : []), ['run', sp.run],
+                       ...(sp.sprint ? [['sprint', sp.sprint]] : [])];
+const canStrafe = () => !!(speeds().strafe && actions.walk_back);
 
 // The jump arc comes from the jump clip itself. Takeoff, landing and how high the feet clear the
 // floor were measured from the animation when it was packaged; gravity and launch speed are then
@@ -743,11 +941,29 @@ function jumpSpec() {
            entry: j.entry_s ?? 0 };
 }
 const clipArc = (J, tau) => { const t = Math.max(0, Math.min(tau, J.tAir)); return J.v0 * t - 0.5 * J.g * t * t; };
+const wrapA = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+
+// Turning in place. A character that has to face a new way while standing - aiming somewhere
+// else, or asked to walk back the way it came - steps round with a turn clip rather than
+// spinning on the spot. The clip keeps its own rotation of the body; when it ends, the capsule
+// takes over that rotation (turn_deg, from the manifest) and the idle continues from there.
+function startTurn(diff) {
+  const a = Math.abs(diff) > 2.6 && actions.turn_180 ? 'turn_180'
+          : diff > 0 ? 'turn_left' : 'turn_right';
+  if (!actions[a] || !clipInfo[a]?.turn_deg) return false;
+  ctl.mode = 'turn'; ctl.turnClip = a; ctl.t = 0; ctl.turnRate = 1.25;   // a little brisker than captured
+  ctl.vx = ctl.vz = 0;
+  return true;
+}
 
 const tmpV = new THREE.Vector3();
 function step(dt) {
-  const J = jumpSpec();
-  // ---- intent: camera-relative direction and gait ----
+  const J = jumpSpec(), sp = speeds();
+  if (wantCrouch) ctl.crouch = !ctl.crouch && !!actions.crouch_idle;
+  if (wantStrafe) ctl.strafeOn = !ctl.strafeOn;
+  const strafe = (ctl.strafeOn || aimHeld) && canStrafe();
+
+  // ---- intent: camera-relative direction ----
   let ix = 0, iz = 0;
   if (keys['w'] || keys['arrowup']) iz -= 1;
   if (keys['s'] || keys['arrowdown']) iz += 1;
@@ -755,18 +971,23 @@ function step(dt) {
   if (keys['d'] || keys['arrowright']) ix += 1;
   if (stick.active) { ix += stick.x; iz += stick.y; }
   const mag = Math.min(1, Math.hypot(ix, iz));
-  const sp = speeds();
-  let wx = 0, wz = 0;
+  camera.getWorldDirection(tmpV); tmpV.y = 0; tmpV.normalize();
+  const camYaw = Math.atan2(tmpV.x, tmpV.z);
+  let wx = 0, wz = 0, want = null;
   if (mag > 0.05) {
-    camera.getWorldDirection(tmpV); tmpV.y = 0; tmpV.normalize();
     const rx = -tmpV.z, rz = tmpV.x;
     let dx = tmpV.x * -iz + rx * ix, dz = tmpV.z * -iz + rz * ix;
     const n = Math.hypot(dx, dz) || 1; dx /= n; dz /= n;
-    // Keys pick a gait, as in the Unity and Unreal third-person templates: the default is the
-    // jog, Shift runs and C walks. A stick is analog: a light tilt walks, full tilt runs, and
-    // everything between blends through the jog.
     let v;
-    if (stick.active && !keys['shift'] && !keys['c']) {
+    if (ctl.crouch) {
+      v = Math.min(sp.crouch || sp.walk, 1.1) * Math.min(1, mag / 0.8);
+    } else if (strafe) {
+      // aiming: walking pace, or a brisker one with Shift; the strafes and backpedal play faster
+      v = (keys['shift'] ? Math.min(2.0, sp.jogBack || 2.0) : Math.min(sp.walk, 1.4)) * Math.min(1, mag / 0.8);
+    } else if (ctl.forceSpeed) {
+      v = ctl.forceSpeed;
+    } else if (stick.active && !keys['shift'] && !keys['x']) {
+      // an analog stick: a light tilt walks, full tilt runs, everything between blends
       const pts = [[0, 0], [0.45, sp.walk], ...(sp.jog ? [[0.8, sp.jog]] : []), [1, sp.run]];
       v = sp.run;
       for (let k = 1; k < pts.length; k++)
@@ -775,18 +996,35 @@ function step(dt) {
           v = v0 + (v1 - v0) * (mag - m0) / (m1 - m0); break;
         }
     } else {
-      v = keys['shift'] ? sp.run : keys['c'] ? sp.walk : (sp.jog || sp.walk);
+      // keys, as in the Unity and Unreal third-person templates: jog by default, Shift sprints
+      // (through the run as it accelerates), X walks
+      v = keys['shift'] ? (sp.sprint || sp.run) : keys['x'] ? sp.walk : (sp.jog || sp.walk);
     }
     wx = dx * v; wz = dz * v;
-    let diff = Math.atan2(dx, dz) - ctl.facing;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    const turn = ctl.mode === 'ground' ? 11 : 3;
-    ctl.facing += diff * Math.min(1, dt * turn);
+    want = Math.atan2(dx, dz);
   }
+
+  // ---- facing ----
+  const standing = ctl.speed < 0.25 && mag < 0.05;
+  if (ctl.mode === 'ground') {
+    if (strafe) {
+      const diff = wrapA(camYaw - ctl.facing);
+      // standing and the camera has swung well away: step round to it; otherwise track it
+      if (standing && Math.abs(diff) > 1.3 && !ctl.crouch && startTurn(diff)) { /* turning */ }
+      else ctl.facing += diff * Math.min(1, dt * (standing ? 4 : 10));
+    } else if (want !== null) {
+      const diff = wrapA(want - ctl.facing);
+      if (ctl.speed < 0.3 && Math.abs(diff) > 1.9 && !ctl.crouch && startTurn(diff)) { wx = wz = 0; }
+      else ctl.facing += diff * Math.min(1, dt * 11);
+    }
+  } else if ((ctl.mode === 'jump' || ctl.mode === 'fall') && want !== null && !strafe) {
+    ctl.facing += wrapA(want - ctl.facing) * Math.min(1, dt * 3);
+  }
+
   // quicker to get going than to stop, and far less control once airborne
   const air = ctl.mode === 'jump' && ctl.took || ctl.mode === 'fall';
-  const busy = (ctl.mode === 'jump' && !ctl.took && !ctl.running_jump) || ctl.mode === 'emote';
+  const busy = (ctl.mode === 'jump' && !ctl.took && !ctl.running_jump) || ctl.mode === 'emote'
+             || ctl.mode === 'turn' || (ctl.mode === 'land' && ctl.hard && ctl.t < (ctl.landEnd || 0) - 0.9);
   const acc = air ? 2.0 : busy ? 14 : (Math.hypot(wx, wz) > Math.hypot(ctl.vx, ctl.vz) ? 9 : 12);
   if (busy) { wx = 0; wz = 0; }
   ctl.vx += (wx - ctl.vx) * Math.min(1, dt * acc);
@@ -799,123 +1037,206 @@ function step(dt) {
   const floor = groundAt(p.x, p.z);
 
   // ---- vertical: walking, stepping, jumping, falling ----
-  if (ctl.mode === 'ground' || ctl.mode === 'land' || ctl.mode === 'emote') {
-    if (floor < ctl.y - 0.06) { ctl.mode = 'fall'; ctl.vy = 0; ctl.t = 0; }       // off an edge
-    else ctl.y += (floor - ctl.y) * Math.min(1, dt * 18);                          // step up/down
+  if (ctl.mode === 'ground' || ctl.mode === 'land' || ctl.mode === 'emote' || ctl.mode === 'turn') {
+    if (floor < ctl.y - 0.06) { ctl.mode = 'fall'; ctl.vy = 0; ctl.t = 0; ctl.airTime = 0; }  // off an edge
+    else ctl.y += (floor - ctl.y) * Math.min(1, dt * 18);                                    // step up/down
   }
   if (wantJump && (ctl.mode === 'ground' || ctl.mode === 'land') && J) {
     // A captured standing jump opens with a long wind-up - this one crouches for 0.83 s - and a
     // game that waits that long after the button feels broken. A standing jump enters the clip at
     // the manifest's entry_s, a quarter second before takeoff and already in the crouch; a running
     // jump enters just before takeoff and keeps its momentum.
+    ctl.crouch = false;
     ctl.running_jump = ctl.speed > 0.5 * speeds().walk;
-    ctl.mode = 'jump'; ctl.took = false;
+    ctl.mode = 'jump'; ctl.took = false; ctl.airTime = 0;
     ctl.t = ctl.running_jump ? Math.max(0, J.takeoff - 0.12) : J.entry;
   }
-  if (wantWave && ctl.mode === 'ground' && ctl.speed < 0.3 && actions.wave) {
-    ctl.mode = 'emote'; ctl.t = 0; actions.wave.reset(); actions.wave.play();
+  if (wantWave && ctl.mode === 'ground' && ctl.speed < 0.3 && actions.wave && !ctl.crouch) {
+    ctl.mode = 'emote'; ctl.t = 0;
   }
-  wantJump = wantWave = false;
+  wantJump = wantWave = wantCrouch = wantStrafe = false;
 
   // Gravity is constant, so the ballistic step is integrated exactly rather than approximated.
-  // Semi-implicit Euler flew this jump 8% short (apex 0.49 m against the clip's 0.53, airtime
-  // 0.40 s against 0.43) and left the feet 8 cm off the animation's arc; the exact update and a
-  // takeoff placed at its true moment inside the frame make physics and clip agree to rounding.
   const fly = (g, h) => { ctl.y += ctl.vy * h - 0.5 * g * h * h; ctl.vy -= g * h; };
+  const land = () => {
+    // A long drop lands hard - the landing clip, from its touchdown into its crouch and back up;
+    // a hop or a jump's own arc lands the way the jump clip does.
+    const L = clipInfo.land;
+    ctl.y = floor;
+    if (actions.land && L?.touchdown_s != null && ctl.airTime > 0.4) {
+      ctl.mode = 'land'; ctl.hard = true; ctl.t = L.touchdown_s; ctl.landEnd = L.seconds;
+    } else {
+      ctl.mode = J ? 'land' : 'ground'; ctl.hard = false; ctl.t = J ? J.landing : 0;
+    }
+  };
   if (ctl.mode === 'jump') {
-    const t0 = ctl.t;
     ctl.t += dt;
     let h = 0;
     if (!ctl.took && ctl.t >= J.takeoff) {                  // leave the floor, mid-frame if need be
       ctl.took = true; ctl.vy = J.v0; ctl.y0 = ctl.y; h = ctl.t - J.takeoff;
     } else if (ctl.took) h = dt;
     if (h > 0) {
+      ctl.airTime += h;
       fly(J.g, h);
-      if (ctl.vy < 0 && ctl.y <= floor) { ctl.y = floor; ctl.mode = 'land'; ctl.t = J.landing; }
+      if (ctl.vy < 0 && ctl.y <= floor) land();
+      else if (ctl.t > J.landing + 0.05) { ctl.mode = 'fall'; ctl.t = 0; }   // jumped off something
     }
   } else if (ctl.mode === 'fall') {
     const g = J ? J.g : 20;
-    ctl.t += dt; fly(g, dt);
-    if (ctl.y <= floor) { ctl.y = floor; ctl.mode = J ? 'land' : 'ground'; ctl.t = J ? J.landing : 0; }
+    ctl.t += dt; ctl.airTime += dt; fly(g, dt);
+    if (ctl.y <= floor) land();
   } else if (ctl.mode === 'land') {
     ctl.t += dt;
-    if (!J || ctl.t >= J.dur - 0.05 || (ctl.t > J.landing + 0.2 && Math.hypot(wx, wz) > 0.1))
+    const end = ctl.hard ? ctl.landEnd : (J ? J.dur : 0);
+    const interruptible = ctl.hard ? ctl.t > ctl.landEnd - 0.9 : ctl.t > (J ? J.landing : 0) + 0.2;
+    if (!J && !ctl.hard || ctl.t >= end - 0.05 || (interruptible && Math.hypot(wx, wz) > 0.1))
       ctl.mode = 'ground';
   } else if (ctl.mode === 'emote') {
     ctl.t += dt;
     const dur = clipInfo.wave?.seconds || actions.wave?.getClip().duration || 1;
     if (ctl.t >= dur || mag > 0.2) ctl.mode = 'ground';
+  } else if (ctl.mode === 'turn') {
+    ctl.t += dt * ctl.turnRate;
+    const info = clipInfo[ctl.turnClip];
+    if (ctl.t >= (info?.seconds || 1)) {
+      // the clip has turned the body; the capsule takes the rotation over, and the idle - which
+      // faces the capsule's way - continues from the same pose, so the switch is seamless
+      ctl.facing += (info.turn_deg || 0) * Math.PI / 180;
+      ctl.mode = 'ground'; ctl.snap = true;
+    }
   }
   p.y = ctl.y;
   rig.rotation.y = ctl.facing;
+  ctl.strafeNow = strafe;
 }
 
 // ---- animation --------------------------------------------------------------
-// Locomotion is a speed-driven blend, not states with hard switches: idle into walk up to walking
-// speed, then walk into jog into run. All three are driven from ONE stride clock, each
-// offset by where its own left heel strikes (measured at packaging), so mid-blend both clips have
-// the same foot forward - blending two unsynchronised cycles crosses the legs. The clock runs at
-// the speed-weighted stride rate, so feet stay planted at every speed in between.
+// Four layers - ground locomotion, a turn in place, the air (jump, fall, land) and an emote -
+// cross-fade by mode. Inside the ground layer, locomotion is a blend, not states with hard
+// switches: by speed between walk, jog, run and sprint; by direction between forward, back, left
+// and right when aiming; between standing and crouched. Every moving clip runs off ONE stride
+// clock, each offset by where its own left heel strikes along its own direction of travel
+// (measured at packaging), so mid-blend every clip has the same foot down - blending two
+// unsynchronised cycles crosses the legs. The clock runs at the blend's stride rate, so the feet
+// stay planted at every speed and direction in between.
 const smooth01 = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+const LOCO = ['walk', 'jog', 'run', 'sprint', 'walk_back', 'jog_back', 'strafe_left', 'strafe_right', 'crouch_walk'];
+const DRIVEN = [...LOCO, 'jump', 'land', 'wave', 'turn_left', 'turn_right', 'turn_180'];
 function animate(dt) {
   if (!mixer) return;
   const J = jumpSpec(), sp = speeds(), v = ctl.speed;
-  const onGround = ctl.mode === 'ground';
-  ctl.loco += ((onGround ? 1 : 0) - ctl.loco) * Math.min(1, dt / 0.12);
-  const L = ctl.loco;
+  const dur = (n) => actions[n]?.getClip().duration || 1;
 
-  // weights: idle into walk up to walking speed, then between neighbouring gaits by speed
-  const T = tiers(sp);
-  const w = { idle: 1, walk: 0, jog: 0, run: 0 };
+  // ---- layers ----
+  const tgt = { ground: ctl.mode === 'ground' ? 1 : 0, turn: ctl.mode === 'turn' ? 1 : 0,
+                air: (ctl.mode === 'jump' || ctl.mode === 'fall' || ctl.mode === 'land') ? 1 : 0,
+                emote: ctl.mode === 'emote' ? 1 : 0 };
+  const k = ctl.snap ? 1 : Math.min(1, dt / 0.12);
+  for (const n in ctl.lay) ctl.lay[n] += (tgt[n] - ctl.lay[n]) * k;
+  ctl.snap = false;
+  ctl.cw += ((ctl.crouch ? 1 : 0) - ctl.cw) * Math.min(1, dt / 0.25);
+  ctl.sw += ((ctl.strafeNow ? 1 : 0) - ctl.sw) * Math.min(1, dt / 0.2);
+  const G = ctl.lay.ground, C = ctl.cw, S = ctl.sw * (1 - C);
+  const w = {};
+  const add = (n, x) => { if (actions[n] && x > 1e-4) w[n] = (w[n] || 0) + x; };
+
+  // ---- ground: standing, free ----
+  const free = {}, T = tiers(sp);
   if (v > 0.02) {
     // Below walking speed the walk plays slower rather than mixing in the idle: blending a
     // standing pose into a stride drags the planted foot towards where the idle's foot is, and
     // measured 46% slip at 0.9 m/s. Only the last 30% of the way to a stop fades to idle.
-    if (v <= sp.walk) { const t = smooth01(v / (0.3 * sp.walk)); w.idle = 1 - t; w.walk = t; }
+    if (v <= sp.walk) { const t = smooth01(v / (0.3 * sp.walk)); free.idle = 1 - t; free.walk = t; }
     else {
-      w.idle = 0; w.run = 1;
-      for (let k = 0; k < T.length - 1; k++) {
-        const [a, sa] = T[k], [b, sb] = T[k + 1];
-        if (v <= sb) { const u = smooth01((v - sa) / (sb - sa)); w.run = 0; w[a] = 1 - u; w[b] = u; break; }
+      free.idle = 0;
+      free[T[T.length - 1][0]] = 1;
+      for (let q = 0; q < T.length - 1; q++) {
+        const [a, sa] = T[q], [b, sb] = T[q + 1];
+        if (v <= sb) { const u = smooth01((v - sa) / (sb - sa)); free[T[T.length - 1][0]] = 0; free[a] = 1 - u; free[b] = u; break; }
       }
     }
+  } else free.idle = 1;
+
+  // ---- ground: standing, aiming (directional) ----
+  const aim = {};
+  if (S > 0) {
+    const cf = Math.cos(-ctl.facing), sf = Math.sin(-ctl.facing);
+    const lx = ctl.vx * cf + ctl.vz * sf, lz = -ctl.vx * sf + ctl.vz * cf;   // local: +z forward, +x left
+    const dirs = { f: Math.max(0, lz), b: Math.max(0, -lz), l: Math.max(0, lx), r: Math.max(0, -lx) };
+    const tot = dirs.f + dirs.b + dirs.l + dirs.r;
+    const fwdClip = v > 0.5 * (sp.walk + (sp.jog || sp.walk)) && sp.jog ? 'jog' : 'walk';
+    const backClip = v > 0.5 * (sp.back + (sp.jogBack || sp.back)) && actions.jog_back ? 'jog_back' : 'walk_back';
+    const mv = tot > 0.02 ? smooth01(v / (0.3 * sp.strafe)) : 0;
+    aim.idle = 1 - mv;
+    if (tot > 0.02) {
+      aim[fwdClip] = mv * dirs.f / tot; aim[backClip] = mv * dirs.b / tot;
+      aim.strafe_left = mv * dirs.l / tot; aim.strafe_right = mv * dirs.r / tot;
+    }
   }
-  const dur = (n) => actions[n]?.getClip().duration || 1;
-  // stride period at this speed: a clip covers its measured ground speed per cycle
+
+  // ---- ground: crouched ----
+  const cr = {};
+  if (C > 0) {
+    const t = v > 0.02 ? smooth01(v / (0.3 * (sp.crouch || 1))) : 0;
+    cr.crouch_idle = 1 - t; cr.crouch_walk = t;
+  }
+  for (const [n, x] of Object.entries(free)) add(n, G * (1 - C) * (1 - S) * x);
+  for (const [n, x] of Object.entries(aim)) add(n, G * S * x);
+  for (const [n, x] of Object.entries(cr)) add(n, G * C * x);
+
+  // ---- stride clock: the blend's period at this speed ----
+  const clipSpeed = { walk: sp.walk, jog: sp.jog, run: sp.run, sprint: sp.sprint, walk_back: sp.back,
+                      jog_back: sp.jogBack, strafe_left: sp.strafe, strafe_right: clipInfo.strafe_right?.ground_speed_mps || sp.strafe,
+                      crouch_walk: sp.crouch };
   let per = 0, norm = 0;
-  for (const [n, s] of T) {
-    const wn = n === 'walk' ? w.walk + w.idle : w[n];
-    if (wn <= 0) continue;
-    per += wn * dur(n) * s / (n === 'walk' ? Math.max(v, sp.walk * 0.3) : Math.max(v, 0.1));
+  for (const n of LOCO) {
+    const wn = w[n] || 0;
+    if (wn <= 0 || !clipSpeed[n]) continue;
+    per += wn * dur(n) * clipSpeed[n] / Math.max(v, 0.3 * clipSpeed[n]);
     norm += wn;
   }
   if (norm > 0 && v > 0.02) ctl.phase = (ctl.phase + dt / (per / norm)) % 1;
-  const ph = (clip) => ((ctl.phase + (clipInfo[clip]?.left_contact_phase || 0)) % 1);
-  for (const [n] of T) if (actions[n]) { actions[n].time = ph(n) * dur(n); actions[n].setEffectiveWeight(L * w[n]); }
-  if (actions.idle) actions.idle.setEffectiveWeight(L * w.idle);
+  const ph = (n) => ((ctl.phase + (clipInfo[n]?.left_contact_phase || 0)) % 1);
+  for (const n of LOCO) if (actions[n]) actions[n].time = ph(n) * dur(n);
 
-  const oneShot = 1 - L;
-  if (actions.jump) {
-    const air = ctl.mode === 'jump' || ctl.mode === 'fall' || ctl.mode === 'land';
-    let t = ctl.t;
-    // in the air the clip may not start its landing crouch before the body has actually landed
-    if (ctl.mode === 'jump' && J) t = Math.min(ctl.t, J.landing - 1 / 30);
-    if (ctl.mode === 'fall' && J) t = J.takeoff + J.tAir * 0.72;       // a held falling pose
-    actions.jump.time = t;
-    actions.jump.setEffectiveWeight(air ? oneShot : 0);
+  // ---- turn ----
+  if (ctl.lay.turn > 1e-4 && ctl.turnClip && actions[ctl.turnClip]) {
+    actions[ctl.turnClip].time = Math.min(ctl.t, dur(ctl.turnClip) - 1e-3);
+    add(ctl.turnClip, ctl.lay.turn);
   }
-  if (actions.wave) actions.wave.setEffectiveWeight(ctl.mode === 'emote' ? oneShot : 0);
+
+  // ---- air ----
+  const A = ctl.lay.air;
+  if (A > 1e-4) {
+    if (ctl.mode === 'land' && ctl.hard && actions.land) {
+      actions.land.time = Math.min(ctl.t, dur('land') - 1e-3); add('land', A);
+    } else if (ctl.mode === 'fall' && actions.fall && ctl.t > 0.15) {
+      // falling for real: the fall loop, faded in over a moment from the jump's airborne pose
+      const f = smooth01((ctl.t - 0.15) / 0.25);
+      add('fall', A * f);
+      if (actions.jump && J) { actions.jump.time = J.takeoff + J.tAir * 0.72; add('jump', A * (1 - f)); }
+    } else if (actions.jump) {
+      let t = ctl.t;
+      if (ctl.mode === 'jump' && J) t = Math.min(ctl.t, J.landing - 1 / 30);
+      if (ctl.mode === 'fall' && J) t = J.takeoff + J.tAir * 0.72;       // a held falling pose
+      actions.jump.time = t; add('jump', A);
+    }
+  }
+  if (ctl.lay.emote > 1e-4 && actions.wave) { actions.wave.time = Math.min(ctl.t, dur('wave') - 1e-3); add('wave', ctl.lay.emote); }
+
+  for (const n in actions) actions[n].setEffectiveWeight(w[n] || 0);
 
   // The jump clip lifts the body along its own arc; the physics lifts it too. Subtract the clip's
   // arc while airborne so the feet end up exactly where the physics puts them - on open ground
   // the two cancel and the jump looks as authored, onto a box they do not and the feet land on it.
   let lift = 0;
-  if (J && ctl.mode === 'jump' && ctl.took) lift = clipArc(J, ctl.t - J.takeoff);
-  if (J && ctl.mode === 'fall') lift = clipArc(J, J.tAir * 0.72);
+  if (J && ctl.mode === 'jump' && ctl.took) lift = clipArc(J, ctl.t - J.takeoff) * A;
+  if (J && ctl.mode === 'fall') lift = clipArc(J, J.tAir * 0.72) * (w.jump || 0);
   if (model) model.position.y = (model.userData.groundFix || 0) - lift;
 
-  $('s-state').textContent = ctl.mode === 'ground'
-    ? Object.entries(w).sort((x, y) => y[1] - x[1])[0][0] : ctl.mode;
+  const top = Object.entries(w).sort((x, y) => y[1] - x[1])[0];
+  $('s-state').textContent = (top ? top[0].replace('_', ' ') : 'idle') + (ctl.crouch ? ' \u00b7 crouched' : '')
+                             + (ctl.strafeNow && !ctl.crouch ? ' \u00b7 aiming' : '');
   $('s-speed').textContent = v.toFixed(1) + ' m/s';
 }
 
@@ -993,7 +1314,7 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (!window.__cfPause) {                    // tests pause the live loop and drive __cf.tick
     if (model) { step(dt); animate(dt); }
-    if (mixer) mixer.update(dt);
+    if (mixer) { mixer.update(dt); updateFace(dt); updateSprings(dt); }
   }
 
   // shadow frustum and key light ride with the character

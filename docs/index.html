@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>CharForge Playground</title>
 <meta name="description" content="Drive the generated character around a world.">
 <style>
@@ -91,15 +92,15 @@
 
 <div id="title" class="hud">
   <h1>CharForge Playground</h1>
-  <p>Game characters generated from a text prompt or an image on a laptop &mdash; mesh, PBR
-  textures, skeleton, skinning and animation all local. Pick one from the roster, bottom right,
-  download its package, or see what it takes to make your own. Walk, jog and run are Mixamo
-  captures retargeted with the feet planted: the shoe touching the floor slides under 3% of
-  ground speed, and the gaits blend by speed on one stride clock.</p>
-  <p>Deformation uses <b>dual quaternion skinning</b>: glTF carries one weight set and viewers
-  apply it linearly, which hollows out the inside of every bent joint. Blending the rotations as
-  rotations instead takes jacket faces collapsed below half their rest area from 8.8% to 6.1%
-  over the walk. Toggle it to see the difference.</p>
+  <p>Game characters generated from a text prompt or an image on a laptop, in three art styles
+  &mdash; anime, realistic and stylised &mdash; by one local pipeline: the solid, modelled hands
+  with finger bones, skinning, a face that blinks and talks (hold <kbd>T</kbd>), PBR textures
+  and 18 retargeted clips. Walk, jog, run and sprint blend on one stride clock; strafes,
+  back-pedals, crouch, turns in place, jumps and falls are the controller's own clips, planted
+  so the shoe on the floor slides a few percent of ground speed at most.</p>
+  <p>Deformation uses <b>dual quaternion skinning</b>: blending rotations as rotations keeps
+  bent joints from hollowing out (jacket faces collapsed below half their area: 8.8% linear,
+  6.1% dual quaternion, over the walk). Toggle it to see the difference.</p>
   <div class="btns">
     <button id="b-dqs" aria-pressed="true">Dual-quat skin</button>
     <button id="b-parts" aria-pressed="false">Show parts</button>
@@ -119,11 +120,14 @@
 
 <div id="keys" class="hud">
   <table>
-    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move</td></tr>
-    <tr><td><kbd>Shift</kbd></td><td>run</td></tr>
-    <tr><td><kbd>C</kbd></td><td>walk</td></tr>
+    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move (jog)</td></tr>
+    <tr><td><kbd>Shift</kbd></td><td>sprint</td></tr>
+    <tr><td><kbd>X</kbd></td><td>walk</td></tr>
+    <tr><td><kbd>C</kbd></td><td>crouch</td></tr>
+    <tr><td><kbd>Q</kbd> / <kbd>right-drag</kbd></td><td>aim: strafe &amp; backpedal</td></tr>
     <tr><td><kbd>Space</kbd></td><td>jump</td></tr>
     <tr><td><kbd>E</kbd></td><td>wave</td></tr>
+    <tr><td><kbd>T</kbd> (hold)</td><td>talk</td></tr>
     <tr><td><kbd>drag</kbd></td><td>orbit camera</td></tr>
   </table>
 </div>
@@ -158,12 +162,14 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
 .venv/bin/python tools/check_env.py
 
 .venv/bin/python charforge.py make --prompt "a knight in weathered plate armour" --name knight
+.venv/bin/python charforge.py make --prompt "an anime swordswoman" --style anime --name kai
 .venv/bin/python charforge.py make --image my_concept.png --name hero --height 1.85</pre>
-    <p>About fifteen minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
+    <p>About forty minutes later <code>out/&lt;name&gt;/</code> holds a character that follows
       engine convention: real height in metres, origin on the floor under the pelvis, a
-      Mixamo-named skeleton so any Mixamo animation applies to it, glTF and an FBX with three
-      LODs, the texture maps each engine reads &mdash; plus a manifest with the collision capsule,
-      clip timing, ground speeds and jump timing a character controller needs.</p>
+      Mixamo-named skeleton with fingers and a jaw so any Mixamo animation applies to it, face
+      morph targets, glTF and an FBX with three LODs, the texture maps each engine reads &mdash;
+      plus a manifest with the collision capsule, clip timing, ground speeds and directions, the
+      face and the art style a character controller and a renderer need.</p>
     <div class="genrow">
       <a class="btn" id="gen-repo" href="https://github.com/majieddd/charforge" target="_blank" rel="noopener">Open the repository</a>
       <a class="btn ghost" href="https://github.com/majieddd/charforge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">What&rsquo;s next / how to help</a>
@@ -207,6 +213,7 @@ const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 400);
 camera.position.set(4.2, 3.0, 5.6);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enablePan = false;       // the right button aims (strafe mode) instead
 controls.minDistance = 2; controls.maxDistance = 22;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.target.set(0, 1, 0);
@@ -385,43 +392,108 @@ function patchDQS(mat) {
 }
 
 
+// ---- anime shading ------------------------------------------------------------------------
+// A character packaged in the anime style is drawn the way cel-shaded games draw one: its base
+// colour through a three-step light ramp (MeshToonMaterial), and an ink outline from an inverted
+// hull - a copy of the skinned mesh pushed out along its normals and drawn back-faced in dark ink.
+// The hull shares the skeleton and the morph targets, so it bends, blinks and talks with the body.
+const TOON_RAMP = (() => {
+  const d = new Uint8Array([70, 70, 70, 255, 170, 170, 170, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(d, 3, 1, THREE.RGBAFormat);
+  t.magFilter = t.minFilter = THREE.NearestFilter; t.needsUpdate = true; return t;
+})();
+function toonify(root) {
+  const hulls = [];
+  root.traverse((o) => {
+    if (!o.isSkinnedMesh) return;
+    const src = origMats.get(o) || o.material;
+    const toon = new THREE.MeshToonMaterial({ map: src.map || null, color: src.color ? src.color.clone() : 0xffffff,
+                                              gradientMap: TOON_RAMP, side: src.side ?? THREE.FrontSide });
+    patchDQS(toon);
+    origMats.set(o, toon); dqsMats.set(o, toon); o.material = toon;
+    const ink = new THREE.MeshBasicMaterial({ color: 0x1b1d26, side: THREE.BackSide });
+    ink.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <skinning_pars_vertex>', '#include <skinning_pars_vertex>\n' + DQ_PARS)
+        .replace('#include <skinnormal_vertex>', DQ_NORMAL)
+        .replace('#include <skinning_vertex>', DQ_SKIN + '\ntransformed += normalize(objectNormal) * 0.0022;');
+    };
+    ink.customProgramCacheKey = () => 'cf-ink-v1';
+    const hull = new THREE.SkinnedMesh(o.geometry, ink);
+    hull.bind(o.skeleton, o.bindMatrix);
+    hull.morphTargetInfluences = o.morphTargetInfluences;      // blinks and speech reach the ink too
+    hull.morphTargetDictionary = o.morphTargetDictionary;
+    hull.frustumCulled = false; hull.castShadow = false;
+    o.parent.add(hull); hull.position.copy(o.position); hull.quaternion.copy(o.quaternion); hull.scale.copy(o.scale);
+    hulls.push(hull);
+  });
+  return hulls;
+}
+
 // ---- the character roster --------------------------------------------------------------
 // Generated by tools/build_site.py from each character's package in out/<name>/: its manifest,
 // its thumbnail, and how its bytes arrive - a streamed .glb on GitHub Pages, a lazily imported
 // base64 module on hosts that will not serve .glb. Edit web/roster.json, not this block.
 /*@ROSTER@*/
 const CHARACTER_SOURCES = {
+  aoi: (p) => fetchGLB('./aoi.glb', p),
+  mara: (p) => fetchGLB('./mara.glb', p),
+  pip: (p) => fetchGLB('./pip.glb', p),
+  juno3: (p) => fetchGLB('./juno3.glb', p),
   rowan: (p) => fetchGLB('./rowan.glb', p),
   wren: (p) => fetchGLB('./wren.glb', p),
-  juno: (p) => fetchGLB('./juno.glb', p),
   vex: (p) => fetchGLB('./vex.glb', p),
 };
 const CHARACTERS = [
  {
-  "id": "rowan",
-  "name": "Rowan",
-  "blurb": "green bomber",
-  "prompt": "a man in a green bomber jacket with medium-length wavy hair",
-  "thumb": "data:image/webp;base64,UklGRsQOAABXRUJQVlA4WAoAAAAQAAAAewAApwAAQUxQSAkHAAABsAZt2yFJ1pfV3rFnbdu2bdu2bdu2bQ+Pz9r2DlcTHR0dX7zxxhv3j878sivnzRPnZ0RMQPi/a+umNz52/EJZHQ1YZIcf6PufwxevnTUARFQEuDirl6XQKEZflV6Or5eHEVJ7WahOljcl2ey9rD5G/WmWRmSt2miZiVJSbXJtZO9YKYT16qJtBlbKVIbVxLpEyivjsnrYr18Q5quHET3aH9H2r4fwKtoPwu710PjG+sNsYD2EpYlWyqCrJsJNlDemtNRFttQMs1LfZHURwji0hHBHqM/9y5j1DqiR8KxpkujtoU5XJqYoP7XWSjYOLTKmLB3qdeDnZkVxXFYz4XCkgFkcWDNL9giJypmdddL2A5qCMmubRn1cgZAu8MHmrTWxHUJZE/hms0YNDLwapR8twgfLe9d6kKD0rwncO4drS34KQr9bZObCfrWcCUJTBdb0qnMcYjTZlG18anuPSPMtsrBH2SsIVVT9rtWh84hUU7nLn/mIVDWyqzsPm1TGNHY5MwalusoIX7I3rVK2sC/LIFRYuNSXh61iN7oyQI0qK//MPFmNWCmUuTx5Cq2W2IKOtM7CqqWMdmQ0SqWN2OnI6sRqCecER7etWmQzT55AqiVc7cgolGobn2Z+3IpUTjvdmBel6spoN/azWDlhYTc2pnqRVdzYb7bY341JaOWE69z452ygPOtF20yscsbMVieyT9HKYQxyYrgalTd62p3YiVg9tXHByW1mh8hBXhw7G5jN7PTiWbRywobByeyD6ok9Hdx8djZgNT82IVZMmZT5MQqtmHBE8HN05aLt6sgQrGqs7Migqpn2dDkyHK2WsHRwdB6kUsJ1wdOhZkXRmmc6Y4ArjV+wHOP1Wc2LnBB8/Tuag+zT0zxljDNnI33U3loXbZZwdnB2X2KfyNbrE5tlNsibwxHA7JvGPk0TrgzeDuw1g8j2YfumRY5wJxyE9FkljEWbJLKYPwPVQG3+MLxZwk7B38Y3KKpjwwbEZs3r0ecokbXDY0izVnYoHEQkskcjYs0636OFEIzJc9FsY0qLQ6NQjBkbWrNQRjo0Jwr23YFYsyLLODQIA7ilCts7lL2D8OZNXzZPOMehcCrdHB7uQ5qlvOLRwvTyQBiHNsuY0uLQPNbLfY3vsOZZl0OL0s0ZjT+bhzLCoewp5PyW7kqMdSh0/cLkAX9WQFjAozDgiIc7uiuxtEshDG78Xs60VGRNp0Ljm1IGVm5zr7J30DTj90lYqb29Cq+W+nN42AhNE4526+kSkZNDCA8hJU506/kSwsIhhKGmJU5369U045dGCCGcj6Sd4tbf04QLQt8hammXuTUpLdryOWESmnSLV9l/0oyheccTk672qvVPLEGZkOUtjiRd7FUXScLCIb+9G0u5yKuhGMVGb1tBmIymnO7V4CTlgVB8C1IU2d+r8AJaJBydsBOxSHWUW7sTU85IWAQpEE4Ibi+fdkLCAKMwspZfY9CiyN4J2Xto0SF+tUzDEtZOCNcjecJ1foWbkAJh4ZRtiEV3OLZQgjIqZZBanvF55tc8ljIyJUxGc1BG+bUcKSOSrkfyIjv41fg3mmcMTdqDmKe84Fe4GikanrQAkodJu1sDeo38yKZJLT9hecJ+bg2jSLgrKdyO5GEM8KplBpanTE6bW7Ug2hpehRfQPGNKIyncjeQJx7p1CjEPZVTa82ie8oRbKyAFkR2T5gDLM75reNWlWJ7yUlLLlCKMwV6Ff6J5hnalhIuRgshybp2J5CEsnLQJMWF/t9YhFkSOTpofLVDucGsUVqD8J6nxDZZnvJN51fgJy8NscEp4CC2KHV6Fi5GCyBpJlyF5KKPcWpeYcGLS7sSCyBpu7ZOgjEtaKkG5w6230ALjp0bKSKwAY4hXryco72Qp2YdYQWQNryYkGN81UsIhxISDvboSSfg8bUGkQLjLqwUSlGdDcussrOgWrzoVyxOuTgsXI3mRHbxq+aUosm+JbYl5wuFehUlonnBBiR2KIvt7NXSaWp7xS0vaGDRPWMip7HaEIulIy77BCpb0qevvKAlfNkp8kHCyTx1XqhUpH2cl/oPmRA72KYT1kAIjdqSFe5EcYTGvNiEWoIwpsRGxYGGv3kSLrGeOEh3dZn2UsU6tg1Io3BHK3oX0gQE+bYqS8kCptfOE9V3aHSHRmNJSpjNigNm0dn/aziCSbAwp0zYrB+X5hiOt8y04z/InzEBJV4aX+j0P4YGGGwv+QK5QanSZ7MsCIld6MaSHKBLF6KsiBZHty3R0FxGZ34mHIEaJoqoiAlgUMzPRR8vMp72iKhJj7Ol9zIkV73iL1LfWXJfiyWWWIr3VhxAa6x5xzt4Xv/TSs9cdu3wWwthNb+rpxX55as4yrVdMuOCpCXffuv8+226+/TrB77a2ro6W8D89AFZQOCCUBwAAcCUAnQEqfACoAD5JIo5FIqIhEmndjCgEhLO3bq+bDV3o29F3Dz5B25f6Pwv8ogZ9BePvkA2gH3Hm19jfM447GgB+kfR70RKiPNM+yMWRgTV3xu/PMYE6P/fjHF/iAvG3zB83t1la033d1Ir4/b6Fli4mg6LzNKFn0fWzTHhaEuKVdu4wtXxb/bcb/jnC3f4+8zjGwQ4R4Vn4cGK+BsJLdflPyUPtqQ1ja1D8xJIMbYlELZ63YeRp+pgqPwwYaSiwMQD/iBfp31ioAdKF5n3ozpsRlS7RBvtVw/YabwCxO8YDjUEm4jZM+9V9xDjUAHoBC2P3nXzS6hUmpcfNpa7jf+Ev0nHC2hxlAoq4I7oBO6qIOmXV6nqC3jDrmvkXdqXs+Z3MI6Dw1vHVCy1npO162pXdtuAA/v4G4nE6X33PESGBmrlwfZeQr5RevufKRV+psiAfmBBYqjzvLo15HaqdR+pXmsMTZxdwx1BcxsN7tGh8tufkve/RCFzVMAfI6//odqN3aszcttROPfY5timr36pU10RWqJeWPXUdqqc6KzsiUBP1kjGAkPz7EBQft21lMa5KgvrTzKTTdcCc/IaDi1OPwxLtODGduf87dAlxPL8ZQC6fGRyHvoxX7v6vHbY77XKG2Ff86lR0fX61J7obPI2QKxn+2O+KP2wzOfbCj3nqRZ7HUi88Cz3HflEZxIvobz+Kdt/X6P6yOVrM5JRto3Fgfs8koY4hWkgesXeyeOsCGhaQXmUF1xMcE10WQkloqaPCJmlC2T6Ig0OeSom9RC/5BN3aIrAK85F8L9aE50C8qF9VfEKHKDzri06X0p+eS8sVnE0KYnSW94V7rXVKYQSxg1W+egcQ6eC9oxnRmsqgyocPOHXsNnSD+udd9Q5UXa9eT92nvb65djkwsv+w+BsFDsOMeS/9aYu4goLK/y/vxTPlDHebXgtsPZT7vyo1DYb3vDcbXCObT2mRCGBnjgDcIz9pIuKEyHII41FEg/rlTL6JLIy33UowjuF0OGKvzchsk6o+8dd9un80xaQB6dx9LC3aoP6PJK6ZQ336UynTwUXjrTcK/LCGsD3qjNTMeb+f/9EmCeAGKfpPWPlg+eARAm09QqMtnPGEwgyEV/6zOe+nuxK9Bo2uBFmvGtydfN3NXFohsO5lGd2m9ScNy2jWcEtgsDMyrvp617igaBEMHNSgaS7dirYWgZodVTVj09mt6y4J9Yv5cYkqt9Yr2jpxwBTodvqrL2RUbEmKS8UXMmfWINJ3Op03FeB5QPk7nSOuvpOSt+mjm1DdiQN/z+tM6k4WGsS4dr8uYCxbusLj9QhFIx/Nb0NM2WbF+xRQvK3eU9ezL24bgxXHUNia3tvXaJAUDeVMfRSkwTNJWJgIZTFP0UVJekYCA1eIjAEZo0qycHLG+e1KLOJEiycZ1y5eBOQVRzU9eJemqWeskEnbOekAH5WuGMKg/jN1izBlw/4BBnuhDyxavoIChAz2ZHB2E047NjuNx8uHxY3rAkaRS3KQHJ0eP6ZhvkmvgnP9yZzkSd9k8+Gn1Q5Keg0+TOCTIKA2vzNNaxG10ge96ZDKi/Hi0KJWIPSPkX3FC/348AsBVbsNa5NPwvTzqGFM8W17MV4a0DLEdOy7B5syKwNkXc1oSiPKzDbt/PNhD+0r/CQoGIEqfQfZjBCsKn3e8gseSnEOLeHQMIHTjkkAoyGO7INk1H0QPl5Brw9OgBT+8myxXBEyWfmvQdEyhxIDvmDEo8vXc3s1s0GftzkoCEFsU3pWJd/PvlNJZj9cIRlducvZRqiApVh1pXloOtHvRfqUk/4AVsCMqpjK8lWNBJlq/7nJv/2UMmu/bWsOxxqH70m6e2+MbAhKOk3ZCIZKh1In0zXCk/O94rfddbv83Ed3fCdDe8UbCSIt29VZRwAm2kLlHZ/C3rumhH1JcV3jjZMyyCR02IQvQobYsvc7gZBJVmLcuQv5CWM0qHvF/1dPX/PrQU/7ktXntOyD92EuZQWiJFkml4wOO8QcKdvrEiK9VwViSQ3f8Mvwjx/adKaGQ8olXj9KPnCXAuWHEebPHPNS5FWCcxobQZnY/Ymhpcu/g2LyF1azn1VNyq7CNY5APliA0LrWIK0L7Nodb8EgA3XSBJh7m4NbdeLlqsEthJ2Jeae5ult3tg5VUAWMI9+RtoXLjb+BZZd0u0rThOa5hwNF8XWH7hAxB363dhoe4+egeK6MJ/R0+X1+IFAv9We+JkZHG70DN8OfX4tBLlOofcEEPgMFXtfRdrcBqCUkUc5Oljayg4jed96gxHBqflSDEK+yBJ/JF7KWRuBinR2OKiVo5CCvgnUGTS5LOqKY0PDj6tjwFOGoGwf6V2otP1gjRDZpucGzuPqmLI0MXnb55eBk5D/om4DkwTkcl2lb/rYgB/W0zpXCHvxb8W8acJEY73OyILDT6ojayufijfaQPeQhqG0fu1sMjFctCo4DNOpSV2z4TDjuy0aaycH2/T6KJ7r+smZzywj0WwUCL12ccKYWyp4vf///4P/fzeqmv4xjYhWoTWH0z4/kYSmLOGpHWO1nQ1NdLjyHPyIR26onkQh6AAA=",
-  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/rowan.zip",
+  "id": "aoi",
+  "name": "Aoi",
+  "blurb": "anime \u00b7 cel-shaded",
+  "prompt": "a young anime adventurer girl with a long high ponytail of silver-blue hair, a short fitted navy jacket with gold trim over a white shirt, fitted black trousers and knee-high brown leather boots",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/aoi.zip",
   "manifest": {
-   "height_m": 1.78,
-   "triangles": 58344,
+   "height_m": 1.62,
+   "triangles": 75821,
    "capsule": {
-    "radius_m": 0.3,
-    "height_m": 1.75,
+    "radius_m": 0.397,
+    "height_m": 1.609,
     "center_m": [
      0.0,
-     0.875,
+     0.805,
      0.0
     ],
     "note": "glTF axes (Y up); measured on the first idle frame"
    },
    "skeleton": {
     "convention": "Mixamo",
-    "bones": 25
+    "bones": 64
    },
    "clips": [
+    {
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "crouch_walk",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": true,
+     "ground_speed_mps": 1.528,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
     {
      "name": "idle",
      "frames": 98,
@@ -434,36 +506,116 @@ const CHARACTERS = [
      "frames": 48,
      "seconds": 0.783,
      "loop": true,
-     "ground_speed_mps": 2.349,
+     "ground_speed_mps": 2.536,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.2128
     },
     {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.238,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2553
+    },
+    {
      "name": "jump",
      "frames": 141,
      "seconds": 2.333,
      "loop": false,
      "ground_speed_mps": 0.0,
-     "takeoff_s": 0.833,
-     "landing_s": 1.45,
-     "apex_foot_height_m": 0.634,
-     "entry_s": 0.583,
+     "takeoff_s": 0.85,
+     "landing_s": 1.467,
+     "apex_foot_height_m": 0.667,
+     "entry_s": 0.6,
      "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
     },
     {
      "name": "run",
      "frames": 43,
      "seconds": 0.7,
      "loop": true,
-     "ground_speed_mps": 4.112,
+     "ground_speed_mps": 4.285,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 6.056,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.121,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.122,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1618
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.005,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": -90.0
     },
     {
      "name": "walk",
      "frames": 66,
      "seconds": 1.083,
      "loop": true,
-     "ground_speed_mps": 1.383,
+     "ground_speed_mps": 1.459,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.1846
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 1.226,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.1613
     },
     {
      "name": "wave",
@@ -473,34 +625,72 @@ const CHARACTERS = [
      "ground_speed_mps": 0.0
     }
    ],
-   "prompt": "a man in a green bomber jacket with medium-length wavy hair"
+   "prompt": "a young anime adventurer girl with a long high ponytail of silver-blue hair, a short fitted navy jacket with gold trim over a white shirt, fitted black trousers and knee-high brown leather boots",
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "anime"
   }
  },
  {
-  "id": "wren",
-  "name": "Wren",
-  "blurb": "leather + satchel",
-  "prompt": "a woman in a brown leather jacket with a satchel and a braid",
-  "thumb": "data:image/webp;base64,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",
-  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/wren.zip",
+  "id": "mara",
+  "name": "Mara",
+  "blurb": "realistic \u00b7 field researcher",
+  "prompt": "a young woman field researcher with a long dark brown braided ponytail, a fitted olive green field jacket with the sleeves rolled to the forearm, a grey t-shirt, tan cargo trousers and brown leather hiking boots",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/mara.zip",
   "manifest": {
    "height_m": 1.68,
-   "triangles": 58840,
+   "triangles": 67101,
    "capsule": {
-    "radius_m": 0.278,
-    "height_m": 1.657,
+    "radius_m": 0.248,
+    "height_m": 1.667,
     "center_m": [
      0.0,
-     0.828,
+     0.833,
      0.0
     ],
     "note": "glTF axes (Y up); measured on the first idle frame"
    },
    "skeleton": {
     "convention": "Mixamo",
-    "bones": 25
+    "bones": 64
    },
    "clips": [
+    {
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "crouch_walk",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": true,
+     "ground_speed_mps": 1.386,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
     {
      "name": "idle",
      "frames": 98,
@@ -513,8 +703,18 @@ const CHARACTERS = [
      "frames": 48,
      "seconds": 0.783,
      "loop": true,
-     "ground_speed_mps": 2.307,
+     "ground_speed_mps": 2.322,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.234
+    },
+    {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.008,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2979
     },
     {
      "name": "jump",
@@ -522,27 +722,97 @@ const CHARACTERS = [
      "seconds": 2.333,
      "loop": false,
      "ground_speed_mps": 0.0,
-     "takeoff_s": 0.833,
+     "takeoff_s": 0.867,
      "landing_s": 1.45,
-     "apex_foot_height_m": 0.629,
-     "entry_s": 0.583,
+     "apex_foot_height_m": 0.561,
+     "entry_s": 0.617,
      "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
     },
     {
      "name": "run",
      "frames": 43,
      "seconds": 0.7,
      "loop": true,
-     "ground_speed_mps": 4.062,
+     "ground_speed_mps": 3.986,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 5.466,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.004,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.0,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1471
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.005,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": -90.0
     },
     {
      "name": "walk",
      "frames": 66,
      "seconds": 1.083,
      "loop": true,
-     "ground_speed_mps": 1.353,
-     "left_contact_phase": 0.1846
+     "ground_speed_mps": 1.343,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 1.075,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.1774
     },
     {
      "name": "wave",
@@ -552,113 +822,269 @@ const CHARACTERS = [
      "ground_speed_mps": 0.0
     }
    ],
-   "prompt": "a woman in a brown leather jacket with a satchel and a braid"
+   "prompt": "a young woman field researcher with a long dark brown braided ponytail, a fitted olive green field jacket with the sleeves rolled to the forearm, a grey t-shirt, tan cargo trousers and brown leather hiking boots",
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "realistic"
   }
  },
  {
-  "id": "juno",
+  "id": "pip",
+  "name": "Pip",
+  "blurb": "stylised \u00b7 cartoon courier",
+  "prompt": "a cheerful cartoon courier with messy orange hair and freckles, a puffy yellow vest over a blue hoodie, baggy khaki cargo shorts, striped socks and chunky red sneakers",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/pip.zip",
+  "manifest": {
+   "height_m": 1.55,
+   "triangles": 78867,
+   "capsule": {
+    "radius_m": 0.281,
+    "height_m": 1.54,
+    "center_m": [
+     0.0,
+     0.77,
+     0.0
+    ],
+    "note": "glTF axes (Y up); measured on the first idle frame"
+   },
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 64
+   },
+   "clips": [
+    {
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "crouch_walk",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": true,
+     "ground_speed_mps": 1.34,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.178,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.234
+    },
+    {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 1.828,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2553
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.867,
+     "landing_s": 1.45,
+     "apex_foot_height_m": 0.434,
+     "entry_s": 0.617,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 3.688,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 5.003,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 0.952,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 0.948,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1618
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.004,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.006,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.006,
+     "turn_deg": -90.0
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.29,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2154
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 0.978,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.1613
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.0
+    }
+   ],
+   "prompt": "a cheerful cartoon courier with messy orange hair and freckles, a puffy yellow vest over a blue hoodie, baggy khaki cargo shorts, striped socks and chunky red sneakers",
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "stylized"
+  }
+ },
+ {
+  "id": "juno3",
   "name": "Juno",
   "blurb": "red windbreaker",
   "prompt": "a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut",
-  "thumb": "data:image/webp;base64,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",
-  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/juno.zip",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/juno3.zip",
   "manifest": {
    "height_m": 1.7,
-   "triangles": 58392,
+   "triangles": 67157,
    "capsule": {
-    "radius_m": 0.279,
-    "height_m": 1.675,
+    "radius_m": 0.252,
+    "height_m": 1.69,
     "center_m": [
      0.0,
-     0.838,
+     0.845,
      0.0
     ],
     "note": "glTF axes (Y up); measured on the first idle frame"
    },
    "skeleton": {
     "convention": "Mixamo",
-    "bones": 25
+    "bones": 64
    },
    "clips": [
     {
-     "name": "idle",
-     "frames": 98,
-     "seconds": 1.617,
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
      "loop": true,
      "ground_speed_mps": 0.0
     },
     {
-     "name": "jog",
-     "frames": 48,
-     "seconds": 0.783,
-     "loop": true,
-     "ground_speed_mps": 2.182,
-     "left_contact_phase": 0.2128
-    },
-    {
-     "name": "jump",
-     "frames": 141,
-     "seconds": 2.333,
-     "loop": false,
-     "ground_speed_mps": 0.0,
-     "takeoff_s": 0.833,
-     "landing_s": 1.467,
-     "apex_foot_height_m": 0.648,
-     "entry_s": 0.583,
-     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
-    },
-    {
-     "name": "run",
-     "frames": 43,
-     "seconds": 0.7,
-     "loop": true,
-     "ground_speed_mps": 3.901,
-     "left_contact_phase": 0.2381
-    },
-    {
-     "name": "walk",
-     "frames": 66,
-     "seconds": 1.083,
-     "loop": true,
-     "ground_speed_mps": 1.3,
-     "left_contact_phase": 0.1846
-    },
-    {
-     "name": "wave",
+     "name": "crouch_walk",
      "frames": 68,
      "seconds": 1.117,
-     "loop": false,
-     "ground_speed_mps": 0.0
-    }
-   ],
-   "prompt": "a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut"
-  }
- },
- {
-  "id": "vex",
-  "name": "Vex",
-  "blurb": "from a painting",
-  "prompt": "made from a painted concept image, no prompt",
-  "thumb": "data:image/webp;base64,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",
-  "download": "https://github.com/majieddd/charforge/releases/download/v2.0.0/vex.zip",
-  "manifest": {
-   "height_m": 1.72,
-   "triangles": 59336,
-   "capsule": {
-    "radius_m": 0.262,
-    "height_m": 1.703,
-    "center_m": [
-     0.0,
-     0.852,
-     0.0
-    ],
-    "note": "glTF axes (Y up); measured on the first idle frame"
-   },
-   "skeleton": {
-    "convention": "Mixamo",
-    "bones": 25
-   },
-   "clips": [
+     "loop": true,
+     "ground_speed_mps": 1.444,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
     {
      "name": "idle",
      "frames": 98,
@@ -671,8 +1097,18 @@ const CHARACTERS = [
      "frames": 48,
      "seconds": 0.783,
      "loop": true,
-     "ground_speed_mps": 2.464,
+     "ground_speed_mps": 2.324,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.234
+    },
+    {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.075,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2553
     },
     {
      "name": "jump",
@@ -682,25 +1118,95 @@ const CHARACTERS = [
      "ground_speed_mps": 0.0,
      "takeoff_s": 0.85,
      "landing_s": 1.45,
-     "apex_foot_height_m": 0.622,
+     "apex_foot_height_m": 0.576,
      "entry_s": 0.6,
      "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
     },
     {
      "name": "run",
      "frames": 43,
      "seconds": 0.7,
      "loop": true,
-     "ground_speed_mps": 4.128,
+     "ground_speed_mps": 4.044,
+     "travel_deg": 0.0,
      "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 5.683,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.028,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.035,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1618
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.005,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": -90.0
     },
     {
      "name": "walk",
      "frames": 66,
      "seconds": 1.083,
      "loop": true,
-     "ground_speed_mps": 1.397,
-     "left_contact_phase": 0.1846
+     "ground_speed_mps": 1.359,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 1.107,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.1774
     },
     {
      "name": "wave",
@@ -710,7 +1216,612 @@ const CHARACTERS = [
      "ground_speed_mps": 0.0
     }
    ],
-   "prompt": null
+   "prompt": "a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut",
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "realistic"
+  }
+ },
+ {
+  "id": "rowan",
+  "name": "Rowan",
+  "blurb": "green bomber",
+  "prompt": "a man in a green bomber jacket with medium-length wavy hair",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/rowan.zip",
+  "manifest": {
+   "height_m": 1.78,
+   "triangles": 68448,
+   "capsule": {
+    "radius_m": 0.275,
+    "height_m": 1.766,
+    "center_m": [
+     0.0,
+     0.883,
+     0.0
+    ],
+    "note": "glTF axes (Y up); measured on the first idle frame"
+   },
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 64
+   },
+   "clips": [
+    {
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "crouch_walk",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": true,
+     "ground_speed_mps": 1.509,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.486,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.234
+    },
+    {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.161,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2553
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.867,
+     "landing_s": 1.45,
+     "apex_foot_height_m": 0.56,
+     "entry_s": 0.617,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 4.248,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 5.872,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.079,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.075,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1618
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.005,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": -90.0
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.445,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2154
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 1.143,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.1774
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.0
+    }
+   ],
+   "prompt": "a man in a green bomber jacket with medium-length wavy hair",
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "realistic"
+  }
+ },
+ {
+  "id": "wren",
+  "name": "Wren",
+  "blurb": "leather + satchel",
+  "prompt": "a woman in a brown leather jacket with a satchel and a braid",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/wren.zip",
+  "manifest": {
+   "height_m": 1.68,
+   "triangles": 69587,
+   "capsule": {
+    "radius_m": 0.298,
+    "height_m": 1.665,
+    "center_m": [
+     0.0,
+     0.832,
+     0.0
+    ],
+    "note": "glTF axes (Y up); measured on the first idle frame"
+   },
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 64
+   },
+   "clips": [
+    {
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "crouch_walk",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": true,
+     "ground_speed_mps": 1.422,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.391,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.234
+    },
+    {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.093,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2979
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.867,
+     "landing_s": 1.45,
+     "apex_foot_height_m": 0.596,
+     "entry_s": 0.617,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 4.129,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 5.735,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.037,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.038,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1471
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.005,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": -90.0
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.382,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 1.107,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.1774
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.0
+    }
+   ],
+   "prompt": "a woman in a brown leather jacket with a satchel and a braid",
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "realistic"
+  }
+ },
+ {
+  "id": "vex",
+  "name": "Vex",
+  "blurb": "from a painting",
+  "prompt": "made from a painted concept image, no prompt",
+  "thumb": "data:image/webp;base64,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",
+  "download": "https://github.com/majieddd/charforge/releases/download/v3.0.0/vex.zip",
+  "manifest": {
+   "height_m": 1.72,
+   "triangles": 74271,
+   "capsule": {
+    "radius_m": 0.246,
+    "height_m": 1.707,
+    "center_m": [
+     0.0,
+     0.854,
+     0.0
+    ],
+    "note": "glTF axes (Y up); measured on the first idle frame"
+   },
+   "skeleton": {
+    "convention": "Mixamo",
+    "bones": 64
+   },
+   "clips": [
+    {
+     "name": "crouch_idle",
+     "frames": 249,
+     "seconds": 4.133,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "crouch_walk",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": true,
+     "ground_speed_mps": 1.465,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.1791
+    },
+    {
+     "name": "fall",
+     "frames": 181,
+     "seconds": 3.0,
+     "loop": true,
+     "ground_speed_mps": 0.0,
+     "grounded": false
+    },
+    {
+     "name": "idle",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": true,
+     "ground_speed_mps": 0.0
+    },
+    {
+     "name": "jog",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.649,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2553
+    },
+    {
+     "name": "jog_back",
+     "frames": 48,
+     "seconds": 0.783,
+     "loop": true,
+     "ground_speed_mps": 2.231,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2979
+    },
+    {
+     "name": "jump",
+     "frames": 141,
+     "seconds": 2.333,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "takeoff_s": 0.867,
+     "landing_s": 1.45,
+     "apex_foot_height_m": 0.603,
+     "entry_s": 0.617,
+     "note": "in place horizontally, but the clip keeps its vertical motion: the hips rise along the arc. Launch the capsule at takeoff_s with the arc's own speed and cancel the clip's lift while airborne (the playground does), or let the clip carry the height and keep the capsule grounded - not both"
+    },
+    {
+     "name": "land",
+     "frames": 127,
+     "seconds": 2.1,
+     "loop": false,
+     "ground_speed_mps": 0.0,
+     "touchdown_s": 0.35
+    },
+    {
+     "name": "run",
+     "frames": 43,
+     "seconds": 0.7,
+     "loop": true,
+     "ground_speed_mps": 4.35,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2381
+    },
+    {
+     "name": "sprint",
+     "frames": 65,
+     "seconds": 1.067,
+     "loop": true,
+     "ground_speed_mps": 5.626,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.6406
+    },
+    {
+     "name": "strafe_left",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.083,
+     "travel_deg": 90.0,
+     "left_contact_phase": 0.2059
+    },
+    {
+     "name": "strafe_right",
+     "frames": 69,
+     "seconds": 1.133,
+     "loop": true,
+     "ground_speed_mps": 1.083,
+     "travel_deg": -90.0,
+     "left_contact_phase": 0.1618
+    },
+    {
+     "name": "turn_180",
+     "frames": 98,
+     "seconds": 1.617,
+     "loop": false,
+     "ground_speed_mps": 0.005,
+     "turn_deg": 176.1
+    },
+    {
+     "name": "turn_left",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": 90.0
+    },
+    {
+     "name": "turn_right",
+     "frames": 57,
+     "seconds": 0.933,
+     "loop": false,
+     "ground_speed_mps": 0.007,
+     "turn_deg": -90.0
+    },
+    {
+     "name": "walk",
+     "frames": 66,
+     "seconds": 1.083,
+     "loop": true,
+     "ground_speed_mps": 1.46,
+     "travel_deg": 0.0,
+     "left_contact_phase": 0.2154
+    },
+    {
+     "name": "walk_back",
+     "frames": 63,
+     "seconds": 1.033,
+     "loop": true,
+     "ground_speed_mps": 1.163,
+     "travel_deg": 180.0,
+     "left_contact_phase": 0.2097
+    },
+    {
+     "name": "wave",
+     "frames": 68,
+     "seconds": 1.117,
+     "loop": false,
+     "ground_speed_mps": 0.0
+    }
+   ],
+   "prompt": null,
+   "springs": null,
+   "face": {
+    "jaw_bone": "jaw",
+    "jaw_open_deg": 18,
+    "morphs": [
+     "blink_L",
+     "blink_R",
+     "brows_up",
+     "pucker",
+     "smile"
+    ],
+    "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for ~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."
+   },
+   "style": "stylized"
   }
  }
 ];
@@ -738,7 +1849,7 @@ async function fetchGLB(url, onProgress) {
 }
 
 // ---- loading and swapping ----------------------------------------------------------------
-let activeId = null, loading = false;
+let activeId = null, loading = false, loadingSpec = null;
 
 function disposeCharacter() {
   if (mixer) { mixer.stopAllAction(); mixer.uncacheRoot(mixer.getRoot()); mixer = null; }
@@ -792,9 +1903,11 @@ function buildCharacter(gltf) {
     a.enabled = true; a.setEffectiveWeight(0); a.play();
     actions[clip.name] = a;
   }
-  // Locomotion and jump clocks are driven by the controller, not the mixer: walk, jog and run
-  // share one stride clock so they can be blended, and the jump's clock follows the physics.
-  for (const n of ['walk', 'jog', 'run', 'jump']) if (actions[n]) actions[n].timeScale = 0;
+  // Locomotion, jump, landing, turns and emotes are driven by the controller, not the mixer: the
+  // moving clips share one stride clock so they can be blended, the jump's clock follows the
+  // physics, and a turn's clock decides when the capsule takes over its rotation. Idles and the
+  // fall loop just play.
+  for (const n of DRIVEN) if (actions[n]) actions[n].timeScale = 0;
   if (actions.idle) actions.idle.setEffectiveWeight(1);
 
   // A character built by this pipeline stands on its own origin. The playground used to measure
@@ -808,6 +1921,10 @@ function buildCharacter(gltf) {
                  'compensating. Assets from the current pipeline stand on their origin.');
     model.userData.groundFix = -box.min.y;
   } else model.userData.groundFix = 0;
+
+  if (loadingSpec?.manifest?.style === 'anime') toonify(model);
+  setupSprings(model, loadingSpec?.manifest?.springs);
+  setupFace(model, loadingSpec?.manifest?.face);
 
   skeletonHelper = new THREE.SkeletonHelper(model);
   skeletonHelper.visible = !!(skeletonHelper && $('b-skel').getAttribute('aria-pressed') === 'true');
@@ -828,10 +1945,130 @@ function buildCharacter(gltf) {
   // how the cloth-addon bug was found (17 targets loaded, every influence pinned at zero).
   // `tick` advances the whole simulation by a fixed step, independent of the frame loop - so the
   // controller can be tested deterministically even where requestAnimationFrame is throttled.
-  window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick,
+  window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick, controls,
+                  setFollow: (on) => { followCam = on; },
                   get activeId() { return activeId; }, get clipInfo() { return clipInfo; }, select,
                   jump: () => { wantJump = true; }, wave: () => { wantWave = true; },
-                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); }, footAudit };
+                  crouch: () => { wantCrouch = true; }, aim: (on = true) => { ctl.strafeOn = on; },
+                  groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); updateFace(dt); updateSprings(dt); }, footAudit,
+                  get face() { return face; },
+                  get springs() { return springs; } };
+}
+
+// ---- face ---------------------------------------------------------------------------
+// The face rig the pipeline builds: a jaw bone and blink / smile / brows / pucker morph targets.
+// Clips never key them, so a character stays alive on top of any animation: it blinks every few
+// seconds, talks while T is held (jaw and pucker on a syllable rhythm), and smiles while waving.
+let face = null;
+const _qj = new THREE.Quaternion(), _ax = new THREE.Vector3(1, 0, 0);
+function setupFace(root, spec) {
+  face = null;
+  const meshes = [];
+  let jaw = null;
+  root.traverse((o) => {
+    if (o.isMesh && o.morphTargetDictionary && Object.keys(o.morphTargetDictionary).length) meshes.push(o);
+    if (o.isBone && o.name === 'jaw') jaw = o;
+  });
+  if (!meshes.length && !jaw) return;
+  for (const m of meshes) m.morphTargetInfluences?.fill(0);      // neutral until something drives them
+  face = { meshes, jaw, openDeg: spec?.jaw_open_deg || 18, next: 1.2, t: -1, talk: 0, ph: 0, smile: 0 };
+}
+function morph(name, v) {
+  for (const m of face.meshes) { const i = m.morphTargetDictionary[name]; if (i !== undefined) m.morphTargetInfluences[i] = v; }
+}
+function updateFace(dt) {
+  if (!face) return;
+  face.next -= dt;
+  if (face.next <= 0 && face.t < 0) { face.t = 0; face.next = 2 + Math.random() * 4; }
+  let b = 0;
+  if (face.t >= 0) {
+    face.t += dt;
+    b = face.t < 0.07 ? face.t / 0.07 : face.t < 0.17 ? 1 - (face.t - 0.07) / 0.1 : 0;
+    if (face.t >= 0.17) face.t = -1;
+  }
+  morph('blink_L', b); morph('blink_R', b);
+  face.talk += ((keys['t'] ? 1 : 0) - face.talk) * Math.min(1, dt * 8);
+  face.ph += dt * (4.5 + 1.5 * Math.sin(performance.now() / 650));
+  const open = face.talk * Math.max(0, Math.sin(face.ph * Math.PI)) ** 0.8 * (0.45 + 0.55 * Math.abs(Math.sin(face.ph * 1.7)));
+  if (face.jaw && open > 1e-3) face.jaw.quaternion.multiply(_qj.setFromAxisAngle(_ax, open * face.openDeg * Math.PI / 180));
+  morph('pucker', face.talk * 0.4 * Math.max(0, Math.sin(face.ph * 0.9 + 1.0)));
+  face.smile += ((ctl.mode === 'emote' ? 1 : 0) - face.smile) * Math.min(1, dt * 4);
+  morph('smile', 0.85 * face.smile); morph('brows_up', 0.5 * face.smile);
+}
+
+// ---- spring bones -------------------------------------------------------------
+// Chains the pipeline hung on whatever swings - a ponytail, a braid, a bag. The clips key them at
+// rest; this simulation moves them, the way VRM's spring bones do (Unity and Unreal both have
+// equivalents, and the manifest carries the same settings for them): each bone's tail is pulled
+// back toward where the animation points it (stiffness), keeps part of its last motion (drag),
+// falls (gravity), keeps its length, and is pushed out of the body's collider spheres.
+let springs = null;
+const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _sc = new THREE.Vector3();
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qc = new THREE.Quaternion();
+function setupSprings(root, spec) {
+  springs = null;
+  if (!spec || !spec.chains || !spec.chains.length) return;
+  const byName = {};
+  root.traverse((o) => { if (o.isBone) byName[o.name] = o; });
+  const find = (n) => byName[n] || byName[n.replace(/[\[\]\.:\/]/g, '')];
+  root.updateMatrixWorld(true);
+  const chains = [];
+  for (const ch of spec.chains) {
+    const bones = ch.bones.map(find);
+    if (bones.some((b) => !b)) continue;
+    const pos = bones.map((b) => b.getWorldPosition(new THREE.Vector3()));
+    const joints = bones.map((b, i) => {
+      // the bone's direction at rest, in its own space: toward the next joint (the last bone
+      // carries on the way the one before it points)
+      const wdir = i + 1 < pos.length ? pos[i + 1].clone().sub(pos[i]) : pos[i].clone().sub(pos[i - 1] || b.parent.getWorldPosition(new THREE.Vector3()));
+      wdir.normalize();
+      const axis = wdir.applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert());
+      return { bone: b, axis, len: ch.lengths_m[i], tail: new THREE.Vector3(), prev: new THREE.Vector3() };
+    });
+    chains.push({ joints, stiff: ch.stiffness, drag: ch.drag, grav: ch.gravity, r: ch.radius_m });
+  }
+  const colliders = (spec.colliders || []).map((c) => {
+    const bone = find(c.bone);
+    // a sphere around the middle of its bone (the head's around the skull, not the neck)
+    const child = bone && bone.children.find((k) => k.isBone);
+    return { bone, child, r: c.radius_m };
+  }).filter((c) => c.bone);
+  springs = { chains, colliders, fresh: true };
+}
+function resetSprings() { if (springs) springs.fresh = true; }
+function updateSprings(dt) {
+  if (!springs || !model) return;
+  dt = Math.min(Math.max(dt, 1e-3), 1 / 30);
+  model.updateMatrixWorld(true);
+  const cols = springs.colliders.map((c) => {
+    const p = c.bone.getWorldPosition(new THREE.Vector3());
+    if (c.child) p.add(c.child.getWorldPosition(_sc)).multiplyScalar(0.5);
+    return [p, c.r];
+  });
+  for (const ch of springs.chains) {
+    for (const j of ch.joints) {
+      const b = j.bone;
+      const head = b.getWorldPosition(new THREE.Vector3());
+      const parentQ = b.parent.getWorldQuaternion(_qa);
+      const animQ = _qb.copy(parentQ).multiply(b.quaternion);          // as the clip poses it
+      const animAxis = _sa.copy(j.axis).applyQuaternion(animQ);
+      if (springs.fresh) { j.tail.copy(head).addScaledVector(animAxis, j.len); j.prev.copy(j.tail); }
+      const next = _sb.copy(j.tail).sub(j.prev).multiplyScalar(1 - ch.drag).add(j.tail)
+        .addScaledVector(animAxis, ch.stiff * dt * 4.0)
+        .add(_sc.set(0, -ch.grav * dt * 1.5, 0));
+      next.sub(head).setLength(j.len).add(head);
+      for (const [cp, r] of cols) {
+        const min = r + ch.r, d = next.distanceTo(cp);
+        if (d < min) { next.sub(cp).setLength(min).add(cp); next.sub(head).setLength(j.len).add(head); }
+      }
+      j.prev.copy(j.tail); j.tail.copy(next);
+      const want = next.clone().sub(head).normalize();
+      const worldQ = _qc.setFromUnitVectors(animAxis.normalize(), want).multiply(animQ);
+      b.quaternion.copy(parentQ.invert().multiply(worldQ));
+      b.updateMatrixWorld(true);
+    }
+  }
+  springs.fresh = false;
 }
 
 // ---- foot audit ------------------------------------------------------------------------------
@@ -857,11 +2094,18 @@ async function footAudit(lane = [6, 14]) {
   }
   const at = ([sk, i]) => { sk.getVertexPosition(i, v); v.applyMatrix4(sk.matrixWorld); return { x: v.x, y: v.y, z: v.z, ref: [sk, i] }; };
   const lowest = (s) => sole[s].map(at).reduce((a, b) => (b.y < a.y ? b : a));
-  const tick = () => { step(1 / 60); animate(1 / 60); mixer.update(1 / 60); scene.updateMatrixWorld(true); };
-  const home = () => { rig.position.x = lane[0]; rig.position.z = lane[1]; scene.updateMatrixWorld(true); };
+  const tick = () => { step(1 / 60); animate(1 / 60); mixer.update(1 / 60); updateSprings(1 / 60); scene.updateMatrixWorld(true); };
+  const home = () => { rig.position.x = lane[0]; rig.position.z = lane[1]; resetSprings(); scene.updateMatrixWorld(true); };
   const out = [];
-  for (const [gait, held] of [['walk', ['w', 'c']], ['jog', ['w']], ['run', ['w', 'shift']]]) {
-    for (const k of ['w', 'shift', 'c']) keys[k] = false;
+  const sp0 = speeds();
+  const gaits = [['walk', ['w', 'x']], ['jog', ['w']], ['run', ['w'], { forceSpeed: sp0.run }],
+                 ...(sp0.sprint ? [['sprint', ['w', 'shift']]] : []),
+                 ...(canStrafe() ? [['walk_back', ['s'], { strafeOn: true }], ['strafe_left', ['a'], { strafeOn: true }],
+                                    ['strafe_right', ['d'], { strafeOn: true }]] : []),
+                 ...(sp0.crouch ? [['crouch_walk', ['w'], { crouch: true }]] : [])];
+  for (const [gait, held, opt = {}] of gaits) {
+    for (const k of ['w', 'a', 's', 'd', 'x', 'shift']) keys[k] = false;
+    Object.assign(ctl, { forceSpeed: null, strafeOn: false, crouch: false }, opt);
     home(); for (let k = 0; k < 90; k++) tick();
     for (const k of held) keys[k] = true;
     for (let k = 0; k < 120; k++) { tick(); if (k % 30 === 29) home(); }
@@ -881,6 +2125,7 @@ async function footAudit(lane = [6, 14]) {
       if (k % 30 === 29) { home(); prev = { L: lowest('L'), R: lowest('R') }; }   // stay on the open lane
     }
     for (const k of held) keys[k] = false;
+    Object.assign(ctl, { forceSpeed: null, strafeOn: false, crouch: false });
     out.push({ gait, speed_mps: +speed.toFixed(2), slip_pct: +(100 * slide / Math.max(n, 1) / Math.max(speed, 1)).toFixed(1),
                on_floor: +(down / 480).toFixed(2), deepest_cm: +(100 * deepest).toFixed(2) });
   }
@@ -925,6 +2170,7 @@ async function select(id) {
     clipInfo = {};
     for (const c of (spec.manifest?.clips || [])) clipInfo[c.name] = c;
     CR = spec.manifest?.capsule?.radius_m || 0.28;
+    loadingSpec = spec;
     buildCharacter(gltf);
     resetController();
     activeId = id;
@@ -966,16 +2212,22 @@ select(CHARACTERS[0].id);
 
 // ---- input -----------------------------------------------------------------
 const keys = Object.create(null);
-let wantJump = false, wantWave = false;
+let wantJump = false, wantWave = false, wantCrouch = false, wantStrafe = false, aimHeld = false;
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const k = e.key.toLowerCase();
   if (k === ' ' && !e.repeat) { e.preventDefault(); wantJump = true; }
   if (k === 'e' && !e.repeat) wantWave = true;
+  if (k === 'c' && !e.repeat) wantCrouch = true;
+  if (k === 'q' && !e.repeat) wantStrafe = true;
   keys[k] = true;
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; aimHeld = false; });
+// hold the right mouse button to aim: the character faces where the camera looks and strafes
+renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+renderer.domElement.addEventListener('pointerdown', (e) => { if (e.button === 2) aimHeld = true; });
+addEventListener('pointerup', (e) => { if (e.button === 2) aimHeld = false; });
 
 // touch stick for phones
 const stick = { x:0, y:0, active:false };
@@ -995,14 +2247,19 @@ function move(e) {
 
 // ---- character controller ---------------------------------------------------
 // A kinematic capsule, the way most shipped games move a humanoid. Everything that used to be a
-// hard-coded constant here - gait speeds, jump timing - now comes from the character's
-// own manifest, measured from its clips when it was packaged.
+// hard-coded constant here - gait speeds, jump timing, which way each clip travels, how far a
+// turn turns - comes from the character's own manifest, measured from its clips when it was
+// packaged.
 let CR = 0.28;          // capsule radius, m - replaced by the character's own, from its manifest
 const STEP = 0.32;      // tallest ledge walked up without a jump
-const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false,
-              phase:0, loco:1, speed:0, fallHold:0 };
+const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false, phase:0, speed:0,
+              crouch:false, strafeOn:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0,
+              turnClip:null, turnRate:1, airTime:0, snap:false, forceSpeed:null };
 function resetController() {
-  Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, loco:1, speed:0 });
+  if (typeof resetSprings === 'function') resetSprings();
+  Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, speed:0,
+                       crouch:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0, turnClip:null,
+                       airTime:0, snap:false });
   ctl.y = groundAt(rig.position.x, rig.position.z);
 }
 
@@ -1046,10 +2303,17 @@ function collide(p, feet) {
 function speeds() {
   const s = (n, d) => clipInfo[n]?.ground_speed_mps || d;
   const walk = s('walk', 1.3), run = s('run', 4.0);
-  return { walk, jog: actions.jog ? s('jog', (walk + run) / 2) : null, run };
+  return { walk, jog: actions.jog ? s('jog', (walk + run) / 2) : null, run,
+           sprint: actions.sprint ? s('sprint', run * 1.3) : null,
+           back: actions.walk_back ? s('walk_back', 1.1) : null,
+           jogBack: actions.jog_back ? s('jog_back', 2.0) : null,
+           strafe: actions.strafe_left && actions.strafe_right ? s('strafe_left', 1.0) : null,
+           crouch: actions.crouch_walk ? s('crouch_walk', 1.0) : null };
 }
-// the moving clips in speed order, for blending between neighbours
-const tiers = (sp) => [['walk', sp.walk], ...(sp.jog ? [['jog', sp.jog]] : []), ['run', sp.run]];
+// the forward clips in speed order, for blending between neighbours
+const tiers = (sp) => [['walk', sp.walk], ...(sp.jog ? [['jog', sp.jog]] : []), ['run', sp.run],
+                       ...(sp.sprint ? [['sprint', sp.sprint]] : [])];
+const canStrafe = () => !!(speeds().strafe && actions.walk_back);
 
 // The jump arc comes from the jump clip itself. Takeoff, landing and how high the feet clear the
 // floor were measured from the animation when it was packaged; gravity and launch speed are then
@@ -1065,11 +2329,29 @@ function jumpSpec() {
            entry: j.entry_s ?? 0 };
 }
 const clipArc = (J, tau) => { const t = Math.max(0, Math.min(tau, J.tAir)); return J.v0 * t - 0.5 * J.g * t * t; };
+const wrapA = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+
+// Turning in place. A character that has to face a new way while standing - aiming somewhere
+// else, or asked to walk back the way it came - steps round with a turn clip rather than
+// spinning on the spot. The clip keeps its own rotation of the body; when it ends, the capsule
+// takes over that rotation (turn_deg, from the manifest) and the idle continues from there.
+function startTurn(diff) {
+  const a = Math.abs(diff) > 2.6 && actions.turn_180 ? 'turn_180'
+          : diff > 0 ? 'turn_left' : 'turn_right';
+  if (!actions[a] || !clipInfo[a]?.turn_deg) return false;
+  ctl.mode = 'turn'; ctl.turnClip = a; ctl.t = 0; ctl.turnRate = 1.25;   // a little brisker than captured
+  ctl.vx = ctl.vz = 0;
+  return true;
+}
 
 const tmpV = new THREE.Vector3();
 function step(dt) {
-  const J = jumpSpec();
-  // ---- intent: camera-relative direction and gait ----
+  const J = jumpSpec(), sp = speeds();
+  if (wantCrouch) ctl.crouch = !ctl.crouch && !!actions.crouch_idle;
+  if (wantStrafe) ctl.strafeOn = !ctl.strafeOn;
+  const strafe = (ctl.strafeOn || aimHeld) && canStrafe();
+
+  // ---- intent: camera-relative direction ----
   let ix = 0, iz = 0;
   if (keys['w'] || keys['arrowup']) iz -= 1;
   if (keys['s'] || keys['arrowdown']) iz += 1;
@@ -1077,18 +2359,23 @@ function step(dt) {
   if (keys['d'] || keys['arrowright']) ix += 1;
   if (stick.active) { ix += stick.x; iz += stick.y; }
   const mag = Math.min(1, Math.hypot(ix, iz));
-  const sp = speeds();
-  let wx = 0, wz = 0;
+  camera.getWorldDirection(tmpV); tmpV.y = 0; tmpV.normalize();
+  const camYaw = Math.atan2(tmpV.x, tmpV.z);
+  let wx = 0, wz = 0, want = null;
   if (mag > 0.05) {
-    camera.getWorldDirection(tmpV); tmpV.y = 0; tmpV.normalize();
     const rx = -tmpV.z, rz = tmpV.x;
     let dx = tmpV.x * -iz + rx * ix, dz = tmpV.z * -iz + rz * ix;
     const n = Math.hypot(dx, dz) || 1; dx /= n; dz /= n;
-    // Keys pick a gait, as in the Unity and Unreal third-person templates: the default is the
-    // jog, Shift runs and C walks. A stick is analog: a light tilt walks, full tilt runs, and
-    // everything between blends through the jog.
     let v;
-    if (stick.active && !keys['shift'] && !keys['c']) {
+    if (ctl.crouch) {
+      v = Math.min(sp.crouch || sp.walk, 1.1) * Math.min(1, mag / 0.8);
+    } else if (strafe) {
+      // aiming: walking pace, or a brisker one with Shift; the strafes and backpedal play faster
+      v = (keys['shift'] ? Math.min(2.0, sp.jogBack || 2.0) : Math.min(sp.walk, 1.4)) * Math.min(1, mag / 0.8);
+    } else if (ctl.forceSpeed) {
+      v = ctl.forceSpeed;
+    } else if (stick.active && !keys['shift'] && !keys['x']) {
+      // an analog stick: a light tilt walks, full tilt runs, everything between blends
       const pts = [[0, 0], [0.45, sp.walk], ...(sp.jog ? [[0.8, sp.jog]] : []), [1, sp.run]];
       v = sp.run;
       for (let k = 1; k < pts.length; k++)
@@ -1097,18 +2384,35 @@ function step(dt) {
           v = v0 + (v1 - v0) * (mag - m0) / (m1 - m0); break;
         }
     } else {
-      v = keys['shift'] ? sp.run : keys['c'] ? sp.walk : (sp.jog || sp.walk);
+      // keys, as in the Unity and Unreal third-person templates: jog by default, Shift sprints
+      // (through the run as it accelerates), X walks
+      v = keys['shift'] ? (sp.sprint || sp.run) : keys['x'] ? sp.walk : (sp.jog || sp.walk);
     }
     wx = dx * v; wz = dz * v;
-    let diff = Math.atan2(dx, dz) - ctl.facing;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    const turn = ctl.mode === 'ground' ? 11 : 3;
-    ctl.facing += diff * Math.min(1, dt * turn);
+    want = Math.atan2(dx, dz);
   }
+
+  // ---- facing ----
+  const standing = ctl.speed < 0.25 && mag < 0.05;
+  if (ctl.mode === 'ground') {
+    if (strafe) {
+      const diff = wrapA(camYaw - ctl.facing);
+      // standing and the camera has swung well away: step round to it; otherwise track it
+      if (standing && Math.abs(diff) > 1.3 && !ctl.crouch && startTurn(diff)) { /* turning */ }
+      else ctl.facing += diff * Math.min(1, dt * (standing ? 4 : 10));
+    } else if (want !== null) {
+      const diff = wrapA(want - ctl.facing);
+      if (ctl.speed < 0.3 && Math.abs(diff) > 1.9 && !ctl.crouch && startTurn(diff)) { wx = wz = 0; }
+      else ctl.facing += diff * Math.min(1, dt * 11);
+    }
+  } else if ((ctl.mode === 'jump' || ctl.mode === 'fall') && want !== null && !strafe) {
+    ctl.facing += wrapA(want - ctl.facing) * Math.min(1, dt * 3);
+  }
+
   // quicker to get going than to stop, and far less control once airborne
   const air = ctl.mode === 'jump' && ctl.took || ctl.mode === 'fall';
-  const busy = (ctl.mode === 'jump' && !ctl.took && !ctl.running_jump) || ctl.mode === 'emote';
+  const busy = (ctl.mode === 'jump' && !ctl.took && !ctl.running_jump) || ctl.mode === 'emote'
+             || ctl.mode === 'turn' || (ctl.mode === 'land' && ctl.hard && ctl.t < (ctl.landEnd || 0) - 0.9);
   const acc = air ? 2.0 : busy ? 14 : (Math.hypot(wx, wz) > Math.hypot(ctl.vx, ctl.vz) ? 9 : 12);
   if (busy) { wx = 0; wz = 0; }
   ctl.vx += (wx - ctl.vx) * Math.min(1, dt * acc);
@@ -1121,123 +2425,206 @@ function step(dt) {
   const floor = groundAt(p.x, p.z);
 
   // ---- vertical: walking, stepping, jumping, falling ----
-  if (ctl.mode === 'ground' || ctl.mode === 'land' || ctl.mode === 'emote') {
-    if (floor < ctl.y - 0.06) { ctl.mode = 'fall'; ctl.vy = 0; ctl.t = 0; }       // off an edge
-    else ctl.y += (floor - ctl.y) * Math.min(1, dt * 18);                          // step up/down
+  if (ctl.mode === 'ground' || ctl.mode === 'land' || ctl.mode === 'emote' || ctl.mode === 'turn') {
+    if (floor < ctl.y - 0.06) { ctl.mode = 'fall'; ctl.vy = 0; ctl.t = 0; ctl.airTime = 0; }  // off an edge
+    else ctl.y += (floor - ctl.y) * Math.min(1, dt * 18);                                    // step up/down
   }
   if (wantJump && (ctl.mode === 'ground' || ctl.mode === 'land') && J) {
     // A captured standing jump opens with a long wind-up - this one crouches for 0.83 s - and a
     // game that waits that long after the button feels broken. A standing jump enters the clip at
     // the manifest's entry_s, a quarter second before takeoff and already in the crouch; a running
     // jump enters just before takeoff and keeps its momentum.
+    ctl.crouch = false;
     ctl.running_jump = ctl.speed > 0.5 * speeds().walk;
-    ctl.mode = 'jump'; ctl.took = false;
+    ctl.mode = 'jump'; ctl.took = false; ctl.airTime = 0;
     ctl.t = ctl.running_jump ? Math.max(0, J.takeoff - 0.12) : J.entry;
   }
-  if (wantWave && ctl.mode === 'ground' && ctl.speed < 0.3 && actions.wave) {
-    ctl.mode = 'emote'; ctl.t = 0; actions.wave.reset(); actions.wave.play();
+  if (wantWave && ctl.mode === 'ground' && ctl.speed < 0.3 && actions.wave && !ctl.crouch) {
+    ctl.mode = 'emote'; ctl.t = 0;
   }
-  wantJump = wantWave = false;
+  wantJump = wantWave = wantCrouch = wantStrafe = false;
 
   // Gravity is constant, so the ballistic step is integrated exactly rather than approximated.
-  // Semi-implicit Euler flew this jump 8% short (apex 0.49 m against the clip's 0.53, airtime
-  // 0.40 s against 0.43) and left the feet 8 cm off the animation's arc; the exact update and a
-  // takeoff placed at its true moment inside the frame make physics and clip agree to rounding.
   const fly = (g, h) => { ctl.y += ctl.vy * h - 0.5 * g * h * h; ctl.vy -= g * h; };
+  const land = () => {
+    // A long drop lands hard - the landing clip, from its touchdown into its crouch and back up;
+    // a hop or a jump's own arc lands the way the jump clip does.
+    const L = clipInfo.land;
+    ctl.y = floor;
+    if (actions.land && L?.touchdown_s != null && ctl.airTime > 0.4) {
+      ctl.mode = 'land'; ctl.hard = true; ctl.t = L.touchdown_s; ctl.landEnd = L.seconds;
+    } else {
+      ctl.mode = J ? 'land' : 'ground'; ctl.hard = false; ctl.t = J ? J.landing : 0;
+    }
+  };
   if (ctl.mode === 'jump') {
-    const t0 = ctl.t;
     ctl.t += dt;
     let h = 0;
     if (!ctl.took && ctl.t >= J.takeoff) {                  // leave the floor, mid-frame if need be
       ctl.took = true; ctl.vy = J.v0; ctl.y0 = ctl.y; h = ctl.t - J.takeoff;
     } else if (ctl.took) h = dt;
     if (h > 0) {
+      ctl.airTime += h;
       fly(J.g, h);
-      if (ctl.vy < 0 && ctl.y <= floor) { ctl.y = floor; ctl.mode = 'land'; ctl.t = J.landing; }
+      if (ctl.vy < 0 && ctl.y <= floor) land();
+      else if (ctl.t > J.landing + 0.05) { ctl.mode = 'fall'; ctl.t = 0; }   // jumped off something
     }
   } else if (ctl.mode === 'fall') {
     const g = J ? J.g : 20;
-    ctl.t += dt; fly(g, dt);
-    if (ctl.y <= floor) { ctl.y = floor; ctl.mode = J ? 'land' : 'ground'; ctl.t = J ? J.landing : 0; }
+    ctl.t += dt; ctl.airTime += dt; fly(g, dt);
+    if (ctl.y <= floor) land();
   } else if (ctl.mode === 'land') {
     ctl.t += dt;
-    if (!J || ctl.t >= J.dur - 0.05 || (ctl.t > J.landing + 0.2 && Math.hypot(wx, wz) > 0.1))
+    const end = ctl.hard ? ctl.landEnd : (J ? J.dur : 0);
+    const interruptible = ctl.hard ? ctl.t > ctl.landEnd - 0.9 : ctl.t > (J ? J.landing : 0) + 0.2;
+    if (!J && !ctl.hard || ctl.t >= end - 0.05 || (interruptible && Math.hypot(wx, wz) > 0.1))
       ctl.mode = 'ground';
   } else if (ctl.mode === 'emote') {
     ctl.t += dt;
     const dur = clipInfo.wave?.seconds || actions.wave?.getClip().duration || 1;
     if (ctl.t >= dur || mag > 0.2) ctl.mode = 'ground';
+  } else if (ctl.mode === 'turn') {
+    ctl.t += dt * ctl.turnRate;
+    const info = clipInfo[ctl.turnClip];
+    if (ctl.t >= (info?.seconds || 1)) {
+      // the clip has turned the body; the capsule takes the rotation over, and the idle - which
+      // faces the capsule's way - continues from the same pose, so the switch is seamless
+      ctl.facing += (info.turn_deg || 0) * Math.PI / 180;
+      ctl.mode = 'ground'; ctl.snap = true;
+    }
   }
   p.y = ctl.y;
   rig.rotation.y = ctl.facing;
+  ctl.strafeNow = strafe;
 }
 
 // ---- animation --------------------------------------------------------------
-// Locomotion is a speed-driven blend, not states with hard switches: idle into walk up to walking
-// speed, then walk into jog into run. All three are driven from ONE stride clock, each
-// offset by where its own left heel strikes (measured at packaging), so mid-blend both clips have
-// the same foot forward - blending two unsynchronised cycles crosses the legs. The clock runs at
-// the speed-weighted stride rate, so feet stay planted at every speed in between.
+// Four layers - ground locomotion, a turn in place, the air (jump, fall, land) and an emote -
+// cross-fade by mode. Inside the ground layer, locomotion is a blend, not states with hard
+// switches: by speed between walk, jog, run and sprint; by direction between forward, back, left
+// and right when aiming; between standing and crouched. Every moving clip runs off ONE stride
+// clock, each offset by where its own left heel strikes along its own direction of travel
+// (measured at packaging), so mid-blend every clip has the same foot down - blending two
+// unsynchronised cycles crosses the legs. The clock runs at the blend's stride rate, so the feet
+// stay planted at every speed and direction in between.
 const smooth01 = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+const LOCO = ['walk', 'jog', 'run', 'sprint', 'walk_back', 'jog_back', 'strafe_left', 'strafe_right', 'crouch_walk'];
+const DRIVEN = [...LOCO, 'jump', 'land', 'wave', 'turn_left', 'turn_right', 'turn_180'];
 function animate(dt) {
   if (!mixer) return;
   const J = jumpSpec(), sp = speeds(), v = ctl.speed;
-  const onGround = ctl.mode === 'ground';
-  ctl.loco += ((onGround ? 1 : 0) - ctl.loco) * Math.min(1, dt / 0.12);
-  const L = ctl.loco;
+  const dur = (n) => actions[n]?.getClip().duration || 1;
 
-  // weights: idle into walk up to walking speed, then between neighbouring gaits by speed
-  const T = tiers(sp);
-  const w = { idle: 1, walk: 0, jog: 0, run: 0 };
+  // ---- layers ----
+  const tgt = { ground: ctl.mode === 'ground' ? 1 : 0, turn: ctl.mode === 'turn' ? 1 : 0,
+                air: (ctl.mode === 'jump' || ctl.mode === 'fall' || ctl.mode === 'land') ? 1 : 0,
+                emote: ctl.mode === 'emote' ? 1 : 0 };
+  const k = ctl.snap ? 1 : Math.min(1, dt / 0.12);
+  for (const n in ctl.lay) ctl.lay[n] += (tgt[n] - ctl.lay[n]) * k;
+  ctl.snap = false;
+  ctl.cw += ((ctl.crouch ? 1 : 0) - ctl.cw) * Math.min(1, dt / 0.25);
+  ctl.sw += ((ctl.strafeNow ? 1 : 0) - ctl.sw) * Math.min(1, dt / 0.2);
+  const G = ctl.lay.ground, C = ctl.cw, S = ctl.sw * (1 - C);
+  const w = {};
+  const add = (n, x) => { if (actions[n] && x > 1e-4) w[n] = (w[n] || 0) + x; };
+
+  // ---- ground: standing, free ----
+  const free = {}, T = tiers(sp);
   if (v > 0.02) {
     // Below walking speed the walk plays slower rather than mixing in the idle: blending a
     // standing pose into a stride drags the planted foot towards where the idle's foot is, and
     // measured 46% slip at 0.9 m/s. Only the last 30% of the way to a stop fades to idle.
-    if (v <= sp.walk) { const t = smooth01(v / (0.3 * sp.walk)); w.idle = 1 - t; w.walk = t; }
+    if (v <= sp.walk) { const t = smooth01(v / (0.3 * sp.walk)); free.idle = 1 - t; free.walk = t; }
     else {
-      w.idle = 0; w.run = 1;
-      for (let k = 0; k < T.length - 1; k++) {
-        const [a, sa] = T[k], [b, sb] = T[k + 1];
-        if (v <= sb) { const u = smooth01((v - sa) / (sb - sa)); w.run = 0; w[a] = 1 - u; w[b] = u; break; }
+      free.idle = 0;
+      free[T[T.length - 1][0]] = 1;
+      for (let q = 0; q < T.length - 1; q++) {
+        const [a, sa] = T[q], [b, sb] = T[q + 1];
+        if (v <= sb) { const u = smooth01((v - sa) / (sb - sa)); free[T[T.length - 1][0]] = 0; free[a] = 1 - u; free[b] = u; break; }
       }
     }
+  } else free.idle = 1;
+
+  // ---- ground: standing, aiming (directional) ----
+  const aim = {};
+  if (S > 0) {
+    const cf = Math.cos(-ctl.facing), sf = Math.sin(-ctl.facing);
+    const lx = ctl.vx * cf + ctl.vz * sf, lz = -ctl.vx * sf + ctl.vz * cf;   // local: +z forward, +x left
+    const dirs = { f: Math.max(0, lz), b: Math.max(0, -lz), l: Math.max(0, lx), r: Math.max(0, -lx) };
+    const tot = dirs.f + dirs.b + dirs.l + dirs.r;
+    const fwdClip = v > 0.5 * (sp.walk + (sp.jog || sp.walk)) && sp.jog ? 'jog' : 'walk';
+    const backClip = v > 0.5 * (sp.back + (sp.jogBack || sp.back)) && actions.jog_back ? 'jog_back' : 'walk_back';
+    const mv = tot > 0.02 ? smooth01(v / (0.3 * sp.strafe)) : 0;
+    aim.idle = 1 - mv;
+    if (tot > 0.02) {
+      aim[fwdClip] = mv * dirs.f / tot; aim[backClip] = mv * dirs.b / tot;
+      aim.strafe_left = mv * dirs.l / tot; aim.strafe_right = mv * dirs.r / tot;
+    }
   }
-  const dur = (n) => actions[n]?.getClip().duration || 1;
-  // stride period at this speed: a clip covers its measured ground speed per cycle
+
+  // ---- ground: crouched ----
+  const cr = {};
+  if (C > 0) {
+    const t = v > 0.02 ? smooth01(v / (0.3 * (sp.crouch || 1))) : 0;
+    cr.crouch_idle = 1 - t; cr.crouch_walk = t;
+  }
+  for (const [n, x] of Object.entries(free)) add(n, G * (1 - C) * (1 - S) * x);
+  for (const [n, x] of Object.entries(aim)) add(n, G * S * x);
+  for (const [n, x] of Object.entries(cr)) add(n, G * C * x);
+
+  // ---- stride clock: the blend's period at this speed ----
+  const clipSpeed = { walk: sp.walk, jog: sp.jog, run: sp.run, sprint: sp.sprint, walk_back: sp.back,
+                      jog_back: sp.jogBack, strafe_left: sp.strafe, strafe_right: clipInfo.strafe_right?.ground_speed_mps || sp.strafe,
+                      crouch_walk: sp.crouch };
   let per = 0, norm = 0;
-  for (const [n, s] of T) {
-    const wn = n === 'walk' ? w.walk + w.idle : w[n];
-    if (wn <= 0) continue;
-    per += wn * dur(n) * s / (n === 'walk' ? Math.max(v, sp.walk * 0.3) : Math.max(v, 0.1));
+  for (const n of LOCO) {
+    const wn = w[n] || 0;
+    if (wn <= 0 || !clipSpeed[n]) continue;
+    per += wn * dur(n) * clipSpeed[n] / Math.max(v, 0.3 * clipSpeed[n]);
     norm += wn;
   }
   if (norm > 0 && v > 0.02) ctl.phase = (ctl.phase + dt / (per / norm)) % 1;
-  const ph = (clip) => ((ctl.phase + (clipInfo[clip]?.left_contact_phase || 0)) % 1);
-  for (const [n] of T) if (actions[n]) { actions[n].time = ph(n) * dur(n); actions[n].setEffectiveWeight(L * w[n]); }
-  if (actions.idle) actions.idle.setEffectiveWeight(L * w.idle);
+  const ph = (n) => ((ctl.phase + (clipInfo[n]?.left_contact_phase || 0)) % 1);
+  for (const n of LOCO) if (actions[n]) actions[n].time = ph(n) * dur(n);
 
-  const oneShot = 1 - L;
-  if (actions.jump) {
-    const air = ctl.mode === 'jump' || ctl.mode === 'fall' || ctl.mode === 'land';
-    let t = ctl.t;
-    // in the air the clip may not start its landing crouch before the body has actually landed
-    if (ctl.mode === 'jump' && J) t = Math.min(ctl.t, J.landing - 1 / 30);
-    if (ctl.mode === 'fall' && J) t = J.takeoff + J.tAir * 0.72;       // a held falling pose
-    actions.jump.time = t;
-    actions.jump.setEffectiveWeight(air ? oneShot : 0);
+  // ---- turn ----
+  if (ctl.lay.turn > 1e-4 && ctl.turnClip && actions[ctl.turnClip]) {
+    actions[ctl.turnClip].time = Math.min(ctl.t, dur(ctl.turnClip) - 1e-3);
+    add(ctl.turnClip, ctl.lay.turn);
   }
-  if (actions.wave) actions.wave.setEffectiveWeight(ctl.mode === 'emote' ? oneShot : 0);
+
+  // ---- air ----
+  const A = ctl.lay.air;
+  if (A > 1e-4) {
+    if (ctl.mode === 'land' && ctl.hard && actions.land) {
+      actions.land.time = Math.min(ctl.t, dur('land') - 1e-3); add('land', A);
+    } else if (ctl.mode === 'fall' && actions.fall && ctl.t > 0.15) {
+      // falling for real: the fall loop, faded in over a moment from the jump's airborne pose
+      const f = smooth01((ctl.t - 0.15) / 0.25);
+      add('fall', A * f);
+      if (actions.jump && J) { actions.jump.time = J.takeoff + J.tAir * 0.72; add('jump', A * (1 - f)); }
+    } else if (actions.jump) {
+      let t = ctl.t;
+      if (ctl.mode === 'jump' && J) t = Math.min(ctl.t, J.landing - 1 / 30);
+      if (ctl.mode === 'fall' && J) t = J.takeoff + J.tAir * 0.72;       // a held falling pose
+      actions.jump.time = t; add('jump', A);
+    }
+  }
+  if (ctl.lay.emote > 1e-4 && actions.wave) { actions.wave.time = Math.min(ctl.t, dur('wave') - 1e-3); add('wave', ctl.lay.emote); }
+
+  for (const n in actions) actions[n].setEffectiveWeight(w[n] || 0);
 
   // The jump clip lifts the body along its own arc; the physics lifts it too. Subtract the clip's
   // arc while airborne so the feet end up exactly where the physics puts them - on open ground
   // the two cancel and the jump looks as authored, onto a box they do not and the feet land on it.
   let lift = 0;
-  if (J && ctl.mode === 'jump' && ctl.took) lift = clipArc(J, ctl.t - J.takeoff);
-  if (J && ctl.mode === 'fall') lift = clipArc(J, J.tAir * 0.72);
+  if (J && ctl.mode === 'jump' && ctl.took) lift = clipArc(J, ctl.t - J.takeoff) * A;
+  if (J && ctl.mode === 'fall') lift = clipArc(J, J.tAir * 0.72) * (w.jump || 0);
   if (model) model.position.y = (model.userData.groundFix || 0) - lift;
 
-  $('s-state').textContent = ctl.mode === 'ground'
-    ? Object.entries(w).sort((x, y) => y[1] - x[1])[0][0] : ctl.mode;
+  const top = Object.entries(w).sort((x, y) => y[1] - x[1])[0];
+  $('s-state').textContent = (top ? top[0].replace('_', ' ') : 'idle') + (ctl.crouch ? ' \u00b7 crouched' : '')
+                             + (ctl.strafeNow && !ctl.crouch ? ' \u00b7 aiming' : '');
   $('s-speed').textContent = v.toFixed(1) + ' m/s';
 }
 
@@ -1315,7 +2702,7 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (!window.__cfPause) {                    // tests pause the live loop and drive __cf.tick
     if (model) { step(dt); animate(dt); }
-    if (mixer) mixer.update(dt);
+    if (mixer) { mixer.update(dt); updateFace(dt); updateSprings(dt); }
   }
 
   // shadow frustum and key light ride with the character

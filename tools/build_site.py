@@ -54,7 +54,9 @@ def page_manifest(m: dict) -> dict:
     """The subset the playground reads: clip timing and speeds, and the facts on the stats panel."""
     return {"height_m": m["height_m"], "triangles": m["triangles"], "capsule": m.get("capsule"),
             "skeleton": {k: m["skeleton"][k] for k in ("convention", "bones")},
-            "clips": m["clips"], "prompt": (m.get("source") or {}).get("prompt")}
+            "clips": m["clips"], "prompt": (m.get("source") or {}).get("prompt"),
+            "springs": m.get("springs"), "face": m.get("face"),
+            "style": (m.get("style") or {}).get("name", "realistic")}
 
 
 def roster_block(entries, sources) -> str:
@@ -95,8 +97,21 @@ def main(a):
         shutil.copy(web_glb, docs / f"{cid}.glb")
         pages_src[cid] = f"(p) => fetchGLB('./{cid}.glb', p)"
 
-        # artifact: base64 modules, lazily imported, split under the per-file cap
-        b64 = base64.b64encode(web_glb.read_bytes()).decode()
+        # artifact: base64 modules, lazily imported, split under the per-file cap. An artifact holds
+        # 64 MB a version, and seven characters at 2K textures came to 77, so it can take its own
+        # smaller build (--artifact-res); Pages keeps the 2K one.
+        art_glb = web_glb
+        if a.artifact_res:
+            import subprocess
+            import sys as _sys
+            art_glb = ROOT / "work" / "_artifact_glb" / f"{cid}.glb"
+            art_glb.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run([_sys.executable, str(ROOT / "tools" / "optimize_glb.py"), "--in", str(pkg / f"{cid}.glb"),
+                            "--out", str(art_glb), "--res", str(a.artifact_res),
+                            # a preview copy: 1K loses detail against the 4K bake by design
+                            "--min-psnr", "26"], check=True,
+                           stdout=subprocess.DEVNULL)
+        b64 = base64.b64encode(art_glb.read_bytes()).decode()
         n = math.ceil(len(b64) / CHUNK)
         for i in range(n):
             (art / f"{cid}_{i}.js").write_text(f'export const P = "{b64[i*CHUNK:(i+1)*CHUNK]}";\n')
@@ -121,4 +136,7 @@ def main(a):
 
 
 if __name__ == "__main__":
-    main(argparse.ArgumentParser(description=__doc__.split("\n\n")[0]).parse_args())
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--artifact-res", type=int, default=0,
+                    help="texture size for the single-file artifact build (default: the web build's)")
+    main(ap.parse_args())

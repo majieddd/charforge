@@ -53,64 +53,59 @@ counts: a 30 fps bake measured 3% at the keys and 13% in the browser.
 
 ## Open — ranked by expected impact
 
-### 1. Hands
-The generator fuses the fingers, so the rig has one stub past each wrist. A character that holds
-a weapon or a phone needs at least a hand socket and ideally a thumb and a finger chain. Two
-routes: split the fingers geometrically in the retopology (the hand is a small, well-lit region
-of every orbit render, so a hand-pose estimator can place finger joints), or condition the
-reference image on an open hand so the generator separates them itself.
+### 1. Hair and bags that are generated apart from the body
+Chains swing what hangs free (`blender/springs.py`), but the generator lays braids, ponytails and
+satchels against the body as one surface, and a chain on a fused part tears it (REVIEW 33). The
+fix is upstream: condition the reference on hair held clear of the back, or generate the hair as
+its own mesh. Carving a gap in the voxel solid was tried (REVIEW, Tried and dropped).
 
-### 2. A face rig
-The head moves as one piece. A jaw bone and eye bones from face landmarks on the frontal render
-are the minimum for dialogue; ARKit-style blendshapes are the AAA bar.
+### 2. A video model for the image -> video -> motion link
+`pipeline/video_motion.py` turns a video into a clip from the library (self-test: the right clip
+or an exact tie first 100%, 40 tests; real renders through the pose model: 2 of 3 first, the
+third second). The video itself needs a model: Wan 2.x or LTX-Video in ComfyUI, 6-15 GB -
+ask before downloading. Then: prompt -> video of the character -> clip -> retarget.
 
-### 3. The rest of a locomotion set
-Six clips move a character around a level. A shipped third-person character also has turn in
-place, start and stop transitions, strafes and a crouch. `blender/scan_locomotion.py` already
-grades travel direction against body facing, so a strafe is a clip that travels at ±90 degrees
-with the body facing forward - finding them is a query over `work/loco_scan.jsonl`, then a look
-at the filmstrips.
+### 3. Faces for drawn styles
+Drawn eyes read as "not a clean blob" and fall back to positions estimated from the head's
+outline; a drawn mouth's width is guessed (`pipeline/face_landmarks.py`). Aoi blinks and talks on
+those estimates. A face-landmark model trained on illustrations would replace the guesses.
 
 ### 4. Text-to-motion
-Everything animated comes from the Mixamo library. HY-Motion (text to motion) is vendored but its
-weight download failed at 63 MB of several GB. With it, "a character who limps" is a prompt, not
-a search. Re-fetch the weights, then retarget its output through the same `ground_and_plant`.
+HY-Motion is vendored but its weight download failed. With it, "a character who limps" is a
+prompt. Retarget its output through the same `ground_and_plant`.
 
 ### 5. Runtime foot IK for slopes and stairs
-The clips are planted on a flat floor. On stairs the playground steps the whole capsule; a
-two-bone IK on each leg at runtime, reusing the manifest's contact phases, would put each foot
-on its own step.
+The clips are planted on a flat floor; a two-bone IK per leg at runtime, reusing the manifest's
+contact phases, would put each foot on its own step.
 
 ### 6. Raise generative fidelity
-Hair reads as a solid mass; faces are smooth rather than sculpted. More conditioning views into
-the multi-view pass, or a finer TRELLIS sampling grid. This is the generation stage, not the
-pipeline.
+Faces are now detailed from a close-up (REVIEW 34); the geometry under them is still the
+generator's. More conditioning views, or a finer TRELLIS grid.
 
-### 7. A different body type
-Three characters, all adult humans of similar proportion in jackets and trousers. The constants
-that would actually break - the weld tolerance, the rigid-foot band, the capsule's height band -
-need a subject that stresses them: a child's proportions, a long skirt or coat that breaks the
-two-leg assumption, a non-human silhouette.
+### 7. Pose-space correctives for shoulder and elbow
+The playground drives its own shader and could apply them; the shoulder carries the largest
+per-bone deformation.
 
-### 8. Pose-space correctives for shoulder and elbow
-glTF morph targets are applied before skinning, so a standard viewer cannot do pose-space
-deformation, but the playground drives its own shader and can. The shoulder is where the two
-largest per-bone deformation figures sit.
+### 8. A learned rig (UniRig)
+CUDA-only dependencies. The geodesic weights it would replace are measured and adequate.
 
-### 9. A learned rig (UniRig)
-8.2 GB of UniRig weights are on disk, but it depends on `flash_attn` and sparse convolutions,
-both CUDA-only. A port to Apple Silicon is a research project; the proximity-plus-smoothing
-weights it would replace are measured and adequate.
-
-### 10. Reproducible from a clean checkout
-`charforge.py` assumes a populated `vendor/`, downloaded weights and a running ComfyUI. Needs a
-bootstrap script and a pinned `requirements.txt`.
+### 9. Reproducible from a clean checkout
+Needs a bootstrap script and a pinned `requirements.txt`.
 
 ---
 
 ## Done
 
 Newest first. Each of these has a script and a measurement.
+
+- **Built by hand, then turned into rules (REVIEW, third pass).** A solid instead of a shell
+  (26-direction visibility), joints traced through it (`refine_joints.py`), modelled hands with
+  15 finger bones each (`cut_hands.py`, `hands.py`, `hand_model.py`), geodesic weights
+  (`geodesic_weights.py`), the head rigid to the jaw line, a face rig with the mouth cut open
+  (`face_rig.py`), spring chains for free-hanging parts (`springs.py`), texture projected back
+  from the source views with a detailed face (`project_texture.py`, `face_detail.py`), 18 clips
+  and a controller that uses them (strafes, back-pedals, turns in place, crouch, fall and land),
+  and three new characters in three styles (Mara, Aoi, Pip). Runbook: `.claude/skills/charforge/SKILL.md`.
 
 - **Image input, tested on a painting.** Vex was made from a digital painting with a street behind
   her and no prompt - background removal, both TRELLIS passes and every later stage held. She
@@ -256,6 +251,13 @@ Newest first. Each of these has a script and a measurement.
 | Seeding the face-rescue rule's skin colour from the hair group | 89% of pink hair moved into the face | take skin from the body; move nothing if most of a group would move |
 | The median of floor vertices as the origin | 9-12 cm off-centre | a two-foot distribution's median lands at the inner edge of the denser foot |
 | A vision model as a quality gate | misdescribes A-pose and side lighting | see `attic/pipeline/gates.py`; caps anything built on it |
+| Hair cards over the solid hair | speckle inside the hair, cards off it, shimmer without TAA | the solid read better at game distance; `blender/hair_cards.py` kept as an experiment |
+| Carving a gap between a braid and the body in the voxel solid | hollow pockets inside the hood, no separation | the braid was generated inside the hood's volume; there is no surface to cut along |
+| Spring chains on fused parts | a 10-degree swing stretched 163 edges past 2x (worst 19x) | a chain needs a part that meets the body only at its root |
+| A close-up face camera aligned on its own | doubled eyes, a dot grid | two alignments disagree by a few pixels; read the detail through the front view's alignment |
+| Image-to-image on the face at strength 0.35 | the eyes changed shape | 0.28 details the face without changing it |
+| The thinnest cross-section as the wrist | a finger, on hands modelled with separate fingers | find where the palm rounds into the wrist or enters a sleeve |
+| The pose model's wrists and face marks on drawn characters | cuffs as wrists, a mouth on the eyelids | trained on photographs; take joints from the geometry and landmarks bottom-up with checks |
 
 ---
 

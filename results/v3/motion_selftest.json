@@ -1,0 +1,7 @@
+{
+ "tests": 40,
+ "top1": 0.675,
+ "top1_or_tie": 1.0,
+ "top5": 1.0,
+ "angle_error_deg_median": 5.401076250409716
+}

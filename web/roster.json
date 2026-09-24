@@ -1,7 +1,27 @@
 {
-  "release": "v2.0.0",
+  "release": "v3.0.0",
   "repo": "majieddd/charforge",
   "characters": [
+    {
+      "id": "aoi",
+      "name": "Aoi",
+      "blurb": "anime \u00b7 cel-shaded"
+    },
+    {
+      "id": "mara",
+      "name": "Mara",
+      "blurb": "realistic \u00b7 field researcher"
+    },
+    {
+      "id": "pip",
+      "name": "Pip",
+      "blurb": "stylised \u00b7 cartoon courier"
+    },
+    {
+      "id": "juno3",
+      "name": "Juno",
+      "blurb": "red windbreaker"
+    },
     {
       "id": "rowan",
       "name": "Rowan",
@@ -11,11 +31,6 @@
       "id": "wren",
       "name": "Wren",
       "blurb": "leather + satchel"
-    },
-    {
-      "id": "juno",
-      "name": "Juno",
-      "blurb": "red windbreaker"
     },
     {
       "id": "vex",
