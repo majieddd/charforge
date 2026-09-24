@@ -94,14 +94,22 @@ def from_pose(views_dir: Path, repo="usyd-community/vitpose-base-simple", device
 
     os_ = by_az[0]["ortho_scale"]
 
+    # Seen from the side, an A-posed arm lies over the torso and the hair: aoi's side view put
+    # both wrists on her ponytail. An arm joint's height is read from the front view alone.
+    FRONT_ONLY = {"LEFT_SHOULDER", "RIGHT_SHOULDER", "LEFT_ELBOW", "RIGHT_ELBOW", "LEFT_WRIST", "RIGHT_WRIST"}
+
     def world(name):
         i = COCO[name]
         fx, fy = out[0][i]
         sx, sy = out[90][i]
         X, Zf = _unproject(fx, fy, res, os_, None)
         Ys, Zs = _unproject(sx, sy, res, os_, None)
-        # the 90deg camera looks along +X, so its horizontal axis is world Y (sign flipped)
-        return np.array([X, -Ys, (Zf + Zs) / 2], dtype=float)
+        # The 90deg camera sits at +X looking back at the origin, so its image right is world +Y
+        # (the character, facing -Y, looks left in it). This used to be sign-flipped, mirroring
+        # every joint's depth front to back: harmless on a slim character, whose limbs the joint
+        # refinement found anyway within its 7 cm search, but aoi's legs came out 11 cm behind
+        # themselves and no limb could be traced.
+        return np.array([X, Ys, Zf if name in FRONT_ONLY else (Zf + Zs) / 2], dtype=float)
 
     lm = {n: world(n) for n in COCO}
     # COCO has no foot/hand tips: extend the last limb segment
@@ -134,10 +142,19 @@ def from_pose(views_dir: Path, repo="usyd-community/vitpose-base-simple", device
 
 
 # ---------------------------------------------------------------- route 2: mesh analysis
-def from_mesh(mesh_path: str):
+def mesh_in_joint_frame(mesh_path: str):
+    """The mesh's vertices in the joints' frame: Z up, bounding-box centred, 2 units tall. glTF
+    is Y up; reading its vertices as they are treated depth as height."""
     import trimesh
     m = trimesh.load(mesh_path, force="mesh", process=False)
     V = np.asarray(m.vertices, dtype=float)
+    V = np.stack([V[:, 0], -V[:, 2], V[:, 1]], axis=1)
+    lo, hi = V.min(0), V.max(0)
+    return (V - (lo + hi) / 2) * (2.0 / float(hi[2] - lo[2]))
+
+
+def from_mesh(mesh_path: str):
+    V = mesh_in_joint_frame(mesh_path)
     zmin, zmax = V[:, 2].min(), V[:, 2].max()
     h = zmax - zmin
 
@@ -252,24 +269,6 @@ def symmetrize(joints):
     return {k: [float(x) for x in v] for k, v in j.items()}
 
 
-def snap_to_mesh(joints, mesh_path, radius=0.14, strength=0.7):
-    """Pull each joint toward the centre of the surface around it, so joints sit inside limbs."""
-    import trimesh
-    from scipy.spatial import cKDTree
-    m = trimesh.load(mesh_path, force="mesh", process=False)
-    V = np.asarray(m.vertices, dtype=float)
-    tree = cKDTree(V)
-    out = {}
-    for k, v in joints.items():
-        p = np.asarray(v, dtype=float)
-        idx = tree.query_ball_point(p, radius)
-        if len(idx) >= 8:
-            c = V[idx].mean(0)
-            p = p + (c - p) * strength
-        out[k] = [float(x) for x in p]
-    return out
-
-
 def run(views_dir, mesh=None, out=None, force_mesh=False):
     views_dir = Path(views_dir)
     meta = json.load(open(views_dir / "meta.json"))
@@ -290,8 +289,8 @@ def run(views_dir, mesh=None, out=None, force_mesh=False):
         bad = validate(joints)
         if bad:
             notes.append(f"mesh-analysis warnings: {'; '.join(bad)}")
-    joints = snap_to_mesh(joints, mesh)
-    joints = symmetrize(joints)
+    # (Joints are pulled inside the limbs by refine_joints.py, against the solid - an earlier snap
+    # here compared them with the glTF's raw Y-up vertices and pulled them toward the wrong ones.)
     payload = {"mesh": mesh, "method": how, "notes": notes, "parents": PARENTS, "joints": joints}
     out = out or (views_dir.parent / "joints.json")
     json.dump(payload, open(out, "w"), indent=2)

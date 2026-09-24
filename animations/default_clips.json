@@ -1,17 +1,38 @@
 {
-  "about": "Default clip set, by Mixamo file hash in the jasongzy/Mixamo mirror (which names nothing). Locomotion was chosen by blender/scan_locomotion.py, which graded all 2,147 short clips on what a character controller needs: the body faces the way it travels (hips, shoulders and planted feet within a few degrees of the travel direction), the path is straight, the source feet do not slip, and the clip closes as a cycle. The previous run travelled at 45 degrees to its own facing and could not be planted by any rotation; the previous walk crabbed 13 degrees. Finalists were then retargeted and judged by eye on side and front filmstrips, because a clean score does not rule out a sneak, a zombie shamble or a sprint start. The jump starts and ends standing and tucks naturally; its long anticipation is handled by the manifest's entry_s. Replace any entry with your own Mixamo download to change the character's moves.",
+  "about": "Default clip set, by Mixamo file hash in the jasongzy/Mixamo mirror (which names nothing). Forward locomotion was chosen by blender/scan_locomotion.py, which graded all 2,147 short clips on what a character controller needs: the body faces the way it travels, the path is straight, the source feet do not slip, and the clip closes as a cycle. The rest of the set - strafes, backpedals, turns in place, crouch, sprint, fall and landing - was found by blender/scan_moves.py (how far the body turns, how low the hips go, how long both feet are off the ground), and every finalist was retargeted onto a finished character and judged on front and side contact sheets: scores do not rule out a boxing guard, a zombie reach or a sitting crouch, and several top-scoring candidates were exactly that. Options per clip: travel_deg (the direction it travels, from forward, counter-clockwise from above - strafes and backpedals are planted along it rather than turned to face it), heading 'start' (a turn begins facing forward), mirror (read left for right: the right turn is the left turn mirrored, so the two match), ground false (a fall loop is never planted). Replace any entry with your own Mixamo download to change the character's moves.",
   "clips": {
     "idle": "143d71a6e2e5896c4898437f7d700b0e.fbx",
     "walk": "d8dc42834a149287cc1f8a519154f300.fbx",
     "jog":  "8e0be3b72179cb410c90913966fae114.fbx",
     "run":  "f15bb30accd3fb96b8d6c2f731cd94a2.fbx",
+    "sprint": "dba2e04db5bb496942785dd9b69e1b0b.fbx",
+    "walk_back": {"file": "510e82e55a8409f170f40f84b4ba9863.fbx", "travel_deg": 180},
+    "jog_back": {"file": "1b6dab5f2e48ff2af24f9cfe684e70cd.fbx", "travel_deg": 180},
+    "strafe_left": {"file": "f2e2f8e69769c0e2e4698b8782178c13.fbx", "travel_deg": 90},
+    "strafe_right": {"file": "a0226f98b778c57bf75c6660de8d1ee8.fbx", "travel_deg": -90},
+    "turn_left": {"file": "85105435c43d95ca4ca48ec22af8d566.fbx", "heading": "start"},
+    "turn_right": {"file": "85105435c43d95ca4ca48ec22af8d566.fbx", "heading": "start", "mirror": true},
+    "turn_180": {"file": "8c61d656223643ce42e93034ec99556f.fbx", "heading": "start"},
+    "crouch_idle": "d11789df3949590061e578af896fe03d.fbx",
+    "crouch_walk": "e501ff4640d41d2fce16aff7d63ab691.fbx",
     "jump": "da212020f02358f4f5c822d99b97cac2.fbx",
+    "fall": {"file": "f27607dc77a0db313f3e4c2cc51c5e3e.fbx", "ground": false},
+    "land": "0cb7ba2db4cb2a24effded50afe4a852.fbx",
     "wave": "19d1ded9a44672ea47e82f6fc1e34bf4.fbx"
   },
   "grades": {
     "walk": "1.46 m/s captured, hips -1.3 deg / shoulders -0.9 / feet +1.6 from travel, source slip 1.3%",
     "jog":  "2.34 m/s captured, hips -1.1 / shoulders -4.8 / feet +0.6, source slip 2.8%",
     "run":  "4.45 m/s captured, hips +3.4 / shoulders +4.0 / feet +2.3, source slip 1.9%",
-    "jump": "standing start and finish, 0.58 s airborne, feet 0.74 m at apex"
+    "sprint": "5.5 m/s on Juno, slip 0.11% after planting; natural sprint, arms pumping",
+    "walk_back": "1.10 m/s on Juno, body within 0.4 deg of facing, slip 0.24%",
+    "jog_back": "2.07 m/s, arms swinging; the faster backward run (a6812) pumps its arms like a sprint",
+    "strafe_left / strafe_right": "a mirrored pair from Mixamo: 1.01 m/s, body faces forward within 13 deg, cross-steps, slip 0.2%; the jog-speed strafes are crouched defensive shuffles, so strafing faster plays these quicker",
+    "turn_left / turn_right": "0.93 s, 90.0 deg, upright relaxed step-turn; every candidate right turn was crouched, hunched or pointing, so the right turn is the left one mirrored",
+    "turn_180": "1.62 s, 176 deg, upright",
+    "crouch_idle / crouch_walk": "hips at 73% / 76% of standing, so they blend without a pop; crouch walk 0.9 m/s sneak with the torso turned as a sneak is",
+    "jump": "standing start and finish, 0.58 s airborne, feet 0.74 m at apex",
+    "fall": "upright fall with arms out, never touches the floor, 3.0 s loop",
+    "land": "hard landing into a crouch and back up, 2.1 s"
   }
 }

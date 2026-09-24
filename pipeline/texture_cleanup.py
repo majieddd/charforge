@@ -68,6 +68,40 @@ def box_mean(img, mask, r):
     return num / np.maximum(den, 1e-9)[..., None] if img.ndim == 3 else num / np.maximum(den, 1e-9), den
 
 
+def hair_pass(full):
+    """Dark gaps in the hair. solidify.py closes the gaps between generated hair flakes, but the
+    bake still reads each closed gap's colour from the flakes' shadowed insides, which left dark
+    streaks through Vex's pink hair. A hair texel much darker than the hair around it takes the
+    local hair colour, feathered in. Only hair texels move."""
+    hair = labels_px == gid.get("hair", -99)
+    if hair.sum() < 400:
+        return full
+    sm = np.asarray(Image.fromarray((full * 255).astype(np.uint8)).resize((S, S), Image.BILINEAR),
+                    dtype=np.float64) / 255.0
+    Lh = srgb_to_lab(sm)[..., 0]
+    rr = max(3, S // 90)
+    mean_L, _ = box_mean(Lh, hair, rr)
+    dark = hair & (Lh < mean_L - 14)
+    if not dark.any():
+        return full
+    col, den = box_mean(sm, hair & ~dark, rr * 2)
+    ok = dark & (den > 3)
+    fill = np.where(ok[..., None], col, sm)
+    up_ = lambda x: np.asarray(Image.fromarray((np.clip(x, 0, 1) * 255).astype(np.uint8)).resize((R, R), Image.BILINEAR),
+                               dtype=np.float64) / 255.0
+    wgt = up_(ndimage.binary_dilation(ok, iterations=1).astype(np.float64))[..., None]
+    fill_full = np.stack([up_(fill[..., c]) for c in range(3)], axis=-1)
+    print(f"[texclean] hair: {int(ok.sum()):,} dark gap texels ({ok.sum() / hair.sum():.1%} of the hair) "
+          "filled from the hair around them", flush=True)
+    return full * (1 - wgt) + fill_full * wgt
+
+
+def finish(full):
+    full = hair_pass(full)
+    Image.fromarray(np.clip(full * 255 + 0.5, 0, 255).astype(np.uint8)).save(a.out)
+    raise SystemExit(0)
+
+
 mesh = trimesh.load(a.retopo, force="mesh", process=False)
 L = json.load(open(a.labels))
 lab = np.array(L["labels"])
@@ -100,9 +134,8 @@ L_ab = srgb_to_lab(small)
 # this character's skin: body texels with a skin-like chroma (shoes and eyes are body too)
 sk = body & (L_ab[..., 1] > 4) & (L_ab[..., 2] > 4) & (L_ab[..., 0] > 25) & (L_ab[..., 0] < 90)
 if sk.sum() < 200:
-    print("[texclean] too little skin to take a tone from - albedo left as baked", flush=True)
-    albedo.save(a.out)
-    raise SystemExit(0)
+    print("[texclean] too little skin to take a tone from - skin pass skipped", flush=True)
+    finish(np.asarray(albedo, dtype=np.float64) / 255.0)
 skin = np.median(L_ab[sk], axis=0)
 
 r = max(4, S // 40)
@@ -116,11 +149,9 @@ print(f"[texclean] skin tone Lab ({skin[0]:.0f}, {skin[1]:.0f}, {skin[2]:.0f}); 
 if share > a.max_share:
     print(f"[texclean] more than {a.max_share:.0%} of the clothing matches the skin - taking the "
           "garment to be skin-toned and leaving it alone", flush=True)
-    albedo.save(a.out)
-    raise SystemExit(0)
+    finish(np.asarray(albedo, dtype=np.float64) / 255.0)
 if not flag.any():
-    albedo.save(a.out)
-    raise SystemExit(0)
+    finish(np.asarray(albedo, dtype=np.float64) / 255.0)
 
 # A patch's own colour drags the fabric average around it, and its paler or darker parts are
 # not skin-toned, so the skin-toned texels are only seeds: the fabric is re-estimated without
@@ -177,8 +208,7 @@ print(f"[texclean] {n} candidate patches, {kept} are islands in the fabric"
 if a.mask:
     Image.fromarray((seeds * 120 + keep * 135).astype(np.uint8)).save(a.mask.replace(".png", "_candidates.png"))
 if not keep.any():
-    albedo.save(a.out)
-    raise SystemExit(0)
+    finish(np.asarray(albedo, dtype=np.float64) / 255.0)
 
 # grow the patches a little so the fill covers their soft edges
 grow = ndimage.binary_dilation(keep, iterations=2) & cloth
@@ -201,8 +231,8 @@ w = up(grow.astype(np.float64))[..., None]
 full = np.asarray(albedo, dtype=np.float64) / 255.0
 fill_full = np.stack([up(fill[..., c]) for c in range(3)], axis=-1)
 out = full * (1 - w) + fill_full * w
-Image.fromarray(np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)).save(a.out)
 if a.mask:
     Image.fromarray((grow * 255).astype(np.uint8)).save(a.mask)
 print(f"[texclean] filled {int(grow.sum()):,} texels at {S} ({grow.sum() / max(cloth.sum(), 1):.2%} of "
       f"the clothing) from the fabric around them -> {a.out}", flush=True)
+finish(out)

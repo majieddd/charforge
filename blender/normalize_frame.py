@@ -89,10 +89,13 @@ bpy.ops.object.select_all(action="DESELECT")
 rig.select_set(True)
 bpy.context.view_layer.objects.active = rig
 bpy.ops.object.mode_set(mode="EDIT")
-for eb in rig.data.edit_bones:
-    roll = eb.roll
-    eb.head = Vector(xf(eb.head))
-    eb.tail = Vector(xf(eb.tail))
+# Read every bone before writing any. A connected child's head IS its parent's tail, so moving
+# them one bone at a time moves the shared point twice - harmless on the old rig, where no bone
+# was connected, but it stretched every finger's first bone to 64 cm on the first rig with fingers.
+rest = [(eb, Vector(xf(eb.head)), Vector(xf(eb.tail)), eb.roll) for eb in rig.data.edit_bones]
+for eb, h_, t_, roll in rest:
+    eb.head = h_
+    eb.tail = t_
     eb.roll = roll                                   # uniform scale + translation keeps roll
 bpy.ops.object.mode_set(mode="OBJECT")
 

@@ -115,6 +115,39 @@ for name in ORDER:
     pb.matrix = Winv @ Mw
     bpy.context.view_layer.update()
 
+# ---- 1b. square the hands -------------------------------------------------------------------------
+# The retargeter copies whole world rotations, so the hand's roll about the forearm must match the
+# animation library's rest exactly: palm down, thumb forward. Raising the arm by the shortest
+# rotation leaves whatever roll the generated pose had; with modelled fingers there is a knuckle
+# line to measure it by (little finger to index should point forward, -Y), so it is rotated out.
+import mathutils as _mu
+for side, sgn in (("left", 1.0), ("right", -1.0)):
+    pb = rig.pose.bones.get(f"{side}_wrist")
+    i1, p1 = rig.pose.bones.get(f"{side}_index1"), rig.pose.bones.get(f"{side}_pinky1")
+    if pb is None or i1 is None or p1 is None:
+        continue
+    bpy.context.view_layer.update()
+    W = rig.matrix_world
+    knuckles = (W @ i1.head) - (W @ p1.head)
+    kx = Vector((0.0, knuckles.y, knuckles.z))
+    if kx.length < 1e-6:
+        continue
+    ang = kx.angle(Vector((0, -1, 0)))
+    if ang < math.radians(0.5):
+        continue
+    axis = Vector((sgn, 0, 0))
+    # sign: which way about the forearm brings the knuckle line to -Y
+    Rp = _mu.Matrix.Rotation(ang, 4, axis)
+    Rm = _mu.Matrix.Rotation(-ang, 4, axis)
+    R = Rp if (Rp.to_3x3() @ kx).angle(Vector((0, -1, 0))) < (Rm.to_3x3() @ kx).angle(Vector((0, -1, 0))) else Rm
+    Mw = W @ pb.matrix
+    hw = Mw.to_translation()
+    Mw = _mu.Matrix.Translation(hw) @ R @ _mu.Matrix.Translation(-hw) @ Mw
+    pb.matrix = W.inverted() @ Mw
+    bpy.context.view_layer.update()
+    print(f"[tpose] {side} hand squared: rolled {math.degrees(ang):.1f} deg about the forearm "
+          "(palm down, thumb forward)", flush=True)
+
 after_pose = report("posed to T")
 
 # ---- 2. bake the pose into every skinned mesh -------------------------------------------------

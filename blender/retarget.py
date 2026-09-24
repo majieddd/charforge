@@ -66,6 +66,11 @@ MAP = {
     "LeftLeg": "left_knee", "RightLeg": "right_knee",
     "LeftFoot": "left_ankle", "RightFoot": "right_ankle",
 }
+# fingers: three per chain, where the rig has them (a rig built by rig_build.py does)
+for _S, _s in (("Left", "left"), ("Right", "right")):
+    for _F in ("Thumb", "Index", "Middle", "Ring", "Pinky"):
+        for _i in (1, 2, 3):
+            MAP[f"{_S}Hand{_F}{_i}"] = f"{_s}_{_F.lower()}{_i}"
 PREFIXES = ("mixamorig:", "mixamorig1:", "mixamorig2:", "")
 
 
@@ -186,7 +191,8 @@ def sole_points(tgt, TW):
     return out
 
 
-def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, spd_thr, TW, sole):
+def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, spd_thr, TW, sole,
+                     drift=(0.0, 1.0)):
     """Put the feet on the floor and keep them still while they are down. Returns a stats dict.
 
     Two defects of rotation-copy retargeting, both measured on every clip before this existed:
@@ -362,17 +368,21 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
         return [(vel(rows, li, i, pivot[li][i]), pos(rows, li, i, pivot[li][i]))
                 for li in range(2) for i in range(n - 1 if looping else n) if pivot[li][i] is not None]
 
+    # In an in-place clip a planted foot drifts opposite to the way the character travels: backwards
+    # for a walk, sideways for a strafe, forwards for a backpedal. `drift` is that direction in the
+    # ground plane; speed and slip are measured along and across it.
+    dx_, dy_ = drift
     ps = planted(rows)
-    v = sum(p[0].y for p in ps) / len(ps) if (travelling and ps) else 0.0
+    v = sum(p[0].x * dx_ + p[0].y * dy_ for p in ps) / len(ps) if (travelling and ps) else 0.0
     ref = v if v >= 1.0 else 1.0
 
     def slip_of(ps):
-        return sum(math.hypot(p[0].x, p[0].y - v) for p in ps) / len(ps) / ref if ps else None
+        return sum(math.hypot(p[0].x - v * dx_, p[0].y - v * dy_) for p in ps) / len(ps) / ref if ps else None
     slip_before = slip_of(ps)
 
     # ---- plant ------------------------------------------------------------------------------
     def shift(t):
-        return Vector((0.0, v * t / fps, 0.0))
+        return Vector((v * dx_ * t / fps, v * dy_ * t / fps, 0.0))
 
     lock = {(li, w): [(0.0, None, None)] * n for li in range(2) for w in ("heel", "ball")}
     for li, which, iv, idx in tracks:
@@ -495,7 +505,19 @@ SOLE = sole_points(tgt, tgt.matrix_world.copy())
 clips = json.load(open(a.clips))
 report = {}
 
-for clip_name, fbx in clips.items():
+# A clip is a file, or a file with options (animations/default_clips.json):
+#   travel_deg  the direction it is meant to travel, degrees from forward, counter-clockwise
+#               seen from above: 0 forward, 90 left, -90 right, 180 back. Strafes and backpedals
+#               need this - turning them to face their travel, as a forward walk is, would walk
+#               them sideways.
+#   heading     "auto" (travel direction when travelling, else the mean hip line) or "start"
+#               (the hip line at the first frames: a turn in place starts facing forward and
+#               ends turned, rather than being centred on its mean)
+#   ground      false for a clip that never touches the floor (a fall loop): no planting
+for clip_name, spec_ in clips.items():
+    opts = spec_ if isinstance(spec_, dict) else {"file": spec_}
+    fbx = opts["file"]
+    travel_rad = math.radians(float(opts.get("travel_deg", 0.0)))
     # ---- import the source clip into the same scene ---------------------------------------
     before = set(bpy.data.objects)
     try:
@@ -521,9 +543,20 @@ for clip_name, fbx in clips.items():
     scene.render.fps = a.fps
 
     src_rest = {b.name: b.matrix_local.copy() for b in src.data.bones}
-    hips = src_name(src, "Hips")
-    s_pelvis = src_name(src, "Hips")
-    s_ankle = src_name(src, "LeftFoot")
+    # A mirrored clip: the source is read reflected across its own centre plane, left bones
+    # driving right ones. A world reflection applied to both the pose and the rest cancels in
+    # every rotation delta, so what reaches the target is a proper, mirrored motion - a right
+    # turn from a left turn, with the same timing and style.
+    MIR = bool(opts.get("mirror"))
+
+    def sname_(key):
+        if MIR:
+            key = key.replace("Left", "\0").replace("Right", "Left").replace("\0", "Right")
+        return src_name(src, key)
+
+    hips = sname_("Hips")
+    s_pelvis = sname_("Hips")
+    s_ankle = sname_("LeftFoot")
     src_leg = leg_length(src, s_pelvis, s_ankle) if s_ankle else None
     scale = (tgt_leg / src_leg) if src_leg else 1.0
     # Mixamo FBX is authored in centimetres and this rig is in metres, so a legitimate scale
@@ -535,10 +568,10 @@ for clip_name, fbx in clips.items():
 
     pairs = []
     for key, tname in MAP.items():
-        sname = src_name(src, key)
+        sname = sname_(key)
         if sname and tname in tgt.pose.bones:
             pairs.append((sname, tname))
-    missing = [k for k in MAP if src_name(src, k) is None]
+    missing = [k for k in MAP if sname_(k) is None]
     print(f"[retarget] {clip_name}: {f1-f0+1} src frames @{src_fps}fps -> {n} @{a.fps}fps, "
           f"{len(pairs)}/{len(MAP)} bones mapped, scale {scale:.3f}" + (f", missing {missing}" if missing else ""), flush=True)
 
@@ -576,6 +609,8 @@ for clip_name, fbx in clips.items():
         pb.rotation_mode = "XYZ"
 
     SW = src.matrix_world.copy()
+    if MIR:
+        SW = Matrix.Scale(-1.0, 4, Vector((1.0, 0.0, 0.0))) @ SW
 
     # ---- heading ------------------------------------------------------------------------------
     # A character controller moves the model along the way it faces, so a travelling clip must
@@ -587,7 +622,7 @@ for clip_name, fbx in clips.items():
     # cues (hips, shoulders, feet) disagree with each other by up to 25 degrees on the same clip;
     # the travel direction is the one thing the controller and the planted feet both depend on.
     # So: a travelling clip is turned to face its travel; a stationary one by its mean hip line.
-    s_lup, s_rup = src_name(src, "LeftUpLeg"), src_name(src, "RightUpLeg")
+    s_lup, s_rup = sname_("LeftUpLeg"), sname_("RightUpLeg")
 
     def heading(lp, rp):
         side = lp - rp
@@ -596,7 +631,7 @@ for clip_name, fbx in clips.items():
     rest_fwd = rest_h - math.pi / 2                 # side x up: the rest pose's forward, in the plane
     ss, cs = 0.0, 0.0
     hips_path = []
-    s_feet = [src_name(src, k) for k in ("LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase")]
+    s_feet = [sname_(k) for k in ("LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase")]
     src_feet = []
     for i in range(n):
         t = f0 + i * step
@@ -611,13 +646,34 @@ for clip_name, fbx in clips.items():
     d.z = 0.0
     src_hip_h = (SW @ src_rest[hips]).to_translation().z
     travelling = d.length > 0.25 * src_hip_h and d.length / max((n - 1) / a.fps, 1e-6) > 0.3 * src_hip_h
-    if travelling:
-        yaw = math.atan2(math.sin(math.atan2(d.y, d.x) - rest_fwd), math.cos(math.atan2(d.y, d.x) - rest_fwd))
-        how = f"travel direction (hip line says {math.degrees(hip_yaw):+.1f})"
+    head_mode = opts.get("heading", "auto")
+    if head_mode == "start":
+        k0 = max(2, n // 20)
+        s0 = c0 = 0.0
+        for i in range(k0):
+            t = f0 + i * step
+            scene.frame_set(int(math.floor(t)), subframe=float(t - math.floor(t)))
+            h = heading(SW @ src.pose.bones[s_lup].head, SW @ src.pose.bones[s_rup].head) - rest_h
+            s0 += math.sin(h); c0 += math.cos(h)
+        yaw = math.atan2(s0, c0)
+        how = "hip line at the first frames (a turn: starts facing forward)"
+        travelling = False
+    elif travelling:
+        want = rest_fwd + travel_rad                  # where its travel should point, after the turn
+        yaw = math.atan2(math.sin(math.atan2(d.y, d.x) - want), math.cos(math.atan2(d.y, d.x) - want))
+        how = (f"travel direction (hip line says {math.degrees(hip_yaw):+.1f})" if not travel_rad else
+               f"travel direction set to {math.degrees(travel_rad):+.0f} deg from forward "
+               f"(body then faces {math.degrees(math.atan2(math.sin(hip_yaw - yaw), math.cos(hip_yaw - yaw))):+.1f})")
     else:
         yaw = hip_yaw
         how = "mean hip line (stationary clip)"
     UNYAW = Matrix.Rotation(-yaw, 4, "Z")
+    # how far the body turns from first frame to last (a turn in place: about +-90)
+    scene.frame_set(f0)
+    h_first = heading(SW @ src.pose.bones[s_lup].head, SW @ src.pose.bones[s_rup].head)
+    scene.frame_set(f1)
+    h_last = heading(SW @ src.pose.bones[s_lup].head, SW @ src.pose.bones[s_rup].head)
+    turn_total = math.atan2(math.sin(h_last - h_first), math.cos(h_last - h_first))
     print(f"[retarget]   heading {math.degrees(yaw):+.1f} deg off forward by {how} - removed", flush=True)
 
     # ---- root motion ----------------------------------------------------------------------------
@@ -693,11 +749,13 @@ for clip_name, fbx in clips.items():
     rel1 = [src_feet[-1][k] - hips_path[-1] for k in range(4)] if src_feet else []
     looping = bool(rel0) and max((x - y).length for x, y in zip(rel0, rel1)) < 0.01 * src_hip_h
     st = {}
-    if pelvis is not None and len(src_feet) == n:
+    if opts.get("ground", True) is False:
+        print("[retarget]   airborne clip: captured height kept, no floor planting", flush=True)
+    elif pelvis is not None and len(src_feet) == n:
         cap_src = d.length / dur if travelling else 0.0
         st = ground_and_plant(tgt, pelvis, n, float(a.fps), travelling, src_feet,
                               hips_path[-1] - hips_path[0], looping, max(0.25, 0.12 * cap_src),
-                              TW, SOLE)
+                              TW, SOLE, drift=(-math.sin(travel_rad), math.cos(travel_rad)))
     stride = st.get("speed") if travelling else None
     if travelling and stride and not (0.6 * travel / dur < stride < 1.4 * travel / dur):
         print(f"[retarget]   WARNING the feet say {stride:.2f} m/s against {travel/dur:.2f} "
@@ -729,7 +787,11 @@ for clip_name, fbx in clips.items():
                          "apex_sole_m": st.get("apex_sole_m"),
                          "feet_planted_keys": st.get("locked"),
                          "heading_removed_deg": round(math.degrees(yaw), 2),
-                         "heading_from": "travel" if travelling else "hip line",
+                         "heading_from": ("start" if head_mode == "start" else
+                                          "travel" if travelling else "hip line"),
+                         "travel_deg": round(math.degrees(travel_rad), 1),
+                         "grounded": opts.get("ground", True) is not False,
+                         "turn_deg": round(math.degrees(turn_total), 1),
                          "body_vs_travel_deg": round(math.degrees(math.atan2(math.sin(hip_yaw - yaw), math.cos(hip_yaw - yaw))), 1) if travelling else None,
                          "leg_lengths_per_sec": round(per_sec, 3)}
     print(f"[retarget]   root travel {travel:.3f} m ({per_sec:.2f} leg-lengths/s)"

@@ -83,10 +83,15 @@ for name in (a.clips or list(rep)):
         rig.animation_data.action_slot = act.slots[0]
     f0, f1 = (int(x) for x in act.frame_range)
     v = (rep.get(name) or {}).get("stride_speed_mps") or 0.0
+    # carried the way the clip travels: back-pedals backward, strafes sideways (travel_deg is
+    # counter-clockwise from forward, forward is -Y). Carrying every clip forward read a
+    # back-pedal as 200% slip and a strafe as 141%.
+    th = np.radians((rep.get(name) or {}).get("travel_deg") or 0.0)
+    carry = np.array([np.sin(th), -np.cos(th), 0.0]) * v
     F = []
     for f in range(f0, f1 + 1):
         sc.frame_set(f)
-        F.append({s: p + np.array([0.0, -v * (f - f0) / fps, 0.0]) for s, p in feet_now().items()})
+        F.append({s: p + carry * (f - f0) / fps for s, p in feet_now().items()})
     ref = v if v >= 1.0 else 1.0                     # stationary clips: m/s per 1 m/s
     row = {"ground_speed_mps": v}
     for side in ("left", "right"):

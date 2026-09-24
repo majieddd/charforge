@@ -39,6 +39,10 @@ ap.add_argument("--legs-dry-run", action="store_true",
                 help="report fused leg faces without cutting them")
 ap.add_argument("--keep-winding", action="store_true",
                 help="skip the winding repair on the source mesh (for A/B comparison only)")
+ap.add_argument("--cage", default=None,
+                help="a clean solid to decimate into the low-poly (pipeline/solidify.py + hands.py) "
+                     "instead of voxel-remeshing the generated mesh; also the normal and AO source")
+ap.add_argument("--tris", type=int, default=60000, help="triangle budget when decimating --cage")
 a = ap.parse_args(argv)
 
 
@@ -133,10 +137,12 @@ def main():
     # the right normal-bake source. It has no texture, hence two sources: albedo from the
     # textured mesh, normals from the dense one.
     dense = None
+    if a.cage:
+        a.highres = a.cage
     if a.highres and os.path.exists(a.highres):
         dense = import_one(a.highres)
         dense.name = "dense"
-        if not a.keep_winding:
+        if not a.keep_winding and not a.cage:        # a solid from solidify.py winds correctly
             fix_winding(dense)
         bpy.ops.object.select_all(action="DESELECT")
         dense.select_set(True)
@@ -144,53 +150,99 @@ def main():
         bpy.ops.object.shade_smooth()
         print(f"[retopo] normal source: {len(dense.data.polygons):,} faces from {a.highres}", flush=True)
 
-    # duplicate -> remesh the copy, keep the original as the bake source
-    bpy.ops.object.select_all(action="DESELECT")
-    high.select_set(True)
-    bpy.context.view_layer.objects.active = high
-    bpy.ops.object.duplicate()
-    low = bpy.context.view_layer.objects.active
-    low.name = "low"
+    if a.cage:
+        # The low-poly is the clean solid, decimated. Collapse decimation keeps triangles where
+        # the surface turns - face, hands, hair parting, folds - and spends few on flat fabric;
+        # on Juno the head kept 14% of the budget with no weighting at all. The voxel remesh this
+        # replaces spread a uniform ~1.2 cm grid over everything and blurred faces and hands.
+        bpy.ops.object.select_all(action="DESELECT")
+        dense.select_set(True)
+        bpy.context.view_layer.objects.active = dense
+        bpy.ops.object.duplicate()
+        low = bpy.context.view_layer.objects.active
+        low.name = "low"
+        import bmesh
+        bm = bmesh.new()
+        bm.from_mesh(low.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+        bm.to_mesh(low.data)
+        bm.free()
+        tris0 = sum(len(p.vertices) - 2 for p in low.data.polygons)
+        md = low.modifiers.new("dec", "DECIMATE")
+        md.decimate_type = "COLLAPSE"
+        md.ratio = min(1.0, a.tris / max(1, tris0))
+        md.use_collapse_triangulate = True
+        bpy.ops.object.modifier_apply(modifier=md.name)
+        # decimation can leave slivers and the odd non-manifold edge; skinning solvers and the
+        # UV packer both choke on those, so repair until clean
+        bm = bmesh.new()
+        bm.from_mesh(low.data)
+        for _ in range(3):
+            bmesh.ops.dissolve_degenerate(bm, dist=1e-7, edges=bm.edges[:])
+            bad = [e for e in bm.edges if not e.is_manifold and not e.is_boundary]
+            if bad:
+                bmesh.ops.delete(bm, geom=list({f for e in bad for f in e.link_faces}), context="FACES")
+            loose = [v for v in bm.verts if not v.link_faces]
+            if loose:
+                bmesh.ops.delete(bm, geom=loose, context="VERTS")
+            bnd = [e for e in bm.edges if e.is_boundary]
+            if bnd:
+                r = bmesh.ops.holes_fill(bm, edges=bnd, sides=0)
+                bmesh.ops.triangulate(bm, faces=r["faces"])
+        nm = sum(1 for e in bm.edges if not e.is_manifold)
+        bm.to_mesh(low.data)
+        bm.free()
+        method = "solid_decimate"
+        print(f"[retopo] cage: {tris0:,} triangles of clean solid -> {len(low.data.polygons):,} "
+              f"({nm} non-manifold edges left)", flush=True)
+    else:
+        # duplicate -> remesh the copy, keep the original as the bake source
+        bpy.ops.object.select_all(action="DESELECT")
+        high.select_set(True)
+        bpy.context.view_layer.objects.active = high
+        bpy.ops.object.duplicate()
+        low = bpy.context.view_layer.objects.active
+        low.name = "low"
 
-    bpy.context.view_layer.objects.active = low
-    method = None
-    try:
-        bpy.ops.object.quadriflow_remesh(target_faces=a.faces, use_preserve_sharp=False,
-                                          use_preserve_boundary=False, smooth_normals=True)
-        if len(low.data.polygons) < hi_tris * 0.9:
-            method = "quadriflow"
-    except RuntimeError as e:
-        print(f"[retopo] quadriflow raised ({e})")
-    if method is None:
-        # QuadriFlow needs a manifold surface and returns silently on generated meshes
-        # (this one carries ~78k non-manifold edges). Voxel remesh does not care: it
-        # rebuilds the surface from a signed distance field and outputs quads, which is
-        # the right trade here because the lost detail is going into a normal map anyway.
-        print(f"[retopo] quadriflow left {len(low.data.polygons)} polys; using voxel remesh")
-        dims = max(low.dimensions)
-        size = dims * 0.012
-        # poly count scales roughly with 1/size^2, so step toward the target in both
-        # directions rather than only shrinking
-        for attempt in range(5):
-            bpy.ops.object.select_all(action="DESELECT")
-            low.select_set(True)
-            bpy.context.view_layer.objects.active = low
-            low.data.remesh_voxel_size = size
-            low.data.remesh_voxel_adaptivity = 0.0
-            bpy.ops.object.voxel_remesh()
-            n = len(low.data.polygons)
-            print(f"    voxel {size:.5f} -> {n} polys", flush=True)
-            if 0.75 * a.faces <= n <= 1.3 * a.faces:
-                break
-            size = size * (n / a.faces) ** 0.5
-            if attempt == 4:
-                break
-        if len(low.data.polygons) > a.faces * 1.1:
-            md = low.modifiers.new("dec", "DECIMATE")
-            md.decimate_type = "COLLAPSE"
-            md.ratio = min(1.0, a.faces / max(1, len(low.data.polygons)))
-            bpy.ops.object.modifier_apply(modifier=md.name)
-        method = "voxel_remesh"
+        bpy.context.view_layer.objects.active = low
+        method = None
+        try:
+            bpy.ops.object.quadriflow_remesh(target_faces=a.faces, use_preserve_sharp=False,
+                                              use_preserve_boundary=False, smooth_normals=True)
+            if len(low.data.polygons) < hi_tris * 0.9:
+                method = "quadriflow"
+        except RuntimeError as e:
+            print(f"[retopo] quadriflow raised ({e})")
+        if method is None:
+            # QuadriFlow needs a manifold surface and returns silently on generated meshes
+            # (this one carries ~78k non-manifold edges). Voxel remesh does not care: it
+            # rebuilds the surface from a signed distance field and outputs quads, which is
+            # the right trade here because the lost detail is going into a normal map anyway.
+            print(f"[retopo] quadriflow left {len(low.data.polygons)} polys; using voxel remesh")
+            dims = max(low.dimensions)
+            size = dims * 0.012
+            # poly count scales roughly with 1/size^2, so step toward the target in both
+            # directions rather than only shrinking
+            for attempt in range(5):
+                bpy.ops.object.select_all(action="DESELECT")
+                low.select_set(True)
+                bpy.context.view_layer.objects.active = low
+                low.data.remesh_voxel_size = size
+                low.data.remesh_voxel_adaptivity = 0.0
+                bpy.ops.object.voxel_remesh()
+                n = len(low.data.polygons)
+                print(f"    voxel {size:.5f} -> {n} polys", flush=True)
+                if 0.75 * a.faces <= n <= 1.3 * a.faces:
+                    break
+                size = size * (n / a.faces) ** 0.5
+                if attempt == 4:
+                    break
+            if len(low.data.polygons) > a.faces * 1.1:
+                md = low.modifiers.new("dec", "DECIMATE")
+                md.decimate_type = "COLLAPSE"
+                md.ratio = min(1.0, a.faces / max(1, len(low.data.polygons)))
+                bpy.ops.object.modifier_apply(modifier=md.name)
+            method = "voxel_remesh"
 
     # ---- legs the remesh fused ----------------------------------------------------------------
     # The voxel remesh rebuilds the surface from a distance field about 1 cm per voxel, so two
@@ -492,6 +544,20 @@ def main():
         w = v < 0.9999
         return float(v[w].mean()) if w.any() else 1.0, float(w.mean())
 
+    # The target itself must not occlude. A voxel-remeshed cage sat a centimetre off the source,
+    # but a decimated solid lies within a millimetre of it on both sides, and AO rays leaving the
+    # source hit the cage straight away (mean 0.435 on Juno, CPU and GPU alike). Hidden from
+    # every ray type, the cage is still the bake target.
+    # Likewise the generated mesh when a separate solid is the AO source: it hugs the solid
+    # within a millimetre on both sides and occludes it everywhere.
+    hide = [low] + ([high] if dense is not None and high is not dense else [])
+    for ob_ in hide:
+        for flag in ("visible_diffuse", "visible_glossy", "visible_shadow", "visible_transmission",
+                     "visible_volume_scatter", "visible_camera"):
+            if hasattr(ob_, flag):
+                setattr(ob_, flag, False)
+    if dense is not None and high is not dense:
+        high.hide_render = True
     bake("ao", "AO", dense or high)
     ao_mean, ao_cov = ao_baked_mean()
     # Cycles on Metal can page-fault mid-bake ("Caused GPU Address Fault Error") and return a

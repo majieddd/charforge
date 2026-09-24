@@ -25,6 +25,7 @@ Run: blender -b -noaudio --python package.py -- --blend final.blend --out-dir pk
 """
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
@@ -40,6 +41,9 @@ ap.add_argument("--name", required=True)
 ap.add_argument("--retarget", default=None, help="retarget.py's JSON report (clip speeds)")
 ap.add_argument("--prompt", default=None)
 ap.add_argument("--image", default=None)
+ap.add_argument("--springs", default=None, help="springs.json from springs.py")
+ap.add_argument("--style", default="realistic",
+                help="realistic | anime | stylized - recorded so a viewer or engine shades it to match")
 ap.add_argument("--tex", type=int, default=0,
                 help="downscale textures to this edge; 0 keeps the bake resolution (the web build is 2K)")
 ap.add_argument("--no-fbx", action="store_true")
@@ -47,7 +51,8 @@ ap.add_argument("--lods", default="0.4,0.15",
                 help="FBX level-of-detail ratios (triangle fraction of LOD0); empty for none")
 a = ap.parse_args(argv)
 
-LOOPING = {"idle", "walk", "run", "jog", "sprint", "crouch_walk", "strafe_left", "strafe_right"}
+LOOPING = {"idle", "walk", "run", "jog", "sprint", "crouch_walk", "strafe_left", "strafe_right",
+           "walk_back", "jog_back", "crouch_idle", "fall"}
 
 MIXAMO = {
     "pelvis": "Hips", "spine1": "Spine", "spine2": "Spine1", "spine3": "Spine2",
@@ -57,12 +62,15 @@ for side, S in (("left", "Left"), ("right", "Right")):
     MIXAMO.update({
         f"{side}_collar": f"{S}Shoulder", f"{side}_shoulder": f"{S}Arm",
         f"{side}_elbow": f"{S}ForeArm", f"{side}_wrist": f"{S}Hand",
-        # a single stub past the wrist: the fingers of a generated hand are fused, so it moves
-        # as one piece; named for the middle finger's first joint, which is where it sits
+        # a rig from before the modelled hands had a single stub past the wrist, named for the
+        # middle finger's first joint, which is where it sat
         f"{side}_hand": f"{S}HandMiddle1",
         f"{side}_hip": f"{S}UpLeg", f"{side}_knee": f"{S}Leg",
         f"{side}_ankle": f"{S}Foot", f"{side}_foot": f"{S}ToeBase",
     })
+    for F in ("Thumb", "Index", "Middle", "Ring", "Pinky"):
+        for i in (1, 2, 3, 4):
+            MIXAMO[f"{side}_{F.lower()}{i}"] = f"{S}Hand{F}{i}"
 PREFIX = "mixamorig:"
 
 bpy.ops.wm.open_mainfile(filepath=a.blend)
@@ -71,10 +79,11 @@ rig = next((o for o in scene.objects if o.type == "ARMATURE"), None)
 if rig is None:
     raise SystemExit("[pkg] no armature")
 
-KEEP = ("body", "skin", "clothing", "hair", "accessory")
+# A mesh is part of the character if this rig deforms it - not if its name matches a list (the
+# name rule dropped the whole character the day the rig began producing a single mesh "char").
 for o in list(scene.objects):
-    if o.type == "MESH" and not any(k in o.name.lower() for k in KEEP):
-        print(f"[pkg] dropping stray object {o.name!r}", flush=True)
+    if o.type == "MESH" and not any(m.type == "ARMATURE" and m.object == rig for m in o.modifiers):
+        print(f"[pkg] dropping stray object {o.name!r} (not skinned to the rig)", flush=True)
         bpy.data.objects.remove(o, do_unlink=True)
 meshes = [o for o in scene.objects if o.type == "MESH"]
 actions = sorted(bpy.data.actions, key=lambda x: x.name)
@@ -107,7 +116,10 @@ def snapshot():
 
 # ---- rename to the Mixamo convention, and prove nothing moved ---------------------------------
 before = snapshot()
-unknown = [b.name for b in rig.data.bones if b.name not in MIXAMO]
+# spring-chain bones have no Mixamo equivalent; they keep their own names (a humanoid mapping
+# ignores them, and the spring components look them up by name)
+EXTRA = ("spring_", "jaw")            # face and spring bones: not in the Mixamo set, kept by name
+unknown = [b.name for b in rig.data.bones if b.name not in MIXAMO and not b.name.startswith(EXTRA)]
 if unknown:
     raise SystemExit(f"[pkg] bones with no Mixamo equivalent: {unknown}")
 def action_fcurves(act):
@@ -123,9 +135,10 @@ def action_fcurves(act):
     return out
 
 
-rename = {old: PREFIX + new for old, new in MIXAMO.items()}
+rename = {old: PREFIX + new for old, new in MIXAMO.items() if old in rig.data.bones}
 for b in list(rig.data.bones):
-    b.name = rename[b.name]
+    if b.name in rename:
+        b.name = rename[b.name]
 # Renaming a bone renames its vertex groups, but in Blender 5's layered actions it does NOT
 # rewrite the animation curves that target it: the first build of this stage shipped every clip
 # still pointing at the old names, so each one would have played on nothing and left the
@@ -196,13 +209,35 @@ for act in actions:
     # from one shared stride clock.
     lank = rig.pose.bones.get(PREFIX + "LeftFoot")
     hips = rig.pose.bones.get(PREFIX + "Hips")
+    info0 = rj.get(act.name, {}) if a.retarget and os.path.exists(a.retarget) else {}
+    trav = float(info0.get("travel_deg", 0.0) or 0.0)
+    if act.name in speeds and speeds[act.name] > 0.3:
+        # the way it travels, from forward, counter-clockwise from above (strafe left +90,
+        # backpedal 180) - a 2D blend space places each clip by this and its speed
+        entry["travel_deg"] = trav
     if act.name in LOOPING and speeds.get(act.name, 0) > 0.3 and lank and hips:
         set_action(act)
+        # heel strike = the left foot furthest along the way the clip travels (forward for a
+        # walk, sideways for a strafe, backwards for a backpedal), so every direction's cycle
+        # is phased on the same event and they can be blended on one stride clock
+        th = math.radians(trav)
+        tx, ty = math.sin(th), -math.cos(th)          # Blender frame: forward is -Y
         fwd = []
         for f in range(f0, f1 + 1):
             scene.frame_set(f)
-            fwd.append(-(lank.head.y - hips.head.y))
+            d = lank.head - hips.head
+            fwd.append(d.x * tx + d.y * ty)
         entry["left_contact_phase"] = round(float(np.argmax(fwd[:-1])) / max(len(fwd) - 1, 1), 4)
+    if info0.get("heading_from") == "start" and abs(info0.get("turn_deg", 0.0)) > 20:
+        # a turn in place: the body ends turned by this much (counter-clockwise from above);
+        # a controller rotates the character by it when the clip ends
+        entry["turn_deg"] = info0["turn_deg"]
+    if info0.get("grounded") is False:
+        entry["grounded"] = False
+    if act.name == "land" and info0.get("flights_s"):
+        first = min(info0["flights_s"], key=lambda f: f[0])
+        if first[0] < 0.05:
+            entry["touchdown_s"] = first[1]
     # For a jump: when both feet leave the floor and when one returns, measured by the retarget
     # on the soles of the mesh (the foot joints of a generated rig sit inside the shoe, and the
     # instep joint rises as soon as the heel does, which read as a takeoff 0.1 s early). A
@@ -221,6 +256,49 @@ for act in actions:
                          "speed and cancel the clip's lift while airborne (the playground does), "
                          "or let the clip carry the height and keep the capsule grounded - not both")
     clips.append(entry)
+
+# ---- face ----------------------------------------------------------------------------------------
+def face_manifest():
+    """The jaw bone and the face morph targets, if the face stage made them."""
+    keys = [m for o in meshes if o.data.shape_keys for m in o.data.shape_keys.key_blocks.keys()
+            if m != "Basis"]
+    if not keys and "jaw" not in rig.data.bones:
+        return None
+    return {"jaw_bone": "jaw" if "jaw" in rig.data.bones else None,
+            "jaw_open_deg": 18, "morphs": sorted(set(keys)),
+            "note": "morph targets on the LOD0 mesh; clips never key them. Blink both eyes for "
+                    "~0.15 s every 2-6 s; for speech rotate the jaw about its local X toward "
+                    "jaw_open_deg (a/o) with pucker for o/u, driven by the audio's loudness."}
+
+
+# ---- spring chains ----------------------------------------------------------------------------------
+def springs_manifest():
+    """Chains for a runtime spring simulation (VRM-style: stiffness pulls each bone back toward
+    its animated direction, drag damps it, gravity pulls it down, colliders keep it out of the
+    body), in metres, with the Mixamo names of the bones they hang from and collide with."""
+    if not (a.springs and os.path.exists(a.springs)):
+        return None
+    sj = json.load(open(a.springs))
+    if not sj.get("chains"):
+        return None
+    inv = {v: k for k, v in rename.items()}
+    def nm(internal):                                # internal name -> shipped name
+        return rename.get(internal, internal)
+    chains = []
+    for ch in sj["chains"]:
+        bones = [b for b in ch["bones"] if b in rig.data.bones]
+        if not bones:
+            continue
+        lengths = [round(rig.data.bones[b].length * rig.matrix_world.to_scale()[0], 4) for b in bones]
+        chains.append({"kind": ch["kind"], "parent": nm(ch["parent"]), "bones": bones,
+                       "lengths_m": lengths, "radius_m": round(ch["radius_h"] * height, 4),
+                       "stiffness": ch["stiffness"], "drag": ch["drag"], "gravity": ch["gravity"]})
+    cols = [{"bone": nm(c["bone"]), "radius_m": round(c["radius_h"] * height, 4)}
+            for c in sj.get("colliders", []) if nm(c["bone"]) in rig.data.bones]
+    return {"chains": chains, "colliders": cols,
+            "note": "clips key these bones at rest; a spring component drives them at runtime "
+                    "(Unity: Magica Cloth / Dynamic Bone / VRM SpringBone; Unreal: AnimDynamics)"}
+
 
 # ---- collision capsule ---------------------------------------------------------------------------
 # What a CharacterController or a capsule component is sized from, measured on the idle pose with
@@ -312,6 +390,14 @@ if os.path.exists(nrm_path):
     written.append(_save(nrm, size, os.path.join(tex_dir, f"{a.name}_normal_directx.png")))
 print(f"[pkg] textures: {', '.join(os.path.basename(w) for w in written)}", flush=True)
 
+# Morph targets rest at zero. glTF writes each shape key's current value as the mesh's default
+# weight, and Blender 5 creates keys at 1.0 - so a face rig saved as made loads in any engine
+# with every shape applied at once (eyes shut, mouth puckered). The playground drives the morphs
+# each frame and hid it; an engine that does not would show it.
+for o in meshes:
+    if o.data.shape_keys:
+        for kb in o.data.shape_keys.key_blocks:
+            kb.value = 0.0
 tracks = len(rig.animation_data.nla_tracks) if rig.animation_data else 0
 glb = os.path.join(a.out_dir, f"{a.name}.glb")
 bpy.ops.export_scene.gltf(
@@ -342,6 +428,11 @@ if ratios:
             c.name = f"{base}_LOD{i}"
             c.data.name = c.name
             scene.collection.objects.link(c)
+            # a mesh with shape keys cannot take a modifier; the distant LODs do without the
+            # face shapes (a blink at 30 m is invisible), so theirs are dropped
+            if c.data.shape_keys:
+                bpy.context.view_layer.objects.active = c
+                c.shape_key_clear()
             d = c.modifiers.new("lod", "DECIMATE")
             d.decimate_type = "COLLAPSE"
             d.ratio = r
@@ -391,6 +482,15 @@ if a.image and os.path.exists(a.image):
 manifest = {
     "name": a.name,
     "source": {"prompt": a.prompt, "image": os.path.basename(a.image) if a.image else None},
+    "springs": springs_manifest(),
+    "face": face_manifest(),
+    "style": {"name": a.style,
+              "shading": {"realistic": "PBR (metallic-roughness), as authored",
+                          "anime": "cel shading: a 2-3 step toon ramp on the base colour, rim light, "
+                                   "inverted-hull outline ~1.5 mm; the PBR maps still describe the "
+                                   "surface for engines without a toon shader",
+                          "stylized": "PBR with low specular; reads best with soft key light and a "
+                                      "saturated rim"}.get(a.style, "PBR")},
     "units": "metres, Y-up in glTF / Z-up in Blender, facing +Z (glTF)",
     "origin": "on the floor, under the root (pelvis) joint - the pivot a turn in place rotates about",
     "capsule": capsule,

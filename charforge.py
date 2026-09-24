@@ -31,6 +31,61 @@ TRELLIS = ROOT / "vendor" / "trellis2mlx"
 MIXAMO_HF = Path.home() / ".cache/huggingface/hub/datasets--jasongzy--Mixamo/snapshots"
 
 
+# Art styles. The style is a property of the character, not of the renderer: it decides how the
+# reference image is asked for, how the side and back views are repainted, and it is recorded in
+# the package so a viewer or an engine picks the matching shading (a cel-shaded character lit
+# like a photograph looks like neither). Every other stage is the same pipeline.
+STYLES = {
+    "realistic": {
+        "look": "photorealistic game character, realistic skin, hair and fabric detail",
+        "negative": "cartoon, anime, illustration, cel shading",
+        "views": "photorealistic, detailed fabric and seams",
+    },
+    "anime": {
+        "look": ("anime style 3D game character, cel-shaded, clean flat colours with crisp shadows, "
+                 "anime face with large expressive eyes, stylised hair in clean clumps, Genshin Impact style"),
+        "negative": "photorealistic, photo, realistic skin pores, western cartoon, blurry",
+        "views": "anime style, cel-shaded, clean flat colours, crisp outlines",
+    },
+    "stylized": {
+        "look": ("stylised 3D cartoon game character, chunky appealing proportions, slightly larger head, "
+                 "hands and feet, simple clean shapes, hand-painted textures, Fortnite and Overwatch style"),
+        "negative": "photorealistic, photo, anime, thin realistic proportions, blurry",
+        "views": "stylised cartoon 3D, hand-painted textures, clean shapes",
+    },
+}
+
+
+def _recorded(r, key, given, default):
+    """A per-character setting: given on this run (and recorded), else as recorded when the
+    character was first made, else the default. A rerun from a late stage without --height used to
+    fall back to 1.75 m and silently resize a 1.70 m character."""
+    f = r.work / "style.json"
+    rec = json.load(open(f)) if f.exists() else {}
+    if given is not None:
+        if rec.get(key) != given:
+            rec[key] = given
+            r.work.mkdir(parents=True, exist_ok=True)
+            json.dump(rec, open(f, "w"))
+        return given
+    return rec.get(key, default)
+
+
+def style_of(r) -> str:
+    """The character's style: given now, or recorded when it was first generated."""
+    return _recorded(r, "style", getattr(r.a, "style", None), "realistic")
+
+
+def prompt_of(r):
+    """The character's description: given now, or recorded when it was first made."""
+    return _recorded(r, "prompt", getattr(r.a, "prompt", None), None)
+
+
+def height_of(r) -> float:
+    """The character's standing height in metres: given now, or recorded when first made."""
+    return float(_recorded(r, "height", getattr(r.a, "height", None), 1.75))
+
+
 def blender_bin() -> str:
     for cand in (os.environ.get("BLENDER"), shutil.which("blender"),
                  "/Applications/Blender.app/Contents/MacOS/Blender"):
@@ -48,14 +103,20 @@ STAGES = [
     ("views",     "views/projection.json", "orbit renders for segmentation and pose"),
     ("parts",     "parts.json",    "per-vertex body / clothing / hair / accessory labels"),
     ("skeleton",  "joints.json",   "3D joint positions from the orbit renders"),
-    ("retopo",    "retopo.glb",    "clean quad mesh; colour, normal, roughness/metal, AO baked"),
+    ("solidify",  "solid.npz",     "one clean solid: flakes closed, inner shells and shards gone"),
+    ("joints",    "joints_refined.json", "every joint traced onto the centre line of its limb"),
+    ("hands",     "solid_hands.glb", "generated paddle hands replaced by modelled hands with fingers"),
+    ("retopo",    "retopo.glb",    "decimated to 60k triangles; colour, normal, roughness/metal, AO baked"),
     ("labels",    "labels.json",   "part labels carried onto the clean mesh"),
     ("texclean",  "albedo_clean.png", "skin the generator painted onto clothing, removed"),
-    ("rig",       "rig.blend",     "skeleton fitted, skin weights solved"),
+    ("texture",   "albedo.png",    "the source images projected back onto the mesh, sharp"),
+    ("weights",   "weights.npz",   "skin weights by distance measured through the body"),
+    ("rig",       "rig.blend",     "skeleton with finger bones; weights applied"),
+    ("springs",   "rig_s.blend",   "bone chains for what hangs - braids, ponytails, bags"),
     ("frame",     "rig_m.blend",   "metres, soles on the floor, origin under the pelvis"),
-    ("tpose",     "rig_t.blend",   "rest pose baked to a T"),
-    ("animate",   "animated.blend", "Mixamo captures retargeted onto the rig"),
-    ("smooth",    "final.blend",   "weight field softened where it is steepest"),
+    ("tpose",     "rig_t.blend",   "rest pose baked to a T, hands squared"),
+    ("face",      "rig_f.blend",   "face rig: jaw bone, blink / smile / brows / pucker shapes"),
+    ("animate",   "final.blend",   "Mixamo captures retargeted onto the rig, fingers included"),
     ("package",   "PACKAGE",       "glTF + FBX + textures + manifest, Mixamo bone names"),
     ("web",       "WEB",           "compressed build for the browser"),
 ]
@@ -117,11 +178,13 @@ def s_reference(r: Run):
         raise SystemExit("give --prompt or --image")
     sys.path.insert(0, str(ROOT / "pipeline"))
     import comfy  # noqa: E402  (needs ComfyUI with Krea 2 on :8188)
-    neg = "cropped, close-up, multiple people, text, watermark, dramatic shadows, blurry, sitting"
+    st = STYLES[style_of(r)]
+    neg = ("cropped, close-up, multiple people, text, watermark, dramatic shadows, blurry, sitting, "
+           "holding objects, " + st["negative"])
     full = (f"full body character reference sheet of {r.a.prompt}, standing in a relaxed A-pose, "
-            "arms slightly away from the body, facing the camera directly, neutral expression, "
-            "photorealistic game character, even neutral studio lighting, no shadows, plain flat "
-            "light grey background, full figure visible head to toe, centered, orthographic view")
+            "arms slightly away from the body, hands open with the fingers relaxed, facing the camera "
+            f"directly, neutral expression, {st['look']}, even neutral studio lighting, no shadows, "
+            "plain flat light grey background, full figure visible head to toe, centered, orthographic view")
     wf = comfy.krea2_t2i(full, neg, width=832, height=1216, steps=8, cfg=1.0, seed=r.a.seed, gguf=True)
     paths, dt = comfy.run(wf, r.work, prefix="ref", timeout=2400)
     shutil.copy(paths[0], out)
@@ -184,7 +247,7 @@ def s_multiview(r: Run):
     mv.mkdir(exist_ok=True)
     r.bl("multiview", "render_views.py", "--mesh", r.path("pass1.glb"), "--out", mv / "src",
          "--views", 4, "--res", 1024, "--elev", 0, "--ortho", 2.15, keep=("[render_views]",))
-    spec = r.a.prompt or "the character in the reference image"
+    spec = prompt_of(r) or "the character in the reference image"
     neg = ("blurry, low detail, flat shading, melted geometry, extra limbs, text, watermark, "
            "duplicated figure")
     enhanced = []
@@ -192,8 +255,8 @@ def s_multiview(r: Run):
         src = mv / "src" / f"view_{idx:02d}.png"
         name = f"{r.a.name}_{view}.png"
         comfy.upload_image(src, name=name)
-        prompt = (f"{view} view of {spec}, full body, same outfit and colours, detailed fabric "
-                  "and seams, even studio lighting, plain light grey background")
+        prompt = (f"{view} view of {spec}, full body, same outfit and colours, "
+                  f"{STYLES[style_of(r)]['views']}, even studio lighting, plain light grey background")
         wf = comfy.krea2_i2i(name, prompt, negative=neg, denoise=0.42, steps=10, seed=r.a.seed)
         paths, secs = comfy.run(wf, mv, prefix=view)
         enhanced.append(paths[0])
@@ -216,12 +279,36 @@ def s_skeleton(r: Run):
          keep=("[skeleton]",))
 
 
+def s_solidify(r: Run):
+    r.bl("solidify", "sdf_io.py", "to-sdf", "--mesh", r.path("mesh.glb"), "--out", r.path("sdf.npz"),
+         keep=("[sdf]",))
+    r.py("solidify", "solidify.py", "--sdf", r.path("sdf.npz"), "--mesh", r.path("mesh.glb"),
+         "--parts", r.path("parts.json"), "--out", r.path("solid.npz"), keep=("[solidify]",))
+
+
+def s_joints(r: Run):
+    r.py("joints", "refine_joints.py", "--joints", r.path("joints.json"), "--solid", r.path("solid.npz"),
+         "--sdf", r.path("sdf.npz"), "--out", r.path("joints_refined.json"), keep=("[joints]",))
+    r.bl("joints_qa", "qa_skeleton.py", "--mesh", r.path("mesh.glb"), "--joints",
+         r.path("joints_refined.json"), "--frame-from", r.path("sdf.npz"), "--compare",
+         r.path("joints.json"), "--out", r.work / "qa" / "skeleton.png", keep=("[qa]",))
+
+
+def s_hands(r: Run):
+    r.py("hands", "cut_hands.py", "--solid", r.path("solid.npz"), "--sdf", r.path("sdf.npz"),
+         "--joints", r.path("joints_refined.json"), "--out", r.path("solid_cut.npz"),
+         "--spec", r.path("hands_spec.json"), keep=("[hands]",))
+    r.bl("hands_mesh", "sdf_io.py", "to-mesh", "--sdf", r.path("solid_cut.npz"), "--out",
+         r.path("solid_cut.glb"), "--project", r.path("mesh.glb"), keep=("put back",))
+    r.bl("hands_union", "hands.py", "--mesh", r.path("solid_cut.glb"), "--spec", r.path("hands_spec.json"),
+         "--out", r.path("solid_hands.glb"), "--json", r.path("hands.json"), keep=("[hands]",))
+
+
 def s_retopo(r: Run):
-    r.bl("retopo", "retopo.py", "--mesh", r.path("mesh.glb"), "--out", r.path("retopo.glb"),
-         "--bake-res", 4096, "--cage-extrusion", 0.10, "--ray-distance", 0.14,
-         "--joints", r.path("joints.json"),
-         keep=("source winding", "legs:", "UVs:", "AO mean", "AO bake", "normal map:",
-               "normal median", "ORM:"))
+    r.bl("retopo", "retopo.py", "--mesh", r.path("mesh.glb"), "--cage", r.path("solid_hands.glb"),
+         "--out", r.path("retopo.glb"), "--bake-res", 4096, "--cage-extrusion", 0.006,
+         "--ray-distance", 0.014, "--joints", r.path("joints_refined.json"),
+         keep=("source winding", "cage:", "legs:", "UVs:", "AO mean", "AO bake", "normal map:", "ORM:"))
 
 
 def s_labels(r: Run):
@@ -237,21 +324,119 @@ def s_texclean(r: Run):
          keep=("[texclean]",))
 
 
+def s_texture(r: Run):
+    # the reference's own silhouette: plain backgrounds pass a colour threshold, a painting's
+    # street does not, so the generation stage's background remover cuts it out
+    mask = r.path("reference_mask.png")
+    py = TRELLIS / ".venv" / "bin" / "python"
+    if not mask.exists() and py.exists():
+        r.sh("foreground", [py, ROOT / "pipeline" / "foreground.py", "--image", r.path("reference.png"),
+                            "--out", mask], keep=("[foreground]",))
+    views = [f"000:{r.path('reference.png')}" + (f":{mask}" if mask.exists() else "")]
+    for az, stem in (("090", "side"), ("180", "back")):
+        hits = sorted((r.work / "mv").glob(f"{stem}_*.png"))
+        if hits:
+            views.append(f"{az}:{hits[-1]}")
+    r.bl("texture_maps", "uv_maps.py", "--mesh", r.path("retopo.glb"), "--out-dir", r.work / "texproj",
+         "--face-joints", r.path("joints_refined.json"), "--face-frame", r.path("sdf.npz"),
+         keep=("[uv_maps]",))
+    fd = face_detail(r, mask)
+    args = ["--dir", r.work / "texproj", "--base", r.path("albedo_clean.png"), "--out", r.path("albedo.png"),
+            "--hands", r.path("hands_spec.json")]
+    if fd:
+        args += ["--face-detail", fd, "--face-box", r.work / "texproj" / "face_src.json"]
+    for v in views:
+        args += ["--view", v]
+    r.py("texture", "project_texture.py", *args, keep=("[texproj]",))
+
+
+def face_detail(r: Run, mask):
+    """A detailed image of the reference's face region, for the projection (pipeline/face_detail.py).
+    The reference's face region, enlarged to the camera's resolution, goes through image-to-image
+    at low strength: the enlargement fixes where everything is, the diffusion puts back the eyes,
+    lashes, lips and skin a 5x enlargement blurs away. Without ComfyUI the face is painted from
+    the full-body reference alone, as before."""
+    tp = r.work / "texproj"
+    try:
+        r.py("face_detail", "face_detail.py", "--dir", tp, "--reference", r.path("reference.png"),
+             *(["--mask", mask] if mask.exists() else []), keep=("[face_detail]",))
+    except SystemExit:
+        return None
+    src, out = tp / "face_src.png", tp / "face_detail.png"
+    if not src.exists():
+        return None
+    import hashlib
+    digest = hashlib.md5(src.read_bytes()).hexdigest()
+    stamp = tp / "face_detail.json"
+    same = stamp.exists() and json.load(open(stamp)).get("source_md5") == digest
+    if r.a.force or not out.exists() or not same:
+        try:
+            sys.path.insert(0, str(ROOT / "pipeline"))
+            import comfy  # noqa: E402
+            comfy._get("/system_stats")
+        except Exception as e:                                   # noqa: BLE001
+            print(f"      ComfyUI unavailable ({e}); face painted from the full-body reference", flush=True)
+            return None
+        from PIL import Image
+        st = STYLES[style_of(r)]
+        spec = prompt_of(r) or "the character in the reference image"
+        name = f"{r.a.name}_face.png"
+        comfy.upload_image(src, name=name)
+        prompt = (f"close-up of the face of {spec}, head and shoulders, facing the camera, the same face, "
+                  f"the same expression and hairstyle, sharp focus, even studio light, {st['views']}")
+        neg = st["negative"] + ", blurry, soft focus, a different person, different face, open mouth, text"
+        # 0.28: at 0.35 the eyes came back a different shape on juno - detail, but not her face
+        wf = comfy.krea2_i2i(name, prompt, negative=neg, denoise=0.28, steps=10, seed=r.a.seed)
+        paths, secs = comfy.run(wf, tp, prefix="face")
+        res = Image.open(src).size
+        Image.open(paths[-1]).convert("RGB").resize(res, Image.LANCZOS).save(out)
+        json.dump({"source_md5": digest, "denoise": 0.28, "seconds": round(secs)}, open(stamp, "w"))
+        print(f"      face detail in {secs:.0f}s", flush=True)
+    return out
+
+
+def s_weights(r: Run):
+    r.py("weights", "geodesic_weights.py", "--mesh", r.path("retopo.glb"), "--solid", r.path("solid.npz"),
+         "--sdf", r.path("sdf.npz"), "--joints", r.path("joints_refined.json"),
+         "--out", r.path("weights.npz"), keep=("[weights]",))
+
+
 def s_rig(r: Run):
-    r.bl("rig", "rig_retopo.py", "--mesh", r.path("retopo.glb"), "--labels", r.path("labels.json"),
-         "--joints", r.path("joints.json"), "--out", r.path("rig.blend"),
-         "--albedo", r.path("albedo_clean.png"),
-         "--json", r.work / "rig.json", keep=("unweighted", "skeleton", "base colour replaced"))
+    r.bl("rig", "rig_build.py", "--mesh", r.path("retopo.glb"), "--joints", r.path("joints_refined.json"),
+         "--frame-from", r.path("sdf.npz"), "--hands", r.path("hands.json"), "--weights",
+         r.path("weights.npz"), "--albedo", r.path("albedo.png"), "--out", r.path("rig.blend"),
+         "--labels", r.path("labels.json"),
+         "--json", r.work / "rig.json", keep=("[rig]",))
+
+
+def s_springs(r: Run):
+    r.bl("springs", "springs.py", "--blend", r.path("rig.blend"), "--labels", r.path("labels.json"),
+         "--out", r.path("rig_s.blend"), "--json", r.path("springs.json"), keep=("[springs]",))
 
 
 def s_frame(r: Run):
-    r.bl("frame", "normalize_frame.py", "--blend", r.path("rig.blend"), "--out",
-         r.path("rig_m.blend"), "--height", r.a.height, keep=("[frame] now", "[frame] origin"))
+    r.bl("frame", "normalize_frame.py", "--blend", r.path("rig_s.blend"), "--out",
+         r.path("rig_m.blend"), "--height", height_of(r), keep=("[frame] now", "[frame] origin"))
 
 
 def s_tpose(r: Run):
     r.bl("tpose", "tpose.py", "--blend", r.path("rig_m.blend"), "--out", r.path("rig_t.blend"),
-         keep=("rest after",))
+         keep=("rest after", "squared"))
+
+
+def s_face(r: Run):
+    fd = r.work / "face"
+    r.bl("face_render", "face_render.py", "--blend", r.path("rig_t.blend"), "--out-dir", fd, keep=("[face]",))
+    try:
+        r.py("face_landmarks", "face_landmarks.py", "--dir", fd, "--out", r.path("face.json"),
+             "--style", style_of(r), keep=("[face]",))
+        r.bl("face_rig", "face_rig.py", "--blend", r.path("rig_t.blend"), "--face", r.path("face.json"),
+             "--out", r.path("rig_f.blend"), keep=("[face]",))
+    except SystemExit as e:
+        # No face the landmark finder trusts (a helmet, a mask, a creature): the character ships
+        # without a face rig rather than with a wrong one. The QA image shows what was found.
+        print(f"      no face rig: {str(e).strip().splitlines()[0][:120]}", flush=True)
+        shutil.copy(r.path("rig_t.blend"), r.path("rig_f.blend"))
 
 
 def clips_manifest(r: Run) -> Path:
@@ -262,34 +447,38 @@ def clips_manifest(r: Run) -> Path:
         raise SystemExit("animation clips not found: this stage retargets Mixamo captures from a "
                          "local mirror. Download clips from mixamo.com (FBX, 'without skin') and "
                          "point animations/default_clips.json at them.")
+    # clips added to this character alone - pipeline/video_motion.py --add-to writes them, from a
+    # video of the motion
+    extra = r.work / "extra_clips.json"
+    if extra.exists():
+        more = json.load(open(extra))
+        spec["clips"].update(more)
+        print(f"      extra clips for this character: {', '.join(more)}", flush=True)
     resolved = {}
-    for clip, fname in spec["clips"].items():
-        p = snaps[-1] / fname
+    for clip, entry in spec["clips"].items():
+        opts = dict(entry) if isinstance(entry, dict) else {"file": entry}
+        p = snaps[-1] / opts["file"]
         if not p.exists():
-            raise SystemExit(f"clip {clip!r}: {fname} not in {snaps[-1]}")
-        resolved[clip] = str(p)
+            raise SystemExit(f"clip {clip!r}: {opts['file']} not in {snaps[-1]}")
+        opts["file"] = str(p)
+        resolved[clip] = opts
     out = r.work / "clips.json"
     json.dump(resolved, open(out, "w"), indent=1)
     return out
 
 
 def s_animate(r: Run):
-    r.bl("animate", "retarget.py", "--rig", r.path("rig_t.blend"), "--clips", clips_manifest(r),
-         "--out", r.work / "animated.glb", "--blend-out", r.path("animated.blend"),
+    r.bl("animate", "retarget.py", "--rig", r.path("rig_f.blend"), "--clips", clips_manifest(r),
+         "--out", r.work / "animated.glb", "--blend-out", r.path("final.blend"),
          "--json", r.work / "retarget.json", keep=("heading", "feet:", "leg-lengths/s", "WARNING", "clips ->"))
-
-
-def s_smooth(r: Run):
-    r.bl("smooth", "smooth_hotspots.py", "--blend", r.path("animated.blend"), "--out",
-         r.path("final.blend"), "--json", r.work / "smooth.json", keep=("gradient p99",))
 
 
 def s_package(r: Run):
     args = ["--blend", r.path("final.blend"), "--out-dir", r.out, "--name", r.a.name,
-            "--retarget", r.work / "retarget.json"]
-    if r.a.prompt:
-        args += ["--prompt", r.a.prompt]
-    args += ["--image", r.path("reference.png")]
+            "--retarget", r.work / "retarget.json", "--springs", r.path("springs.json")]
+    if prompt_of(r):
+        args += ["--prompt", prompt_of(r)]
+    args += ["--image", r.path("reference.png"), "--style", style_of(r)]
     r.bl("package", "package.py", *args,
          keep=("renamed", "glTF ->", "FBX  ->", "FBX LODs", "manifest:", "capsule:", "[pkg]    "))
 
@@ -306,6 +495,8 @@ BODY = {n: globals()[f"s_{n}"] for n in NAMES}
 
 def make(a):
     r = Run(a)
+    r.work.mkdir(parents=True, exist_ok=True)
+    style_of(r), height_of(r), prompt_of(r)          # record what this run was given
     start = NAMES.index(a.from_stage) if a.from_stage else 0
     stop = NAMES.index(a.until) if a.until else len(NAMES) - 1
     print(f"CharForge  {a.name}  ->  {r.out}", flush=True)
@@ -341,7 +532,10 @@ def main():
     src = m.add_mutually_exclusive_group()
     src.add_argument("--prompt", help="describe the character")
     src.add_argument("--image", help="or give a full-body image of the character")
-    m.add_argument("--height", type=float, default=1.75, help="standing height in metres")
+    m.add_argument("--height", type=float, default=None,
+                   help="standing height in metres (default 1.75, or whatever the character was made at)")
+    m.add_argument("--style", choices=sorted(STYLES), default=None,
+                   help="art style (default: realistic, or whatever the character was made in)")
     m.add_argument("--quality", choices=("best", "fast"), default="best",
                    help="best adds the multi-view second pass (needs ComfyUI)")
     m.add_argument("--seed", type=int, default=7)

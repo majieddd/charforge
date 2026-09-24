@@ -205,6 +205,108 @@ def despeckle(labels, adj, min_frac=0.0015, min_abs=120):
     return lab
 
 
+def vertex_colours(m):
+    """Each vertex's base colour from the mesh's texture (None without one).
+
+    Read at the centre of every triangle and averaged onto its corners - not at the vertex's own
+    UV. A generated atlas is thousands of charts a few triangles wide, so nearly every vertex
+    sits on a chart's edge, where the texel is the black gutter between charts: sampled at the
+    vertices, Wren's skin came out as dark as her hair (median L 11 against ~65).
+    """
+    try:
+        uv = np.asarray(m.visual.uv, dtype=np.float64)
+        img = m.visual.material.baseColorTexture
+    except AttributeError:
+        return None
+    if img is None or uv is None or len(uv) != len(m.vertices):
+        return None
+    arr = np.asarray(img.convert("RGB"), dtype=np.float32) / 255.0
+    h, w = arr.shape[:2]
+    F = np.asarray(m.faces)
+    c = uv[F].mean(1)
+    x = np.clip(np.round((c[:, 0] % 1.0) * (w - 1)), 0, w - 1).astype(np.int64)
+    y = np.clip(np.round((1.0 - c[:, 1] % 1.0) * (h - 1)), 0, h - 1).astype(np.int64)
+    fc = arr[y, x]
+    acc = np.zeros((len(m.vertices), 3))
+    cnt = np.zeros(len(m.vertices))
+    for k in range(3):
+        np.add.at(acc, F[:, k], fc)
+        np.add.at(cnt, F[:, k], 1.0)
+    return acc / np.maximum(cnt, 1.0)[:, None]
+
+
+def srgb_to_lab(c):
+    c = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    xyz = c @ np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]]).T
+    xyz /= np.array([0.95047, 1.0, 1.08883])
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    return np.stack([116 * f[:, 1] - 16, 500 * (f[:, 0] - f[:, 1]), 200 * (f[:, 1] - f[:, 2])], 1)
+
+
+def hair_by_colour(labels, rgb, P, visible, max_de=18.0, reach=0.012, seed_reach=0.02, under=0.012):
+    """Accessory regions the colour of the hair and joined to it are hair.
+
+    A braid lying down the back beside a satchel strap reads to the parser as more strap - Wren's
+    came out "bag" from every back view, so her braid was bound rigidly to the spine and never
+    got a spring chain - and dark hair under a clean line reads as a hat. Both are told apart by
+    colour: starting from the scalp's hair, take accessory vertices whose colour is nearer the
+    hair's median than the accessories' median (and within max_de CIELAB of the hair), when
+    they lie within `reach` (a fraction of the height, ~2 cm) of hair already taken. Growing through space rather than along the mesh
+    steps over the thin bands of highlight or shadow between a braid's plaits. The first step
+    reaches further (seed_reach, ~3.5 cm): where a braid leaves the nape the parser saw hood,
+    and Wren's braid began 2.3 cm from the nearest scalp hair. Glasses and earrings are the only
+    other hair-coloured accessories that close to the hair, and they are bound to the head too. Only visible
+    vertices count: the texture of a never-seen vertex is black filler, and it would pass for
+    black hair. A khaki strap or a red cap stops the growth; clothing is never taken - a black
+    jacket under black hair would be swallowed whole.
+    """
+    from scipy.spatial import cKDTree
+    hair_id, acc_id = GROUP_IDS["hair"], GROUP_IDS["accessory"]
+    hair = labels == hair_id
+    if rgb is None or (hair & visible).sum() < 50:
+        return labels, 0
+    L = srgb_to_lab(rgb)
+    acc = labels == acc_id
+    if not (acc & visible).any():
+        return labels, 0
+    # closer to the hair's colour than to the accessories' own - a fixed threshold cannot work
+    # when a generated albedo is dark all over (Wren's khaki bag sat 14 CIELAB units from her
+    # black hair, her braid 5)
+    de_h = np.linalg.norm(L - np.median(L[hair & visible], 0), axis=1)
+    de_a = np.linalg.norm(L - np.median(L[acc & visible], 0), axis=1)
+    ok = acc & visible & (de_h < de_a) & (de_h < max_de)
+    if not ok.any():
+        return labels, 0
+    height = float(P[:, 1].max() - P[:, 1].min())                 # glTF: Y is up
+    r, r0 = reach * height, seed_reach * height
+    ok_idx = np.nonzero(ok)[0]
+    tree = cKDTree(P[ok_idx])
+    d, _ = cKDTree(P[hair]).query(P[ok_idx], distance_upper_bound=r0)
+    taken = np.zeros(len(ok_idx), bool)
+    frontier = np.nonzero(d < r0)[0]
+    taken[frontier] = True
+    while len(frontier):
+        nb = tree.query_ball_point(P[ok_idx[frontier]], r)
+        nxt = np.unique(np.fromiter((j for lst in nb for j in lst), dtype=np.int64))
+        nxt = nxt[~taken[nxt]] if len(nxt) else nxt
+        taken[nxt] = True
+        frontier = nxt
+    out = labels.copy()
+    out[ok_idx[taken]] = hair_id
+    # The braid's hidden underside, against the hood, took its label from the flood - the label its
+    # visible side had then, "bag". Left so, the braid is hair on top and bag underneath, and the
+    # boundary between hair and body falls inside the braid. Hidden accessory vertices within
+    # `under` of the hair just taken are the same piece seen from below.
+    n_under = 0
+    if taken.any():
+        hid = np.nonzero(acc & ~visible)[0]
+        if len(hid):
+            d, _ = cKDTree(P[ok_idx[taken]]).query(P[hid], distance_upper_bound=under * height)
+            out[hid[d < under * height]] = hair_id
+            n_under = int((d < under * height).sum())
+    return out, int(taken.sum()) + n_under
+
+
 def run(views_dir, out=None, device="mps"):
     views_dir = Path(views_dir)
     maps, id2label = parse_views(views_dir, device=device)
@@ -232,6 +334,11 @@ def run(views_dir, out=None, device="mps"):
     labels = smooth(labels, adj, iters=8)
     before_islands = None
     labels = despeckle(labels, adj)
+    labels, n_grown = hair_by_colour(labels, vertex_colours(m), np.asarray(m.vertices, dtype=np.float64),
+                                     visible)
+    if n_grown:
+        print(f"[parts] {n_grown:,} accessory vertices the colour of the hair, joined to it, relabelled hair",
+              flush=True)
 
     # per-class detail (kept for the report / UI)
     cls_labels = np.where(votes.sum(1) > 0, votes.argmax(1), 0).astype(np.int32)
