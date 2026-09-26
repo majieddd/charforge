@@ -213,10 +213,17 @@ ey_mean = (eyes["left"]["px"][1] + eyes["right"]["px"][1]) / 2
 col_ = int(round(cx_mid))
 chin_px = None
 prev_y = None
+last_y = None
 for y in range(int(ey_mean + 0.5 * ied_px), R):
     p = pos[y, col_]
     if not np.isfinite(p[0]):
+        # the midline leaves the surface below the chin (the neck hidden behind it, a collar, a gorget):
+        # the last point on it is the chin's underside - the fixed guess below the eyes fell off the
+        # head on a child's face (boyscout) and above a knight's gorget (knight2)
+        if last_y is not None and last_y > ey_mean + 0.6 * ied_px:
+            chin_px = [float(col_), float(last_y)]
         break
+    last_y = y
     # the step back to the neck: 3 cm on a sculpted face (a nose steps ~2), 2 cm on a drawn one,
     # whose small chin stands barely in front of its neck and whose nose barely stands out at all
     if prev_y is not None and p[1] - prev_y > (0.018 if a.style == "realistic" else 0.011) * meta["height"]:
@@ -300,9 +307,9 @@ if not mouth_ok:
           "no mouth cut or jaw", flush=True)
 
 
-def to3d(pt):
+def to3d(pt, reach=6):
     u, v = int(round(pt[0])), int(round(pt[1]))
-    for rad in range(0, 6):
+    for rad in range(0, reach):
         win = pos[max(v - rad, 0):v + rad + 1, max(u - rad, 0):u + rad + 1].reshape(-1, 3)
         ok = np.isfinite(win[:, 0])
         if ok.any():
@@ -318,7 +325,7 @@ for s, e in eyes.items():
 face["mouth"] = {k: to3d(v) for k, v in mouth_px.items()}
 face["mouth"]["width_m"] = (mouth_px["left"][0] - mouth_px["right"][0]) * pxs
 face["nose"] = to3d([nx, ny])
-face["chin"] = to3d(chin_px)
+face["chin"] = to3d(chin_px) or to3d(chin_px, reach=max(6, int(0.3 * ied_px)))    # the nearest surface to it
 face["ears"] = {s: [float(v) for v in pose[f"{s}_ear"][0]] for s in ("left", "right")}
 bad = [k for k in ("nose", "chin") if face[k] is None] + [s for s in face["eyes"] if face["eyes"][s]["centre"] is None]
 if bad or face["mouth"]["centre"] is None:

@@ -1,0 +1,38 @@
+{
+ "mara": {
+  "krea2": {
+   "seconds": 238.1,
+   "file": "mara_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0126,
+   "height_px": 1208,
+   "arm_gap": 0.632
+  },
+  "qwen21": {
+   "seconds": 373.3,
+   "file": "mara_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.0139,
+   "height_px": 1166,
+   "arm_gap": 0.698
+  }
+ },
+ "pip": {
+  "krea2": {
+   "seconds": 216.7,
+   "file": "pip_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0044,
+   "height_px": 1167,
+   "arm_gap": 0.61
+  },
+  "qwen21": {
+   "seconds": 426.8,
+   "file": "pip_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.0131,
+   "height_px": 1080,
+   "arm_gap": 0.583
+  }
+ }
+}

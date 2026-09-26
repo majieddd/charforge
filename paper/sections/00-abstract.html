@@ -1,0 +1,23 @@
+<div class="abstract">
+  <div class="lbl">Abstract</div>
+  <p>We describe CharForge, a pipeline that turns a few words or a single picture into a game-ready character - a
+    textured mesh with a standard skeleton, modelled hands, a face rig and eighteen animation clips, exported as glTF and
+    FBX - running end to end on one Apple Silicon laptop with local models only. A second lane adds new moves from
+    generated video: a reference-to-video model films the character performing a written move, a pose model reads the
+    video, the nearest motion capture is retrieved and bent toward it, and the character's own skinned mesh is optimised
+    until it lies on the video. Across four moves in three art styles the rig's silhouette overlaps the video's figure at
+    IoU {{moves.iou.min}}-{{moves.iou.max}} (from {{moves.iou0.min}}-{{moves.iou0.max}}), with joints
+    {{moves.joints.min}}-{{moves.joints.max}} torso lengths from the video's. The work is organised as a record of
+    measured decisions: {{n.experiments_done}} experiments, each with its question, metric and result, and what was
+    dropped kept beside what was kept. Several of the largest errors we found were in our own measurements - a comparison
+    video running 25% fast, a score dip that was the pose model misreading our render, face positions read in 3.9 mm
+    steps - and we report how each was caught. This is a living paper: its tables are regenerated from the pipeline's
+    measurement files, and its roadmap ({{n.experiments_planned}} planned or open experiments) is the project's.</p>
+</div>
+
+<figure id="fig-cast" class="wide">
+  <img src="media/studio_grid.webp" width="1440" height="900" alt="The CharForge Studio's character grid: thirteen generated characters in realistic, stylised and anime styles, standing in A-pose, each with its height">
+  <figcaption>Characters made by the pipeline on one laptop, as the Studio lists them: realistic, stylised and anime,
+    from a written prompt, a user's few words or a painting. Each is rigged, face-rigged where its face can be read, and
+    carries the same eighteen clips.</figcaption>
+</figure>

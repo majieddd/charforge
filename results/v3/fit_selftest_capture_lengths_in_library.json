@@ -1,0 +1,24 @@
+{
+ "tests": 40,
+ "top1": 0.675,
+ "top1_or_tie": 1.0,
+ "top5": 1.0,
+ "angle_error_deg_median": 5.401076250409716,
+ "fit": {
+  "true_clip_left_out": false,
+  "pose_error_clip_mean": 0.03129713192567169,
+  "pose_error_clip_depth_mean": 0.018352440997964608,
+  "pose_error_fit_mean": 0.03519463415411025,
+  "pose_error_fit_depth_mean": 0.02713731759752263,
+  "pose_error_gated_mean": 0.024563774616618177,
+  "pose_error_gated_depth_mean": 0.015662722638347826,
+  "pose_error_clip_median": 0.017946542928745493,
+  "pose_error_clip_depth_median": 0.009117118318111217,
+  "pose_error_fit_median": 0.026523623588026957,
+  "pose_error_fit_depth_median": 0.019854396749086893,
+  "pose_error_gated_median": 0.017946542928745493,
+  "pose_error_gated_depth_median": 0.009117118318111217,
+  "fit_better": 0.05,
+  "gate": "fit when the clip's image error > 1.2 x the pose model's jitter"
+ }
+}

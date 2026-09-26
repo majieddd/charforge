@@ -45,16 +45,24 @@ spec = json.load(open(a.spec))
 out = {"frame": "mesh", "sides": {}}
 
 
+def wrist_of(s):
+    """The modelled wrist's half-width and half-thickness before the bulk: a person's, clipped."""
+    b = float(s.get("bulk", 1.0))
+    return (float(np.clip(s["wrist_radius"][0] / b, 0.11, 0.17)), float(np.clip(s["wrist_radius"][1] / b, 0.075, 0.115)))
+
+
 def hand_mesh(side, s):
     L = s["length"]
-    wy = float(np.clip(s["wrist_radius"][0], 0.11, 0.17))
-    wz = float(np.clip(s["wrist_radius"][1], 0.075, 0.115))
+    b = float(s.get("bulk", 1.0))                  # broader and thicker for a bulky bare forearm (cut_hands.py)
+    wy, wz = wrist_of(s)
     vox = 1.0 / a.res
     xs = np.arange(-0.34, 1.12, vox)
-    ys = np.arange(-0.30, 0.62, vox)
-    zs = np.arange(-0.26, 0.20, vox)
+    ys = np.arange(-0.30 * b, 0.62 * b, vox)
+    zs = np.arange(-0.26 * b, 0.20 * b, vox)
     G = np.stack(np.meshgrid(xs, ys, zs, indexing="ij"), -1).reshape(-1, 3)
-    d, chains = hand_model.sdf(G, wrist_r=(wy, wz), stub=0.30)
+    d, chains = hand_model.sdf(G * np.array([1.0, 1.0 / b, 1.0 / b]), wrist_r=(wy, wz), stub=0.30)
+    d = d * b
+    chains = {n: [np.asarray(p_) * np.array([1.0, b, b]) for p_ in pts_] for n, pts_ in chains.items()}
     # close the stub's far end inside the arm
     d = np.maximum(d, -(G[:, 0] + 0.30))
     d = d.reshape(len(xs), len(ys), len(zs)).astype(np.float32)
@@ -138,8 +146,7 @@ for side, s in spec["sides"].items():
     bm.free()
     out["sides"][side] = {"length": L, "wrist": s["cut_point"], "fingers": joints,
                           "frame": {"x": s["x"], "y": s["y"], "z": s["z"], "mirror": s["mirror"]},
-                          "wrist_radius": [float(np.clip(s["wrist_radius"][0], 0.11, 0.17)),
-                                           float(np.clip(s["wrist_radius"][1], 0.075, 0.115))]}
+                          "wrist_radius": list(wrist_of(s)), "bulk": float(s.get("bulk", 1.0))}
     print(f"[hands] {side}: modelled hand {L:.4f} long {how} ({n_before:,} -> "
           f"{len(body.data.vertices):,} vertices, {len(band)} relaxed at the wrist)", flush=True)
 

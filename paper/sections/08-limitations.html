@@ -1,0 +1,26 @@
+<section>
+<h2 id="sec-limits">Limitations and open problems</h2>
+<ul>
+  <li><b>Fused layers.</b> Hair, braids, bags and layered garments are one surface with what they lie on. Chains on
+    them tear the surface, so Aoi's hair and Mara's braid are rigid, and between Pip's vest and sleeve the armpit
+    stretches with his arms overhead [E110].</li>
+  <li><b>A sleeve past a bent elbow.</b> Linear skinning keeps a jacket sleeve that extends past the elbow pointing
+    along the upper arm when the elbow bends far; in Aoi's spell cast the cuffs stick out sideways. Pose-space correctives
+    would reach it [E107].</li>
+  <li><b>Joins after the arm cut.</b> 1-3 joined slabs an arm survive the re-cut on several characters; the rig keeps
+    that side of the garment with the arm [E026].</li>
+  <li><b>Faces.</b> Faces the stage cannot read get no rig (Bo) [E109]. Kept from the generator where the reference
+    cannot be laid on them, realistic faces are softer than the picture and the fringe carries the generator's colour
+    (Knight) [E022].</li>
+  <li><b>Depth in moves from video</b> is borrowed from the nearest capture, so a move unlike anything in the library is
+    right in the image and approximate in depth [E108]; the pose model loses poses it rarely saw, on video and on render
+    [E011].</li>
+  <li><b>Measurement.</b> No 3D ground truth for motion yet; faults a person sees (a crease, a stretch, cloth through
+    cloth) are still found by eye in renders before they are counted [E101] [E102].</li>
+  <li><b>Speed.</b> A character takes about {{stage.total.min}} minutes of stage time, a move 35-50 minutes of video
+    generation; most of the former is two 3D passes and two image-model calls [E106].</li>
+  <li><b>Licences.</b> The reference-to-video model's licence has territorial limits and requires attribution in a
+    commercial product; Qwen-Image 2.x is research-only. CharForge is a research project; Krea 2 remains available for
+    references where that matters.</li>
+</ul>
+</section>

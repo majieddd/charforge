@@ -1,0 +1,122 @@
+<section>
+<h2 id="sec-eval">Evaluation</h2>
+
+<h3 id="sec-eval-metrics">Measures</h3>
+<p>We measure what a player would see, in units that do not depend on the character's size.</p>
+<ul>
+  <li><b>Joint error</b> (moves from video): the character's clip is rendered at the video's own frame times from the
+    video's camera angle; the same pose model [@vitpose] reads the video and the render, the hips are laid on each other
+    frame by frame with one scale for the clip, and the mean distance between the twelve body joints is reported in the
+    video's torso lengths (shoulders to hips; 0.05 is about 2.5 cm on an adult).</li>
+  <li><b>Silhouette IoU</b>: the render's outline against the video's figure, cut out by a salient-object model [@u2net].</li>
+  <li><b>Face error</b>: nose, eyes and ears about their centre, in torso lengths - which way the head turns.</li>
+  <li><b>Hands</b>: DWPose [@dwpose] on both, each hand it is sure of; the 21 points about the wrist in palm lengths
+    (mean and median), how often the palm faces the video's way, and the angle between the hands' pointing directions.</li>
+  <li><b>Per stage</b>: the same joint error for the fitted points, the FBX written from them, the character's own
+    skeleton, and the pose model's reading of the render - which separates the rig's error from the scorer's.</li>
+  <li><b>Four views</b>: the clip rendered orthographically from the video's camera, the side and above, at one scale on
+    a 10 cm grid, with each elbow's and knee's bend and each shoe's height above the floor read out per frame.</li>
+  <li><b>Foot slip</b>: while a foot is on the floor, how far its lowest vertex slides between frames, as a share of the
+    gait's ground speed, driven by the playground's own controller; and the deepest a sole goes through the floor.</li>
+  <li><b>Front silhouette IoU</b> of a 3D model against its reference picture, rendered from the front.</li>
+</ul>
+
+<h3 id="sec-eval-chars">Characters</h3>
+<p>[#tab-roster] lists the {{n.characters}} characters built so far - {{n.playground}} in the public playground - with
+  what each was made from and the checks this paper describes. {{n.face}} have a face rig; the others' faces could not
+  be read and were refused ([#sec-m-face]). Build times are in [#tab-times].</p>
+<figure id="tab-roster">
+  <div class="tscroll"><!--TABLE:roster--></div>
+  <figcaption>The characters. <i>front</i>: silhouette IoU of the 3D model against the picture, from the front, for
+    characters built since the check existed; <i>hands ×</i>: the modelled hands' bulk on a bare forearm.
+    "(local)" characters were made by a user in the Studio and are not in the playground.</figcaption>
+</figure>
+
+<h3 id="sec-eval-moves">Moves from video</h3>
+<p>[#tab-moves] follows four moves in three styles from the first measurement to now. The first column is the pipeline
+  as it was before this line of work (the nearest capture, retargeted), the second after fitting on the video's own
+  body and aiming the character's limbs, the third after the refine stage, the hand terms and the floor. Silhouette
+  overlap rose from {{moves.iou0.min}}-{{moves.iou0.max}} to {{moves.iou.min}}-{{moves.iou.max}}. At rest the same
+  models lie on their reference pictures at 0.90-0.93, so most of what remains is in the motion.</p>
+<figure id="tab-moves">
+  <div class="tscroll"><!--TABLE:moves--></div>
+  <figcaption>Four moves from generated video: joints in torso lengths (lower is better) · silhouette IoU (higher is
+    better), then face error, hand error in palm lengths (median in brackets), palm facing agreement and the largest elbow
+    bend in the clip. "Start" and the middle column are from the lab notebook (paper/data/baselines.json); "now" from
+    the fidelity files.</figcaption>
+</figure>
+<p>The hands show why means alone mislead. Aoi's hand error is {{spell.hands|2}} palm lengths in the mean but
+  {{spell.hands_median|2}} in the median: in about twenty frames her jacket sleeve, which rides the upper arm, sticks out
+  past her bent elbow, and DWPose reads the sleeve's light lining as her hand. That is a skinning limit, not a hand error
+  ([#sec-limits]).</p>
+<p>[#tab-stages] breaks each move's error down by stage. The fit is close to the video everywhere
+  ({{moves.joints.min}}-{{moves.joints.max}} after the refine, {{punch.stage_fit}}-{{spell.stage_fit}} for the fitted
+  points); writing it as an FBX and moving it onto the character adds error, mostly the capture's and the character's
+  body proportions. The last column counts frames where the pose model's reading of the render disagrees with the rig's
+  own skeleton by more than 0.3 torso lengths - the scorer's error, not the rig's ([#sec-eval-validity]).</p>
+<figure id="tab-stages">
+  <div class="tscroll"><!--TABLE:stages--></div>
+  <figcaption>Joint error at each stage (tools/motion_stages.py), each skeleton stage scored from the camera that suits it
+    best. Skeleton stages carry a systematic offset against the video, since a pose model reads a stylised
+    character's wrists at its cuffs on video and render alike; the render column is the fair comparison.</figcaption>
+</figure>
+<figure id="fig-hands-dwpose">
+  <img src="media/hands_aoi.webp" width="1032" height="566" alt="Aoi's spell cast at two frames: the video, the rig before with curled palm-down hands, the rig now with open hands facing the camera">
+  <figcaption>Aoi's spell cast: the video, the capture's hands, and the hands turned to DWPose's reading - open,
+    palms to the camera, pointing {{spell.pointing_deg}}° from the video's.</figcaption>
+</figure>
+
+<h3 id="sec-eval-angles">Seeing every move from four sides</h3>
+<p>One camera cannot see depth. A clip can match its video from the video's angle while an arm folds back through
+  itself behind the figure. We render every move from the video's camera, the side and above at once, beside the video,
+  with the joints read out ([#fig-angles]) [E009]. It found three faults the scores had missed: Aoi's elbow bent to
+  {{b.elbow.before_deg}}° (the forearm back through the upper arm) for {{b.elbow.frames_before}} frames, now held at
+  {{b.elbow.after_deg}}° [E007]; the feet of every move standing off the floor after the refine, Aoi's lowest shoe
+  {{b.feet_refine.before_mean_cm}} cm up on average, now {{b.feet_refine.after_mean_cm}} cm [E008]; and a comparison
+  video running 25% fast [E010]. It also cleared the rig of a fault the score seemed to show [E011].</p>
+<figure id="fig-angles">
+  <video src="media/angles_mara_roundhouse_kick.mp4" poster="media/angles_mara_roundhouse_kick.webp" autoplay muted loop playsinline controls preload="metadata" aria-label="Mara's roundhouse kick from four sides: the video, its camera, the left side and above, with elbow, knee and shoe readouts"></video>
+  <figcaption>Mara's roundhouse kick: the video, then the rig from the video's camera, the left side and above -
+    orthographic, one scale, a 10 cm grid - with each elbow's and knee's bend and each shoe's height under the panels.
+    At the top of the kick the leg is at head height from every side.</figcaption>
+</figure>
+<div class="two">
+  <figure id="fig-elbow"><img src="media/polish_elbow.webp" width="912" height="606" alt="Aoi's spell cast from the side: before, her left forearm folded back through the upper arm; after, the elbow bent within a human range">
+    <figcaption>The elbow the front view hid, seen from the side, before and after.</figcaption></figure>
+  <figure id="fig-feet"><img src="media/polish_feet.webp" width="1710" height="140" alt="Aoi's boots against the floor line from the side: before, both off the floor; after, planted">
+    <figcaption>The feet after the refine (top) and put back on the video's floor (bottom).</figcaption></figure>
+</div>
+
+<h3 id="sec-eval-feet">Feet</h3>
+<p>[#tab-feet] gives foot slip for every gait of the characters in the playground: a median of {{feet.median}}% of
+  ground speed over {{feet.n}} gait-character pairs, and at most {{feet.max}}%, against {{b.feet_before_pct.range.0}}-{{b.feet_before_pct.range.1}}%
+  before clip selection, grounding and foot IK [E029]. The worst are strafes and crouch-walks on characters whose
+  proportions differ most from the capture actor's.</p>
+<figure id="tab-feet">
+  <div class="tscroll"><!--TABLE:feet--></div>
+  <figcaption>Contact slip of the worse foot, as a share of ground speed, driven by the playground's controller
+    (work/&lt;name&gt;/foot_audit.json); above 10% in red. Knight, Kaito and Bo are not yet audited.</figcaption>
+</figure>
+
+<h3 id="sec-eval-validity">Validity of the measurements</h3>
+<p>Several of the largest errors we found were in the measuring, not the pipeline. We list them because each would
+  have sent the work in the wrong direction.</p>
+<ul>
+  <li><b>The comparison ran fast</b> [E010]. The side-by-side and four-view videos resampled the 24 fps video to the
+    renders' 30 fps by taking each video frame once, never twice, so the video played 25% fast and then stood still:
+    the rig seemed to punch 0.2 s late, more as the clip went on. The fidelity score was unaffected, since it renders the
+    rig at the video's own times.</li>
+  <li><b>The scorer misread the render</b> [E011]. Mara's kick scored {{kick.joints}}, with a dip to 0.46 at the top of the
+    kick that read as the rig folding its leg. Held against the rig's own skeleton, the pose model's reading of the
+    render was wrong in {{kick.misread_n}} frames (the skeleton was 0.12-0.14 from the video there, as elsewhere); without
+    them the kick scores {{kick.joints_trusted}}. The four views confirm the leg is at head height.</li>
+  <li><b>Face positions in stairs</b> [E019]: {{b.face_quantisation.before_mm}} mm quantisation from a half-float
+    render target, found while tracing an unrelated seam.</li>
+  <li><b>Stale caches</b>: the per-stage tool kept its skeleton dumps forever and was scoring a rig two rebuilds old.</li>
+</ul>
+<p>Threats that remain: the joint and hand scores compare two readings by the same pose model, so its blind spots
+  cancel as often as they show; everything is 2D against one camera, with depth checked only by eye in the four views;
+  there are four moves, all from generated video of the character itself, not of people; and times include waits for
+  the GPU. Recovering a known clip from a render of it - a 3D ground truth - is the first experiment of the next phase
+  [E101].</p>
+</section>

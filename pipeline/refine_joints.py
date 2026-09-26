@@ -195,6 +195,17 @@ for side in ("left", "right"):
     # out to the fingertips whatever the estimate says: the trace ends where the limb does
     tr, area, ie = limb(E_, S_ - E_, W_ - E_, np.linalg.norm(S_ - E_),
                         max(np.linalg.norm(W_ - E_) + np.linalg.norm(Hd_ - W_), 0.30 * H), step)
+    # The trace ends at its farthest point down the forearm. On knight2's bulky gauntlets it reached the
+    # hand and doubled back up the vambrace to the elbow: the "fingertips" came out beside the elbow, the
+    # forearm's direction at the wrist pointed back up the arm, and the hand cut carved the forearm away.
+    if len(tr) - ie > 10:
+        fa = (W_ - E_) / max(np.linalg.norm(W_ - E_), 1e-9)
+        reach = (tr - tr[ie]) @ fa
+        tip = int(np.argmax(reach))
+        if tip > ie and tip < len(tr) - 1 and reach[tip] - reach[-1] > 0.05 * H:
+            print(f"[joints]   {side} arm: the trace turned back {(reach[tip] - reach[-1]) / H * 175:.0f} cm "
+                  f"after the tip (at 1.75 m) - cut at the tip", flush=True)
+            tr, area = tr[:tip + 1], area[:tip + 1]
     traces[f"{side}_arm"] = tr
     if len(tr) - ie > 10:
         J[f"{side}_elbow"] = tr[ie]
@@ -247,18 +258,6 @@ for side in ("left", "right"):
         arms_done[side] = (tr, to_tip, ie, iw)
         J[f"{side}_wrist"] = tr[iw]
         J[f"{side}_hand"] = tr[-1] if len(tr) - 1 > iw else J[f"{side}_wrist"] + (Hd_ - W_)
-        # The elbow started where the pose model put it. Upper arm to forearm is ~1.27 : 1 on a
-        # person (0.186 and 0.146 of height); far outside that, the estimate is wrong and the elbow
-        # goes where the proportion puts it along the traced arm.
-        up_len = np.linalg.norm(tr[ie] - S_)
-        fore_len = float(np.sum(np.linalg.norm(np.diff(tr[ie:iw + 1], axis=0), axis=1)))
-        if fore_len > 0 and not (0.8 <= up_len / fore_len <= 1.9):
-            d_s = np.linalg.norm(tr[:iw + 1] - S_, axis=1)
-            arc_w = np.concatenate([np.cumsum(np.linalg.norm(np.diff(tr[:iw + 1], axis=0), axis=1)[::-1])[::-1], [0.0]])
-            ie_new = int(np.argmin(np.abs(d_s / np.maximum(d_s + arc_w, 1e-9) - 0.56)))
-            print(f"[joints]   {side} elbow: upper arm {up_len / H * 175:.0f} cm to forearm {fore_len / H * 175:.0f} cm "
-                  f"- moved to 56% of the way from shoulder to wrist", flush=True)
-            J[f"{side}_elbow"] = tr[ie_new]
         # the shoulder keeps its estimated height and side, and takes the traced arm's depth
         J[f"{side}_shoulder"][1] = tr[0][1]
     # legs: traced from the knee down to the sole and up until the crotch
@@ -292,6 +291,27 @@ if len(arms_done) == 2:
         if len(cand_):
             iw2 = int(cand_[np.argmin(np.abs(to_tip[cand_] - target))])
             J[f"{side}_wrist"] = tr[iw2]
+
+# The elbow started where the pose model put it. Upper arm to forearm is ~1.2 : 1 on a person (the
+# elbow 55% of the way from shoulder to wrist - and 52-56% where the pose model reads it bending in
+# the characters' own videos); outside 50-60% the estimate is wrong, and the elbow goes to 55% along
+# the traced arm. Measured joint to joint against the final shoulder and wrist, as the bones run:
+# along the traced centre line - which wanders through a puffy sleeve - pip's elbow came out at 57%
+# and was 63% as a bone, 4 cm low, so his arm bent in the forearm.
+for side, (tr, to_tip, ie, iw) in arms_done.items():
+    S_, W_now = J[f"{side}_shoulder"], J[f"{side}_wrist"]
+    up_len = float(np.linalg.norm(J[f"{side}_elbow"] - S_))
+    fore_len = float(np.linalg.norm(W_now - J[f"{side}_elbow"]))
+    frac = up_len / max(up_len + fore_len, 1e-9)
+    if not (0.50 <= frac <= 0.60):
+        iwn = int(np.argmin(np.linalg.norm(tr - W_now, axis=1)))
+        cand = np.arange(1, max(iwn, 2))
+        d_s = np.linalg.norm(tr[cand] - S_, axis=1)
+        d_w = np.linalg.norm(tr[cand] - W_now, axis=1)
+        ie_new = int(cand[np.argmin(np.abs(d_s / np.maximum(d_s + d_w, 1e-9) - 0.55))])
+        print(f"[joints]   {side} elbow: upper arm {up_len / H * 175:.0f} cm to forearm {fore_len / H * 175:.0f} cm "
+              f"({frac:.0%} of the way) - moved to 55% of the way from shoulder to wrist", flush=True)
+        J[f"{side}_elbow"] = tr[ie_new]
 
 # spine, neck, head: centre left-right only. With both legs traced, the midline is halfway
 # between them - the one measure of the body's centre that hair cannot move (the deepest point

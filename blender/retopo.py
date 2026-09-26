@@ -362,10 +362,49 @@ def main():
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.002)
-    bpy.ops.uv.select_all(action="SELECT")
-    bpy.ops.uv.pack_islands(udim_source="CLOSEST_UDIM", rotate=True, rotate_method="ANY",
-                            scale=True, merge_overlap=False, margin_method="SCALED",
-                            margin=0.002, shape_method="CONCAVE")
+
+    def pack_all():
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.select_all(action="SELECT")
+        bpy.ops.uv.pack_islands(udim_source="CLOSEST_UDIM", rotate=True, rotate_method="ANY",
+                                scale=True, merge_overlap=False, margin_method="SCALED",
+                                margin=0.002, shape_method="CONCAVE")
+
+    def overlapping(obj):
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.select_all(action="DESELECT")
+        bpy.ops.uv.select_overlap(extend=False)
+        bm_ = bmesh.from_edit_mesh(obj.data)
+        if hasattr(bm_.faces[0], "uv_select"):                         # Blender 5
+            return [f for f in bm_.faces if f.uv_select], bm_
+        uvl = bm_.loops.layers.uv.active
+        return [f for f in bm_.faces if all(lp[uvl].select for lp in f.loops)], bm_
+
+    pack_all()
+    # An island can fold onto itself where the smoothed twin curls - the back of Pip's sleeve, pressed
+    # against his vest before the arms were cut free - and two surfaces then share texels: the sleeve
+    # showed the vest's paint in patches. Repacking cannot part an island from itself (1,529 faces
+    # overlapped before and after it); the faces that overlap anything are unwrapped again as islands
+    # of their own, finer each time (Knight's armour kept 220 of 1,602 at one angle). An island a face
+    # as a last resort cost a third of the atlas (coverage 0.58 -> 0.42) and was left out.
+    ov, bm_ = overlapping(twin)
+    n_ov0 = len(ov)
+    for angle in (0.6, 0.36, 0.22):
+        if not ov:
+            break
+        for f in bm_.faces:
+            f.select_set(False)
+        for f in ov:
+            f.select_set(True)
+        bmesh.update_edit_mesh(twin.data)
+        bpy.ops.uv.smart_project(angle_limit=angle, island_margin=0.002)
+        # smart_project scales what it unwrapped to fill the square by itself: packed as they came, those
+        # islands took 42% of Pip's atlas and left the rest of him 20% fewer texels per centimetre
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.select_all(action="SELECT")
+        bpy.ops.uv.average_islands_scale()
+        pack_all()
+        ov, bm_ = overlapping(twin)
     bpy.ops.object.mode_set(mode="OBJECT")
     if not low.data.uv_layers:
         low.data.uv_layers.new(name="UVMap")
@@ -376,6 +415,16 @@ def main():
     src_uv.foreach_get("uv", buf)
     dst_uv.foreach_set("uv", buf)
     bpy.data.objects.remove(twin, do_unlink=True)
+    # counted again on the mesh that ships: the twin's count read 46 on Vex where 275 shipped
+    bpy.ops.object.select_all(action="DESELECT")
+    low.select_set(True)
+    bpy.context.view_layer.objects.active = low
+    bpy.ops.object.mode_set(mode="EDIT")
+    n_ship = len(overlapping(low)[0])
+    bpy.ops.object.mode_set(mode="OBJECT")
+    dst_uv = low.data.uv_layers.active.data
+    print(f"[retopo] UVs: {n_ov0} faces overlapping after the unwrap, {len(ov)} after unwrapping those again "
+          f"({n_ship} on the mesh that ships)", flush=True)
     uv_cov = 0.0
     for p in low.data.polygons:
         L = [dst_uv[li].uv for li in p.loop_indices]

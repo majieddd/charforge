@@ -1,0 +1,110 @@
+{
+ "mara": {
+  "krea2": {
+   "seconds": 250.3,
+   "file": "mara_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0126,
+   "height_px": 1208,
+   "arm_gap": 0.632
+  },
+  "qwen21": {
+   "seconds": 397.2,
+   "file": "mara_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.0142,
+   "height_px": 1142,
+   "arm_gap": 0.295
+  }
+ },
+ "juno3": {
+  "krea2": {
+   "seconds": 232.0,
+   "file": "juno3_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0059,
+   "height_px": 1182,
+   "arm_gap": 0.667
+  },
+  "qwen21": {
+   "seconds": 355.4,
+   "file": "juno3_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.013,
+   "height_px": 1111,
+   "arm_gap": 0.279
+  }
+ },
+ "rowan": {
+  "krea2": {
+   "seconds": 258.7,
+   "file": "rowan_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0064,
+   "height_px": 643,
+   "arm_gap": 0.66
+  },
+  "qwen21": {
+   "seconds": 355.2,
+   "file": "rowan_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.0117,
+   "height_px": 1139,
+   "arm_gap": 0.304
+  }
+ },
+ "wren": {
+  "krea2": {
+   "seconds": 288.6,
+   "file": "wren_krea2_9_0.png",
+   "in_frame": false,
+   "background": 0.012,
+   "height_px": 1212,
+   "arm_gap": 0.72
+  },
+  "qwen21": {
+   "seconds": 355.5,
+   "file": "wren_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.0128,
+   "height_px": 1101,
+   "arm_gap": 0.339
+  }
+ },
+ "aoi": {
+  "krea2": {
+   "seconds": 304.1,
+   "file": "aoi_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0047,
+   "height_px": 1188,
+   "arm_gap": 0.695
+  },
+  "qwen21": {
+   "seconds": 358.2,
+   "file": "aoi_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.0157,
+   "height_px": 1199,
+   "arm_gap": 0.334
+  }
+ },
+ "pip": {
+  "krea2": {
+   "seconds": 273.8,
+   "file": "pip_krea2_9_0.png",
+   "in_frame": true,
+   "background": 0.0044,
+   "height_px": 1167,
+   "arm_gap": 0.61
+  },
+  "qwen21": {
+   "seconds": 364.7,
+   "file": "pip_qwen21_9_0.png",
+   "in_frame": true,
+   "background": 0.017,
+   "height_px": 1092,
+   "arm_gap": 0.367
+  }
+ }
+}

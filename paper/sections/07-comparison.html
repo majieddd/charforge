@@ -1,0 +1,26 @@
+<section>
+<h2 id="sec-compare">Comparison with other systems</h2>
+<p>[#tab-compare] sets CharForge beside the systems and tools it is most often compared with, from each one's own
+  paper or page. It is a comparison of what each does, not yet of how well: measured comparisons on the same characters
+  are experiments [E103] (auto-riggers) and [E104] (generators).</p>
+<figure id="tab-compare">
+  <div class="tscroll"><!--TABLE:comparison--></div>
+  <figcaption>What each system does, from its paper or product page (checked 26 September 2026). "-": not provided or
+    not stated.</figcaption>
+</figure>
+<p>Three differences matter most. First, <b>where the rig comes from</b>: the research systems either rig a generated
+  mesh with an external auto-rigger (CharacterGen with AccuRIG, DrawingSpinUp with Mixamo's) or avoid rigging a
+  generated mesh at all by fitting a template (Make-A-Character). CharForge rigs the generated solid itself and repairs
+  it for rigging first - arms cut free, hands modelled and sized, garments bound to the bone they move with - because
+  the failures we see are in the mesh an auto-rigger receives, not in the joint placement it would add. Whether a
+  learned rigger such as UniRig [@unirig] would place joints better on our repaired solids is open ([E103]). Second,
+  <b>fingers and faces</b>: most tools stop at the wrist (Rig Lab treats a hand as one joint) and few rig a face;
+  CharForge models fingers and builds a face rig when it can read the face, and refuses when it cannot. Third,
+  <b>motion</b>: the others retarget library clips; CharForge also makes new ones from generated video and measures them
+  against it.</p>
+<p>What we take from them. CharacterGen's multi-view pose canonicalisation addresses the same problem our reference
+  check does (a figure in the wrong pose), upstream; its Poisson blending at view seams is [E105]. Make-A-Character's
+  library-matched garments and strand hair are one answer to what we cannot do - hair and clothing that move apart from
+  the body [E110]; its dense landmarks and template face are one answer to faces we refuse [E109]. The hosted tools'
+  marker-based joint placement is a reminder that a person correcting four markers is cheap; the Studio could offer it.</p>
+</section>

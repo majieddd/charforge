@@ -1,0 +1,24 @@
+<section>
+<h2 id="sec-repro">Reproducibility and the living paper</h2>
+<p><b>Hardware and software.</b> An M5 MacBook with 24 GB of shared memory; Blender 5.2 [@blender], ComfyUI
+  [@comfyui], Ollama with Gemma 4 [@gemma], TRELLIS.2 through its MLX port [@trellis2; @trellis2mlx], PyTorch on
+  Apple's GPU for the pose models and the refine stage. <code>tools/check_env.py</code> reports anything missing across
+  the three Python environments before a long run starts. Model files are not in the repository; the README lists where
+  each comes from and its licence.</p>
+<p><b>Running it.</b> A character: <code>python charforge.py make --prompt "a few words" --name hero</code>, or
+  <code>--image picture.png</code>; or the Studio, <code>python charforge.py studio</code>. A move from video:
+  <code>python charforge.py move --name hero --move punch_combo</code>. The measurements: <code>tools/motion_fidelity.py</code>,
+  <code>tools/motion_stages.py</code>, <code>tools/make_angles.py</code> and <code>blender/foot_audit.py</code>. Built
+  characters are in the <a href="../">playground</a> and as release packages.</p>
+<p><b>How this paper is kept.</b> The paper is built from the repository by <code>paper/build.py</code>. Its prose is in
+  <code>paper/sections/</code>; every number in it is named, not typed, and comes from <code>paper/data/metrics.json</code>,
+  which <code>paper/collect.py</code> regenerates from the pipeline's measurement files, or from
+  <code>paper/data/baselines.json</code> for numbers measured before a change. References are in
+  <code>paper/references.json</code>, each checked against its source. The build refuses to write a page with an unknown
+  number, citation, cross-reference or missing figure. Experiments are recorded in <code>research/experiments.json</code>
+  before they run - question, method, metric - and completed with their result and decision; the build renders them as
+  <a href="#appendix-tracker">Appendix A</a> and <code>research/TRACKER.md</code>. A change to the pipeline that moves a
+  number is committed with the data and the paper together, with a line in the changelog
+  (<a href="#appendix-changelog">Appendix B</a>). The <a href="notebook.html">lab notebook</a> keeps the day-by-day
+  record the paper is distilled from.</p>
+</section>

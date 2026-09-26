@@ -1,0 +1,215 @@
+{
+ "gemma4:e4b": {
+  "score": 0,
+  "of": 20,
+  "secs": 0.0,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "error": "Unterminated string starting at: line 1 column 105 (char 104)"
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "a witch",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "a robot chef",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   }
+  ]
+ },
+ "gemma4:e2b": {
+  "score": 0,
+  "of": 20,
+  "secs": 0.0,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "a witch",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "prompt": "a robot chef",
+    "error": "Expecting value: line 1 column 1 (char 0)"
+   }
+  ]
+ },
+ "qwen2.5:7b": {
+  "score": 15,
+  "of": 20,
+  "secs": 10.2,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "secs": 10.4,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "a young boy scout, slim and active, pale with freckles, short dark brown hair, big brown eyes and a wide smile, wearing a light blue shirt with a green sash, khaki shorts and brown leather shoes, with a green neckerchief tied around the neck and a small compass on a lanyard",
+    "fields": {
+     "who": "a young boy scout",
+     "age": "child",
+     "build": "slim and active",
+     "skin": "pale with freckles",
+     "hair": "short dark brown hair",
+     "face": "big brown eyes and a wide smile",
+     "top": "a light blue shirt with a green sash",
+     "bottom": "khaki shorts",
+     "shoes": "brown leather shoes",
+     "extras": [
+      "a green neckerchief tied around the neck",
+      "a small compass on a lanyard"
+     ],
+     "height_m": 1.35
+    }
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "secs": 11.0,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": false,
+    "bald_wrong": false,
+    "text": "an adult gray alien gigachad, extremely muscular and chiseled, pale gray with a smooth texture, bald, large almond-shaped eyes and a broad forehead, wearing a sleeveless gray muscle shirt, gray cargo pants and black combat boots, with a silver belt with a circular buckle and a red armband",
+    "fields": {
+     "who": "an adult gray alien gigachad",
+     "age": "adult",
+     "build": "extremely muscular and chiseled",
+     "skin": "pale gray with a smooth texture",
+     "hair": "bald",
+     "face": "large almond-shaped eyes and a broad forehead",
+     "top": "a sleeveless gray muscle shirt",
+     "bottom": "gray cargo pants",
+     "shoes": "black combat boots",
+     "extras": [
+      "a silver belt with a circular buckle",
+      "a red armband"
+     ],
+     "height_m": 1.85
+    }
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "secs": 10.2,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": false,
+    "bald_wrong": false,
+    "text": "an adult knight, tall and broad with a muscular frame, pale with a ruddy hue from the sun, short dark brown hair, a strong jawline and piercing blue eyes, wearing a gleaming steel breastplate inlaid with gold, steel greaves and knee-high boots and steel-toed boots, with a leather belt with a large silver buckle and a red cloth armband",
+    "fields": {
+     "who": "an adult knight",
+     "age": "adult",
+     "build": "tall and broad with a muscular frame",
+     "skin": "pale with a ruddy hue from the sun",
+     "hair": "short dark brown hair",
+     "face": "a strong jawline and piercing blue eyes",
+     "top": "a gleaming steel breastplate inlaid with gold",
+     "bottom": "steel greaves and knee-high boots",
+     "shoes": "steel-toed boots",
+     "extras": [
+      "a leather belt with a large silver buckle",
+      "a red cloth armband"
+     ],
+     "height_m": 1.83
+    }
+   },
+   {
+    "prompt": "a witch",
+    "secs": 9.4,
+    "filled": 7,
+    "banned": true,
+    "distinct_colours": false,
+    "bald_wrong": false,
+    "text": "an adult witch, slender with a tall and willowy frame, pale with a slightly waxy texture, long black hair in a braid, sharp features with a hooked nose and piercing green eyes, wearing a long black skirt and black leather boots with pointed toes, with a silver belt with a small pouch and a black leather hat with a pointed top, in a complete outfit - a top, trousers or a skirt, and shoes - each in its own colour",
+    "fields": {
+     "who": "an adult witch",
+     "age": "adult",
+     "build": "slender with a tall and willowy frame",
+     "skin": "pale with a slightly waxy texture",
+     "hair": "long black hair in a braid",
+     "face": "sharp features with a hooked nose and piercing green eyes",
+     "top": "a dark green cloak with silver embroidery",
+     "bottom": "a long black skirt",
+     "shoes": "black leather boots with pointed toes",
+     "extras": [
+      "a silver belt with a small pouch",
+      "a black leather hat with a pointed top"
+     ],
+     "height_m": 1.65
+    }
+   },
+   {
+    "prompt": "a robot chef",
+    "secs": 9.8,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": false,
+    "bald_wrong": false,
+    "text": "an adult robot chef, tall and sleek with a cylindrical body, polished silver, bald, two bright red LED eyes and a small digital display for a mouth, wearing a red apron with a logo of a chef's hat, black pants and red boots, with a white belt with a tool pouch and gloves with red fingertips",
+    "fields": {
+     "who": "an adult robot chef",
+     "age": "adult",
+     "build": "tall and sleek with a cylindrical body",
+     "skin": "polished silver",
+     "hair": "none",
+     "face": "two bright red LED eyes and a small digital display for a mouth",
+     "top": "a red apron with a logo of a chef's hat",
+     "bottom": "black pants",
+     "shoes": "red boots",
+     "extras": [
+      "a white belt with a tool pouch",
+      "gloves with red fingertips"
+     ],
+     "height_m": 1.72
+    }
+   }
+  ]
+ },
+ "mistral-nemo:12b": {
+  "score": 0,
+  "of": 20,
+  "secs": 0.0,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "error": "timed out"
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "error": "timed out"
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "error": "timed out"
+   },
+   {
+    "prompt": "a witch",
+    "error": "timed out"
+   },
+   {
+    "prompt": "a robot chef",
+    "error": "timed out"
+   }
+  ]
+ }
+}

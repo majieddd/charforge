@@ -89,11 +89,17 @@ def shoot(name, centre, ortho):
 cams = {}
 body_c = np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2])
 cams["body_front"] = shoot("body_front", body_c, H * 1.08)
-head_c = np.array([head_j[0], head_j[1], (head_j[2] + top) / 2])
-head_span = (top - head_j[2]) * 2.3
+# the head from its joint to the top - at least 11% of the height (a head is 12-13% of an adult): knight2's
+# head joint sat 12 cm under the top of his hair, and a frame built on it cut off his chin
+hj = max(top - head_j[2], 0.11 * H)
+head_c = np.array([head_j[0], head_j[1], top - hj / 2])
+head_span = hj * 2.3
 cams["head_front"] = shoot("head_front", head_c, head_span)
 
-# world position under every head pixel: emission of (position + 4), raw, from the same camera
+# world position under every head pixel: emission of (position - the frame's centre + 1), raw, from the same
+# camera. EEVEE keeps the film in half floats: at position + 4 (values 4-6) a half float's step is 3.9 mm, and
+# boyscout's eyelids and lips were read in 4 mm stairs; around 1 the step is 0.5-1 mm
+OFF = Vector((1.0, 1.0, 1.0)) - Vector(head_c.tolist())
 for o in meshes:
     for m in o.data.materials:
         nt = m.node_tree
@@ -103,7 +109,7 @@ for o in meshes:
         geo = nt.nodes.new("ShaderNodeNewGeometry")
         add = nt.nodes.new("ShaderNodeVectorMath")
         add.operation = "ADD"
-        add.inputs[1].default_value = (4.0, 4.0, 4.0)
+        add.inputs[1].default_value = tuple(OFF)
         nt.links.new(geo.outputs["Position"], add.inputs[0])
         nt.links.new(add.outputs["Vector"], em.inputs["Color"])
 sc.view_settings.view_transform = "Raw"
@@ -117,7 +123,7 @@ im = bpy.data.images.load(f)
 px = np.empty(im.size[0] * im.size[1] * 4, np.float32)
 im.pixels.foreach_get(px)
 px = px.reshape(im.size[1], im.size[0], 4)[::-1]
-pos = np.where(px[..., 3:4] > 0.995, px[..., :3] / np.maximum(px[..., 3:4], 1e-6) - 4.0, np.nan).astype(np.float32)
+pos = np.where(px[..., 3:4] > 0.995, px[..., :3] / np.maximum(px[..., 3:4], 1e-6) - np.array(OFF[:]), np.nan).astype(np.float32)
 np.save(os.path.join(a.out_dir, "head_front_pos.npy"), pos)
 os.remove(f)
 json.dump({"cameras": cams, "height": H, "head_joint": head_j.tolist(), "top": top},

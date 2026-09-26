@@ -23,6 +23,7 @@
   #title{top:calc(14px + env(safe-area-inset-top,0px));left:14px;padding:11px 14px;max-width:min(330px,calc(100vw - 28px))}
   #title h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
   #title p{margin:5px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.45}
+  #title a{color:var(--accent)}
   #keys{bottom:calc(14px + env(safe-area-inset-bottom,0px));left:14px;padding:10px 13px}
   #keys table{border-collapse:collapse;font-size:11.5px}
   #keys td{padding:2px 0}
@@ -101,6 +102,8 @@
   <p>Deformation uses <b>dual quaternion skinning</b>: blending rotations as rotations keeps
   bent joints from hollowing out (jacket faces collapsed below half their area: 8.8% linear,
   6.1% dual quaternion, over the walk). Toggle it to see the difference.</p>
+  <p>How it works, measured: <a href="https://majieddd.github.io/charforge/paper/" target="_blank" rel="noopener">the
+  CharForge paper</a> &middot; <a href="https://majieddd.github.io/charforge/paper/notebook.html" target="_blank" rel="noopener">lab notebook</a>.</p>
   <div class="btns">
     <button id="b-dqs" aria-pressed="true">Dual-quat skin</button>
     <button id="b-parts" aria-pressed="false">Show parts</button>
@@ -127,6 +130,7 @@
     <tr><td><kbd>Q</kbd> / <kbd>right-drag</kbd></td><td>aim: strafe &amp; backpedal</td></tr>
     <tr><td><kbd>Space</kbd></td><td>jump</td></tr>
     <tr><td><kbd>E</kbd></td><td>wave</td></tr>
+    <tbody id="k-moves"></tbody>
     <tr><td><kbd>T</kbd> (hold)</td><td>talk</td></tr>
     <tr><td><kbd>drag</kbd></td><td>orbit camera</td></tr>
   </table>
@@ -520,6 +524,12 @@ function buildCharacter(gltf) {
   // physics, and a turn's clock decides when the capsule takes over its rotation. Idles and the
   // fall loop just play.
   for (const n of DRIVEN) if (actions[n]) actions[n].timeScale = 0;
+  // Moves beyond the standard set - made from a video by `charforge.py move` - play as emotes on
+  // the number keys, driven like the wave.
+  extraMoves = gltf.animations.map((c) => c.name).filter((n) => !STANDARD.has(n));
+  for (const n of extraMoves) actions[n].timeScale = 0;
+  $('k-moves').innerHTML = extraMoves.slice(0, 9).map((n, i) =>
+    `<tr><td><kbd>${i + 1}</kbd></td><td>${n.replace(/_/g, ' ')}</td></tr>`).join('');
   if (actions.idle) actions.idle.setEffectiveWeight(1);
 
   // A character built by this pipeline stands on its own origin. The playground used to measure
@@ -560,7 +570,8 @@ function buildCharacter(gltf) {
   window.__cf = { scene, model, mixer, actions, characters: CHARACTERS, ctl, rig, keys, camera, stick, controls,
                   setFollow: (on) => { followCam = on; },
                   get activeId() { return activeId; }, get clipInfo() { return clipInfo; }, select,
-                  jump: () => { wantJump = true; }, wave: () => { wantWave = true; },
+                  jump: () => { wantJump = true; }, wave: () => { wantEmote = 'wave'; },
+                  emote: (n) => { wantEmote = n; }, get extraMoves() { return extraMoves; },
                   crouch: () => { wantCrouch = true; }, aim: (on = true) => { ctl.strafeOn = on; },
                   groundAt, tick: (dt) => { step(dt); animate(dt); mixer.update(dt); updateFace(dt); updateSprings(dt); }, footAudit,
                   get face() { return face; },
@@ -820,16 +831,22 @@ $('gen-close').onclick = () => { $('gen').hidden = true; $('b-gen').focus(); };
 $('gen').addEventListener('click', (e) => { if (e.target === $('gen')) $('gen').hidden = true; });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('gen').hidden) $('gen').hidden = true; });
 
-select(CHARACTERS[0].id);
+// #pip opens on Pip (the Studio links here that way); anything else, the first
+const wanted = location.hash.slice(1);
+select(CHARACTERS.some((c) => c.id === wanted) ? wanted : CHARACTERS[0].id);
 
 // ---- input -----------------------------------------------------------------
 const keys = Object.create(null);
-let wantJump = false, wantWave = false, wantCrouch = false, wantStrafe = false, aimHeld = false;
+let wantJump = false, wantEmote = null, wantCrouch = false, wantStrafe = false, aimHeld = false;
+const STANDARD = new Set(['idle', 'walk', 'jog', 'run', 'sprint', 'walk_back', 'jog_back', 'strafe_left',
+  'strafe_right', 'turn_left', 'turn_right', 'turn_180', 'crouch_idle', 'crouch_walk', 'jump', 'fall', 'land', 'wave']);
+let extraMoves = [], emoteClip = 'wave';
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const k = e.key.toLowerCase();
   if (k === ' ' && !e.repeat) { e.preventDefault(); wantJump = true; }
-  if (k === 'e' && !e.repeat) wantWave = true;
+  if (k === 'e' && !e.repeat) wantEmote = 'wave';
+  if (/^[1-9]$/.test(k) && !e.repeat && extraMoves[+k - 1]) wantEmote = extraMoves[+k - 1];
   if (k === 'c' && !e.repeat) wantCrouch = true;
   if (k === 'q' && !e.repeat) wantStrafe = true;
   keys[k] = true;
@@ -1051,10 +1068,10 @@ function step(dt) {
     ctl.mode = 'jump'; ctl.took = false; ctl.airTime = 0;
     ctl.t = ctl.running_jump ? Math.max(0, J.takeoff - 0.12) : J.entry;
   }
-  if (wantWave && ctl.mode === 'ground' && ctl.speed < 0.3 && actions.wave && !ctl.crouch) {
-    ctl.mode = 'emote'; ctl.t = 0;
+  if (wantEmote && ctl.mode === 'ground' && ctl.speed < 0.3 && actions[wantEmote] && !ctl.crouch) {
+    ctl.mode = 'emote'; ctl.t = 0; emoteClip = wantEmote;
   }
-  wantJump = wantWave = wantCrouch = wantStrafe = false;
+  wantJump = wantCrouch = wantStrafe = false; wantEmote = null;
 
   // Gravity is constant, so the ballistic step is integrated exactly rather than approximated.
   const fly = (g, h) => { ctl.y += ctl.vy * h - 0.5 * g * h * h; ctl.vy -= g * h; };
@@ -1093,7 +1110,7 @@ function step(dt) {
       ctl.mode = 'ground';
   } else if (ctl.mode === 'emote') {
     ctl.t += dt;
-    const dur = clipInfo.wave?.seconds || actions.wave?.getClip().duration || 1;
+    const dur = clipInfo[emoteClip]?.seconds || actions[emoteClip]?.getClip().duration || 1;
     if (ctl.t >= dur || mag > 0.2) ctl.mode = 'ground';
   } else if (ctl.mode === 'turn') {
     ctl.t += dt * ctl.turnRate;
@@ -1222,7 +1239,9 @@ function animate(dt) {
       actions.jump.time = t; add('jump', A);
     }
   }
-  if (ctl.lay.emote > 1e-4 && actions.wave) { actions.wave.time = Math.min(ctl.t, dur('wave') - 1e-3); add('wave', ctl.lay.emote); }
+  if (ctl.lay.emote > 1e-4 && actions[emoteClip]) {
+    actions[emoteClip].time = Math.min(ctl.t, dur(emoteClip) - 1e-3); add(emoteClip, ctl.lay.emote);
+  }
 
   for (const n in actions) actions[n].setEffectiveWeight(w[n] || 0);
 

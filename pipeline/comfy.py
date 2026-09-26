@@ -98,6 +98,46 @@ def krea2_t2i(prompt: str, negative: str = "", width=1024, height=1024, steps=8,
     }
 
 
+QWEN21 = {"unet": "qwen_image_2.1_int8_convrot.safetensors", "clip": "qwen3vl_8b_int8_convrot.safetensors",
+          "vae": "qwen_image_2.1_vae_bf16.safetensors"}
+
+
+def qwen21(prompt: str, width=832, height=1216, steps=30, seed=0, images=(), transparent=False,
+           negative: str = "", cfg: float = 1.0, prefix="charforge_qwen"):
+    """Qwen-Image 2.1: text -> image, or, with `images` (names already in ComfyUI's input folder,
+    see upload_image), an edit that sees them - the prompt refers to them as <image1>, <image2>...
+
+    transparent: an RGBA image with the background cut away by the model itself (the prompt
+    wrapped the way Qwen's template asks), saved as PNG with its alpha. Settings after Comfy-Org's
+    image_qwen_image_2_1_t2i template: euler, simple, cfg 1 (the negative is unused at cfg 1).
+    Research licence: see README.
+    """
+    if transparent:
+        prompt = (f"This is an RGBA format image with transparency. {prompt}. "
+                  "The image has an alpha channel and a transparent background.")
+    g = {
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": QWEN21["unet"], "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": QWEN21["clip"], "type": "qwen_image",
+                                                     "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": QWEN21["vae"]}},
+        "4": {"class_type": "TextEncodeQwenImage21", "inputs": {
+            "clip": ["2", 0], "prompt": prompt, "negative_prompt": negative, "resolution": 1024, "vae": ["3", 0]}},
+        "6": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
+        "7": {"class_type": "KSampler", "inputs": {
+            "model": ["1", 0], "positive": ["4", 0], "negative": ["4", 1], "latent_image": ["6", 0],
+            "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple",
+            "denoise": 1.0}},
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["7", 0], "vae": ["3", 0]}},
+        "9": {"class_type": "SaveImageAdvanced", "inputs": {
+            "images": ["8", 0], "filename_prefix": prefix, "format": "png",
+            "format.bit_depth": "8-bit", "format.input_color_space": "sRGB"}},
+    }
+    for i, name in enumerate(images, 1):
+        g[f"L{i}"] = {"class_type": "LoadImage", "inputs": {"image": name}}
+        g["4"]["inputs"][f"images.image_{i}"] = [f"L{i}", 0]
+    return g
+
+
 def krea2_i2i(image_name: str, prompt: str, negative: str = "", denoise: float = 0.45,
               steps: int = 10, cfg: float = 1.0, seed: int = 0, gguf: bool = True):
     """Image-to-image with Krea 2 Turbo.

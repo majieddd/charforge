@@ -1,0 +1,19 @@
+<section>
+<h2 id="sec-roadmap">Roadmap</h2>
+<p>The next phase aims at three things at once: more precise measurement, fewer visible aberrations, and less time per
+  character. Each item is an experiment in the tracker with its metric fixed before it runs.</p>
+<ol>
+  <li><b>A 3D ground truth for motion</b> [E101]: render a character performing a known clip as a video, run the move
+    lane on it with that clip held out of the library, and measure the recovered clip in joint angles, positions,
+    contacts and jitter.</li>
+  <li><b>An aberration score</b> [E102]: stretch, collapse, normal flips, self-intersection and floor penetration per
+    frame, for every clip of every character, with the worst frames rendered - so the faults a person spots are counted
+    and ranked.</li>
+  <li><b>Rigging against the field</b> [E103]: our joints and weights against UniRig and the hosted auto-riggers on the
+    same meshes, scored by [E102]; corrective shapes at elbows and shoulders [E107].</li>
+  <li><b>Time</b> [E106]: each stage timed alone, and the costly ones - the second 3D pass, the detailed face -
+    ablated against their measured benefit; Hunyuan3D 2.1 against TRELLIS.2 on our references [E104].</li>
+  <li><b>Texture seams</b> by Poisson blending [E105]; <b>depth</b> for moves the library lacks from a world-grounded
+    video model [E108]; <b>faces</b> the rig will not guess [E109]; <b>hair and garments</b> as their own layers [E110].</li>
+</ol>
+</section>

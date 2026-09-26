@@ -1,0 +1,27 @@
+{
+ "title": "CharForge: rigged, animated game characters from a few words or one image, on a laptop",
+ "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
+ "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
+ "acknowledgement": "Experiments were designed, run and written up with Claude (Anthropic) working in the repository; every number was measured by a script in it.",
+ "version": "0.5",
+ "date": "2026-09-26",
+ "url": "https://majieddd.github.io/charforge/paper/",
+ "repo": "https://github.com/majieddd/charforge",
+ "changelog": [
+  {"version": "0.5", "date": "2026-09-26", "changes": [
+    "The lab book became this paper: method, evaluation with every number collected from the measurement files (paper/collect.py), related work with verified references, limitations and a roadmap; the chronological lab notebook kept beside it.",
+    "Experiment tracker (research/experiments.json, rendered as research/TRACKER.md and Appendix A).",
+    "Multi-angle verification (E009) found an elbow folded through the arm (E007), feet off the floor (E008), a comparison video running 25% fast (E010), and showed the kick's score dip was the scorer (E011).",
+    "Characters from a few words (E014-E016); hands that meet a bare forearm (E021) and take the face's colour (E020); a realistic face kept from the generator when the reference cannot be laid on it (E022); face positions read at 0.5 mm (E019)."]},
+  {"version": "0.4", "date": "2026-09-25", "changes": [
+    "The polish pass: garments fused to the body (E025), folded UV islands (E027), references in the wrong pose (E028), joins left by the arm cut (E026, open).",
+    "Hands follow DWPose (E006); the Studio, a local interface to make characters without the command line."]},
+  {"version": "0.3", "date": "2026-09-24", "changes": [
+    "Moves from generated video: retrieval (E001), the fit (E002, E003), aimed limbs (E004), the refine stage (E005); H3 on 24 GB (E030).",
+    "Qwen-Image 2.1 as the reference model (E013); three styles, seven characters, the v3.0.0 site."]},
+  {"version": "0.2", "date": "2026-09-23", "changes": [
+    "One entry point, engine conventions (origin, capsule, LODs), real PBR; locomotion that plants its feet (E029)."]},
+  {"version": "0.1", "date": "2026-09-20", "changes": [
+    "A local text-to-rigged-character pipeline with its first measurements; dual quaternion skinning in the viewer (E024)."]}
+ ]
+}

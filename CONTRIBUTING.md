@@ -4,6 +4,12 @@ This is the master list: what is being worked on, what is done, and what was tri
 It is the first place to look before starting anything, because several obvious-looking ideas
 have already been measured and are worse than what is shipped.
 
+**Experiments are tracked in [`research/experiments.json`](research/experiments.json)** (rendered as
+[`research/TRACKER.md`](research/TRACKER.md) and Appendix A of the [paper](https://majieddd.github.io/charforge/paper/)).
+Add an entry - question, method, metric - before running something; fill in its result and decision after; then
+`python paper/collect.py && python paper/build.py`, and commit code, data and paper together. The list below is the
+history the tracker was seeded from.
+
 **The rule of this project: a change lands with a number.** Every claim below is backed by a
 script in this repository that you can re-run. "Looks better" is not a result; the deformation
 audit and a full-resolution render are.
@@ -20,6 +26,25 @@ blender -b -noaudio --python blender/deform_audit.py -- --blend work/rowan/final
 
 # linear blend vs dual quaternion, same weights
 blender -b -noaudio --python blender/dqs_test.py -- --blend work/rowan/final.blend
+```
+
+**Look at every character in the poses that break things** - the standard clips' extremes and the
+moves from video, front-left and back-right - before and after:
+
+```bash
+blender -b -noaudio --python blender/render_poses.py -- --blend work/pip/final.blend \
+    --shots "idle@0.5,jump@1.2,land@0.5,crouch_walk@0.4,wave@0.5,fall@1.0,victory_cheer@2.2" \
+    --az 30,210 --res 360 --out audit/pip
+# a texture fix, seen on the posed character without a rebuild
+blender -b -noaudio --python blender/render_poses.py -- --blend work/pip/final.blend \
+    --shots "idle@0.5" --az 210,270 --frame upper --albedo candidate_albedo.png --out try/pip
+```
+
+and watch it move - a reel of the clips back to back from one camera (the Studio's Reel button runs
+the same):
+
+```bash
+python tools/make_reel.py --name pip            # work/pip/qa/reel.mp4
 ```
 
 Then **render at full resolution and look at it**. Thumbnails actively mislead — a build that
@@ -53,17 +78,47 @@ counts: a 30 fps bake measured 3% at the keys and 13% in the browser.
 
 ## Open — ranked by expected impact
 
-### 1. Hair and bags that are generated apart from the body
+### 1. Hair, bags and layered garments generated apart from the body
 Chains swing what hangs free (`blender/springs.py`), but the generator lays braids, ponytails and
-satchels against the body as one surface, and a chain on a fused part tears it (REVIEW 33). The
-fix is upstream: condition the reference on hair held clear of the back, or generate the hair as
-its own mesh. Carving a gap in the voxel solid was tried (REVIEW, Tried and dropped).
+satchels against the body as one surface, and a chain on a fused part tears it (REVIEW 33). A
+garment over another is the same problem, now half solved: Pip's vest moves with his torso and
+collarbones (REVIEW, the polish pass), but with both arms overhead the surface that joined vest and
+sleeve stretches at the armpit. The fix is upstream: condition the reference on hair held clear of
+the back, or generate hair and outer garments as their own meshes. Aoi's hair is the largest part
+of what her refined clip still misses against its video.
 
-### 2. A video model for the image -> video -> motion link
-`pipeline/video_motion.py` turns a video into a clip from the library (self-test: the right clip
-or an exact tie first 100%, 40 tests; real renders through the pose model: 2 of 3 first, the
-third second). The video itself needs a model: Wan 2.x or LTX-Video in ComfyUI, 6-15 GB -
-ask before downloading. Then: prompt -> video of the character -> clip -> retarget.
+Smaller, from the same pass: a join between arm and body survives in the first slab below the
+cut's start on Mara, Juno, Rowan and Vex's left arm (`free_arms.py` reports `still_joined`); the
+reference check (`pipeline/pose_gate.py`) reads only the arms, not a held prop or a cape.
+
+### 2. Video -> motion: what the pose models cannot read, depth, and a licence-clean video model
+`charforge.py move` now runs the whole chain: MiniMax H3 (a community fine-tune, in ComfyUI on the
+Mac's GPU) makes the video, `pipeline/video_motion.py --fit` reads it and bends the nearest
+capture to follow it on the video's own body, `blender/retarget.py` aims the character's limbs and
+head along the fit, and the `refine` stage poses the character's own mesh against the video's
+silhouette and turns the hands to DWPose's reading (0.054-0.127 torso lengths, IoU 0.77-0.85, hands
+0.15-0.25 palm lengths against the video, `tools/motion_fidelity.py`).
+Open:
+- **Hands DWPose cannot read.** A hand blurred by a fast move, under hair or overhead at the
+  frame's edge (Pip's, through his hop) keeps the capture's; so, in part, do cartoon fingers,
+  which DWPose fans the wrong way now and then. A hand model trained on stylised hands, or the
+  hand's silhouette in the refine's silhouette terms at a finer scale, would reach them.
+- **Poses the pose model rarely saw.** The rig now kicks as the video does (the angles video shows
+  her leg at head height from the side and above), but reading the render of Mara at the top of the
+  kick ViTPose loses the raised leg for 7 frames (61-67), which is most of that move's score (0.069;
+  0.049 without them). A score that skips frames where the pose model's reading of the render
+  disagrees with the rig's own skeleton would say so by itself. DWPose folds the leg too, at
+  confidence 0.16-0.21 (REVIEW, Tried and dropped). ViTPose++ huge is untried - ask before downloading.
+  The rig also lowers the leg a little early (knee bent 70° at 2.8 s, the video's leg still up).
+- **Depth.** The fit's remaining error on moves the library lacks is mostly depth (0.143 of 0.178
+  torso lengths), which comes from the nearest capture. Taking it from the best of several
+  captures did not help (REVIEW, Tried and dropped). A monocular 3D pose model, or a second
+  generated view of the same move, would.
+- **The licence.** MiniMax H3's licence excludes the US, EU, UK and South Korea. Wan 2.2
+  (Apache-2.0, `wan2.2_ti2v_5B`, 18 GB with its text encoder and VAE) would run through the same
+  script with a different workflow - ask before downloading.
+- **Stylised performers.** The pose model reads realistic bodies best; for an anime or cartoon
+  character, a realistic performer's video (`--performer`) may give a cleaner move.
 
 ### 3. Faces for drawn styles
 Drawn eyes read as "not a clean blob" and fall back to positions estimated from the head's
@@ -80,7 +135,11 @@ contact phases, would put each foot on its own step.
 
 ### 6. Raise generative fidelity
 Faces are now detailed from a close-up (REVIEW 34); the geometry under them is still the
-generator's. More conditioning views, or a finer TRELLIS grid.
+generator's. More conditioning views were measured against an H3 turntable of Mara
+(`tools/turntable_fidelity.py`): the reference alone 0.778 IoU over the turn, with the repainted side
+and back 0.781, with three turntable frames 0.786 - more views barely move the shape, and views
+that disagree get averaged (her braid). A finer TRELLIS grid, or fitting the mesh to the reference's
+silhouette directly, are what is left.
 
 ### 7. Pose-space correctives for shoulder and elbow
 The playground drives its own shader and could apply them; the shoulder carries the largest
@@ -98,6 +157,67 @@ Needs a bootstrap script and a pinned `requirements.txt`.
 
 Newest first. Each of these has a script and a measurement.
 
+- **Hands and faces of the characters from a few words** (REVIEW). `pipeline/cut_hands.py` reads
+  the part labels at the wrist: a bare forearm (0.92-1.00 "arms" against 0.13 or less under a
+  sleeve) makes the modelled hand broader and thicker to meet it, up to 1.6x (`blender/hands.py`,
+  `blender/rig_build.py` follow the same bulk). `pipeline/project_texture.py` gives the hands the
+  face's colour when no warm skin exists (Gray's grey, not a fallback peach), and with
+  `--keep-base-face` (realistic characters) leaves the face to the generator's own texture when the
+  face flow is refused - Knight's doubled face, and the face rig it then found.
+- **Checking the checks** (REVIEW, "seeing a move from every side"). The compare and angles videos
+  played a 24 fps video 25% fast beside 30 fps renders (each frame taken once, never twice) - the
+  rig looked 0.2 s late and more; `tools/side_by_side.py`, `tools/make_angles.py` and
+  `pipeline/video_motion.py` now repeat frames when the output runs faster. `tools/motion_stages.py`
+  re-reads a rig when its blend is newer than its cache, and lists the frames where the pose model
+  misreads the render against the rig's own skeleton (Mara's kick: 7 frames, 0.069 -> 0.049
+  without them). `blender/face_render.py` writes positions near 1, not at +4, where EEVEE's
+  half-float film has 0.5 mm steps instead of 3.9 mm (face landmarks were 2.5 mm off on average).
+- **Seeing a move from every side** (REVIEW). `tools/make_angles.py` / `blender/render_angles.py`:
+  any clip from several orthographic cameras at one scale on a 10 cm grid, side by side in one
+  video (with `--video`, the move's video first), and each elbow's and knee's bend and each shoe's
+  height read out under them; **Angles** in the Studio. It found the feet of the moves from video
+  standing 2-7 cm off the floor after the refine: `blender/apply_pose_corrections.py` now puts
+  each key's lowest shoe as far above the floor as the video's figure stands above its own floor
+  line (frames where the figure runs off the picture keep the retarget's planting).
+- **Characters from a few words** (REVIEW). A short prompt is written out by a local language model
+  (`pipeline/describe.py`: fields filled by Ollama, the sentence composed here, props, poses and
+  heights dropped, the age group from the prompt's own words); the height follows the description;
+  a name already taken is refused by the Studio and by `make`. TRELLIS's first pass is checked from
+  the front against the picture, and a board built in with the figure (Gray, Knight, Kaito: IoU
+  0.35-0.44 against 0.90-0.94) is made again from the picture through TRELLIS's own background
+  remover (Knight 0.40 -> 0.92), then on a new seed.
+- **Elbows that fold back through the arm** (REVIEW, the polish pass). One camera fixes a bone's
+  depth only up to its sign; `video_motion.py`'s fit now chooses an upper arm's and its forearm's
+  together - no elbow past 150-160 deg (the capture library's pass 150 in 0.05% of frames), no
+  wrist behind the torso within the chest's width and height (1% of the library's are) - and
+  `refine_pose.py` holds every elbow under 150 deg (`--w-elbows`). Aoi's spell cast: 176 -> 150 deg,
+  silhouette and hands unchanged; self-test on 40 moves the library lacks 0.212 -> 0.211 torso
+  lengths. `tools/motion_fidelity.py` reports the hands' median error beside the mean, since a few
+  misread frames can move a mean (Aoi's sleeve ends read as hands: mean 0.33, median 0.17).
+- **The polish pass: the surface when it moves** (REVIEW has the numbers). Arms cut free of the
+  body are checked slab by slab and cut again where a join survives (`free_arms.py`); the rig keeps
+  the arm's weight on the arm from 0.30 of the upper arm, a vest's armhole with the collarbone and a
+  jacket's hem with the pelvis where colours tell the garments apart (`rig_build.py`); UV islands
+  folded onto themselves are unwrapped again (`retopo.py`, 224-2,602 overlapping faces per character
+  -> 6-31, and 97-158 on the layered Rowan, Kaito and Knight); the texture no longer paints a generated view's outline onto what lies behind it, finds
+  the modelled hand only outside the body, takes the hands' tone from the face and colours surfaces
+  the arm cut opened from the nearest old surface along the mesh (`project_texture.py`); a reference
+  whose hands touch the body is drawn again (`pose_gate.py`); a TRELLIS stage macOS stops on the GPU
+  is retried in smaller pieces. Seen in `blender/render_poses.py`, before and after, on every
+  character.
+- **CharForge Studio** (`charforge.py studio`, `studio/`). A local web app: make a character from a
+  description or an image, watch the job queue with each stage's time left, turn characters round
+  and play their clips, add moves from video, rerun from a stage, and walk every local character
+  round the playground at `/play/`. It learns each stage's time from its own logs and survives a
+  restart under a running job.
+
+- **Hands that follow the video.** DWPose (`tools/dwpose.py`; 134 MB, Apache-2.0) reads 21 points a
+  hand on the video, and the refine stage turns the wrists, the forearms about their length and
+  thirty finger joints - each within a finger's range, never the arm - until the hands lie on it,
+  from a wrist point calibrated to where DWPose sees one on the character (`tools/calibrate_hands.py`).
+  Scored with DWPose on both sides (`tools/motion_fidelity.py`): Aoi's spell 0.64 -> 0.25 palm
+  lengths, palms the video's way 62% -> 99%; Mara 0.24 -> 0.21 and 0.15; Pip 0.23 -> 0.18; the
+  body's scores within 0.006. What did not work is in REVIEW, Tried and dropped.
 - **Built by hand, then turned into rules (REVIEW, third pass).** A solid instead of a shell
   (26-direction visibility), joints traced through it (`refine_joints.py`), modelled hands with
   15 finger bones each (`cut_hands.py`, `hands.py`, `hand_model.py`), geodesic weights

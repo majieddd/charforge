@@ -1,0 +1,33 @@
+<section>
+<h2 id="sec-intro">Introduction</h2>
+<p>A game character is more than a mesh. It needs a skeleton with the bone names an engine's animation library
+  expects, skin weights that bend cloth without tearing it, hands with fingers, a face that can blink and speak, a
+  collision capsule, levels of detail, and clips that move its feet without sliding. Image-to-3D models now produce
+  convincing meshes from one picture [@trellis2; @hunyuan3d21], and research systems produce rigged characters from an
+  image or a prompt [@charactergen; @mach; @mach2]; hosted tools and auto-riggers promise the rest
+  [@accurig; @pinoc; @riglab; @cinevvatool]. Two things are still hard. The first is the gap between a generated mesh
+  and a character that deforms well: generated topology has no edge loops where joints bend [@cinevvaguide], parts the
+  generator fused (an arm to a hip, a vest to a sleeve) cannot move apart, and a rig built on them shows it in the first
+  wave. The second is motion that is not in a library: a spell, a victory cheer, a particular roundhouse kick.</p>
+<p>CharForge is our answer under a hard constraint: everything runs locally, on a 24 GB M5 MacBook, with openly
+  available models. It is also an experiment in method. Each stage exists because a measurement showed the stage
+  before it failing in a specific way, and each decision is recorded with the number that made it
+  (<a href="#appendix-tracker">Appendix A</a>). This paper is the curated account of that record; the chronological
+  version is the <a href="notebook.html">lab notebook</a>.</p>
+<p>Our contributions:</p>
+<ul>
+  <li><b>An end-to-end local pipeline</b> from a few words or one image to an engine-ready character (glTF and FBX,
+    Mixamo bone names, LODs, capsule, face morphs, 18 clips) in about {{stage.total.min}} minutes of median stage time
+    ([#sec-system], [#sec-method]).</li>
+  <li><b>Generated-mesh repair for rigging</b>: arms cut free of the bodies they were generated against, modelled hands
+    sized to the forearm they end, garments bound to the bone they move with, loose pieces carried along
+    ([#sec-m-geometry], [#sec-m-rig]).</li>
+  <li><b>Moves from generated video</b> onto the character's own rig: retrieval, a fit on the video's own body, and
+    analysis-by-synthesis refinement of the skinned mesh, with hands and feet ([#sec-m-motion]).</li>
+  <li><b>A measurement suite</b> - silhouette and joint fidelity against the video, a per-stage breakdown that separates
+    the rig's error from the scorer's, and synchronised four-view renders with joint readouts - and an account of the
+    errors it found in itself ([#sec-eval]).</li>
+  <li><b>A living, reproducible record</b>: every table here is rebuilt from the pipeline's measurement files, and the
+    experiment tracker is the project's roadmap ([#sec-repro]).</li>
+</ul>
+</section>
