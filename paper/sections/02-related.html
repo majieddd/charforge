@@ -1,0 +1,51 @@
+<section>
+<h2 id="sec-related">Related work</h2>
+
+<h3 id="sec-rw-gen">Characters from an image or a prompt</h3>
+<p><b>Image-to-3D generators.</b> TRELLIS [@trellis] and its successor TRELLIS.2 [@trellis2] generate meshes with
+  physically based materials from structured sparse-voxel latents (a 1024<sup>3</sup> asset in about 9.6K tokens);
+  Hunyuan3D 2.0 and 2.1 [@hunyuan3d2; @hunyuan3d21] pair a shape diffusion transformer with a texture painter and
+  produce PBR materials. Both families are general-purpose: they model a character as one surface, which is the root of
+  most of what CharForge repairs. A practitioner's survey of hosted and open generators [@cinevvaguide] recommends the
+  same two-step workflow we use - draw a clean reference with an image model, then lift it to 3D - and notes the same
+  weakness: generated topology lacks deformation loops at the joints. Hosted services built on these models
+  [@cinevvatool; @ai3dgen] add rigging and preset clips; their free tiers can be as limited as an untextured OBJ at a
+  fixed face count [@ai3dgen].</p>
+<p><b>Character-specific systems.</b> CharacterGen [@charactergen] canonicalises a character in any pose to four A-pose
+  views with an image-conditioned multi-view diffusion model, reconstructs it with a transformer sparse-view model, and
+  back-projects the views into a texture with a depth test and Poisson blending [@poisson]; it rigs with AccuRIG
+  [@accurig]. Make-A-Character [@mach] takes the opposite route: a language model parses the prompt into attributes, a
+  portrait is generated and fitted onto a fixed, production-rigged template (MetaHuman) using 431 dense facial landmarks,
+  hair is built as strands, and garments are matched from a library by CLIP similarity. Make-A-Character 2 [@mach2]
+  starts from a single portrait, corrects its lighting and skin tone, and calibrates a facial skeleton for expressive
+  animation. Template methods get rigging and faces for free but not the look of an arbitrary character; generation
+  methods get the look but inherit the generator's topology. CharForge generates the character (like CharacterGen) and
+  then builds the rig from the generated solid itself.</p>
+<p><b>Characters from drawings.</b> Animated Drawings [@animateddrawings] rigs a child's drawing in 2D. DrawingSpinUp
+  [@drawingspinup] lifts a drawing to 3D, removes and later restores its view-dependent contour lines, thins
+  single-line limbs with a skeleton-guided deformation, rigs with Mixamo's auto-rigger from eight front-view keypoints
+  and assigns each vertex to its nearest bone [@mixamo]; its authors report surface adhesion where the drawing has
+  self-occlusion, the same failure our arm cut addresses. Akman et al. [@akman2020] go from stick figures to 3D bodies
+  with a variational autoencoder and animate by interpolating in its latent space.</p>
+
+<h3 id="sec-rw-rig">Rigging and skinning</h3>
+<p>Pinocchio [@pinocchio] embeds a template skeleton in a mesh and computes weights by heat diffusion; RigNet [@rignet]
+  learns joints, connectivity and weights; UniRig [@unirig] predicts skeletons autoregressively with a skeleton-tree
+  tokenisation and was trained on over 14,000 rigged models. Commercial auto-riggers place a humanoid skeleton from
+  guide markers - AccuRIG [@accurig] with correctable markers and finger counts, PINOC [@pinoc] with mirrored markers
+  from chin to ankles, Rig Lab [@riglab] fully automatically, but with each hand a single joint. Linear blend skinning
+  [@lbs] is what engines apply; it collapses bent joints, which dual quaternion skinning [@dqs] avoids by blending
+  rotations as rotations. Our weights follow the idea of geodesic voxel binding [@geodesicvoxel] - distance measured
+  through the voxelised body rather than through the air - so a vest glued to an arm is not near the arm's bone.</p>
+
+<h3 id="sec-rw-motion">Motion from video</h3>
+<p>Human pose models read 2D joints from images: ViTPose [@vitpose] for the body, DWPose [@dwpose] for the whole body
+  including 21 points a hand. Recovering 3D motion from them is usually done by fitting a parametric body such as SMPL
+  [@smpl] - by optimisation, as in SMPLify [@smplify], or by regression, as in HMR, 4D Humans and WHAM
+  [@hmr; @4dhumans; @wham], the last grounded in the world with foot contact. We do not fit a parametric body: the
+  target is the character's own skeleton and mesh, whose proportions (a cartoon's head, an anime character's legs) no
+  human body model shares. Instead we retrieve the nearest clip from a motion-capture library [@mixamo] by dynamic time
+  warping [@dtw] of its 2D projections, bend it toward the video, and refine the character's own skinned mesh against
+  the video in the spirit of SMPLify. The videos themselves come from a reference-to-video model [@h3] conditioned on the
+  character's picture, so the performer already looks like the character.</p>
+</section>

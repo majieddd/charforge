@@ -1,0 +1,26 @@
+<section>
+<h2 id="sec-negative">Negative results</h2>
+<p>Ideas that looked right and measured worse. Each is kept in the tracker so it is not tried again without new
+  evidence.</p>
+<figure id="tab-negative">
+  <div class="tscroll"><table>
+    <thead><tr><th>idea</th><th>measured</th><th>instead</th></tr></thead>
+    <tbody>
+      <tr><td>Lift the video's 2D joints to 3D directly</td><td>4x worse than the retrieved capture on moves the library has (0.022 → 0.088 torso lengths)</td><td>retrieve, then bend only where the capture misses by more than the noise [E002]</td></tr>
+      <tr><td>Depth from the best of the top four captures</td><td>worse than the nearest capture's depth: agreeing in the image is not agreeing in depth</td><td>the nearest capture's depth</td></tr>
+      <tr><td>A three-quarter camera in the video prompt</td><td>no better than front or side over 40 held-out moves</td><td>a near-front camera, both arms in view</td></tr>
+      <tr><td>Extra views of the character for the 3D model</td><td>turntable IoU {{b.turntable.repainted}} → {{b.turntable.turntable_frames}}; disagreeing views averaged away a braid</td><td>kept only as a check [E012]</td></tr>
+      <tr><td>Let the hand term swing the arm to point the hand</td><td>hands closer, silhouette −0.005 and Aoi's hands raised to her chin</td><td>wrist, forearm twist and fingers only [E006]</td></tr>
+      <tr><td>Calibrate all 21 hand points to where DWPose sees them on the rig</td><td>worse where the offsets were small (Aoi 0.24 → 0.29)</td><td>calibrate the wrist only</td></tr>
+      <tr><td>Require a wrist in front of the torso in the image</td><td>from random cameras half of such wrists are behind the body - seen from its back</td><td>the rule in the body's own frame [E007]</td></tr>
+      <tr><td>Tie Pip's vest to the chest, found by its colour</td><td>found exactly; tore the fused surface into streaks at the sleeve</td><td>cut the arm free, flood from past the cut [E025]</td></tr>
+      <tr><td>Binary part masks for skin weights</td><td>surfaces tear where parts meet</td><td>smooth weights through the body; dual quaternions at runtime [E024]</td></tr>
+      <tr><td>Repair folded UV islands on the shipped mesh down to single faces</td><td>atlas coverage 0.58 → 0.42: a third of the texture wasted</td><td>unwrap the overlapping faces again as islands [E027]</td></tr>
+      <tr><td>Tell a jacket from trousers by the parser's classes</td><td>the parser gave the backs of three jackets to the trousers; a crouch showed a pale band</td><td>colour, where the garments differ</td></tr>
+      <tr><td>Force the face flow past its gate</td><td>Knight's eyes smeared into bands</td><td>keep the generator's face [E022]</td></tr>
+      <tr><td>Let ComfyUI apply the video model's LoRA</td><td>memory doubled; 20 minutes of swapping and no load</td><td>merge it offline [E030]</td></tr>
+      <tr><td>Skip foot planting on clips from video</td><td>Pip's joints 0.114 → 0.128</td><td>plant, then refine</td></tr>
+    </tbody></table></div>
+  <figcaption>Negative results, with the measurement that decided each (REVIEW.md and the lab notebook).</figcaption>
+</figure>
+</section>

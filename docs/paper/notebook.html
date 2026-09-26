@@ -1,0 +1,1147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CharForge Lab Notebook</title>
+<meta name="description" content="How CharForge makes characters now: the Studio, the polish pass, new characters, moves from video - with the replaced methods archived.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F5; --panel:#FFFFFF; --panel2:#F4F6FA; --ink:#141922; --ink2:#3E4A5C;
+    --muted:#667385; --line:#DAE0E8; --accent:#2F6BD8; --accent-ink:#FFFFFF;
+    --good:#1F8A67; --warn:#A8740F; --bad:#BD3B33;
+    --bar-a:#B7C1CF; --bar-b:#2F6BD8; --grid:#E3E8EF;
+    --chk1:#E9EDF2; --chk2:#D6DCE4;
+    --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --cond:"IBM Plex Sans Condensed","IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --bg:#0E1116; --panel:#161B23; --panel2:#1D242E; --ink:#E8ECF2; --ink2:#AEB9C8;
+      --muted:#8592A7; --line:#2A333F; --accent:#5B9CFF; --accent-ink:#0E1116;
+      --good:#3FBE97; --warn:#D9A43B; --bad:#E36A61;
+      --bar-a:#475467; --bar-b:#5B9CFF; --grid:#222A35;
+      --chk1:#2A313C; --chk2:#20262F;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0E1116; --panel:#161B23; --panel2:#1D242E; --ink:#E8ECF2; --ink2:#AEB9C8;
+    --muted:#8592A7; --line:#2A333F; --accent:#5B9CFF; --accent-ink:#0E1116;
+    --good:#3FBE97; --warn:#D9A43B; --bad:#E36A61;
+    --bar-a:#475467; --bar-b:#5B9CFF; --grid:#222A35;
+    --chk1:#2A313C; --chk2:#20262F;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  .wrap{max-width:1100px;margin:0 auto;padding-inline:20px;padding-block:0 72px}
+  h1,h2,h3{font-family:var(--cond);font-weight:700;letter-spacing:-.005em;text-wrap:balance;margin:0}
+  h1{font-size:clamp(28px,4.2vw,40px);line-height:1.1}
+  h2{font-size:26px;line-height:1.15}
+  h3{font-size:18px;line-height:1.25;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .eyebrow{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .ink2{color:var(--ink2)}
+  .muted{color:var(--muted)}
+
+  /* nav */
+  nav.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);
+          backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav.top .in{max-width:1100px;margin:0 auto;padding:10px 20px;display:flex;gap:18px;align-items:center;overflow-x:auto;scrollbar-width:none}
+  nav.top .in::-webkit-scrollbar{display:none}
+  nav.top .brand{font:700 15px/1 var(--cond);white-space:nowrap;margin-right:6px}
+  nav.top a{font:500 13px/1 var(--sans);color:var(--ink2);text-decoration:none;white-space:nowrap;padding:6px 0;border-bottom:2px solid transparent}
+  nav.top a:hover,nav.top a:focus-visible{color:var(--ink);border-color:var(--accent);outline:none}
+
+  section{padding-top:56px;scroll-margin-top:56px}
+  .sechead{display:grid;gap:8px;margin-bottom:22px}
+  .sechead p{color:var(--ink2)}
+
+  /* opener */
+  .opener{padding-top:40px;display:grid;gap:14px}
+  .opener .sub{color:var(--ink2);font-size:16.5px;max-width:72ch}
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--line);
+         border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:12px}
+  .fact{background:var(--panel);padding:16px 18px;display:grid;gap:6px;align-content:start}
+  .fact .v{font:700 26px/1.05 var(--cond);letter-spacing:-.01em}
+  .fact .v small{font:500 13px var(--mono);color:var(--muted);letter-spacing:0}
+  .fact .k{font-size:13px;color:var(--ink2);line-height:1.45}
+  .licence{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink2);background:var(--panel2);
+           border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;padding:10px 14px;margin-top:6px}
+  .licence b{color:var(--ink)}
+
+  /* workflow lanes */
+  .lanes{display:grid;gap:18px}
+  .lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px 18px}
+  .lane h3{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+  .lane h3 .eyebrow{letter-spacing:.06em}
+  .steps{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;counter-reset:step}
+  .steps li{counter-increment:step;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px 11px;display:grid;gap:4px;align-content:start;position:relative}
+  .steps li::before{content:counter(step,decimal-leading-zero);font:500 11px/1 var(--mono);color:var(--accent);letter-spacing:.04em}
+  .steps li b{font:600 14px/1.25 var(--sans)}
+  .steps li span{font-size:12.5px;color:var(--ink2);line-height:1.45}
+  .steps li code{font:12px var(--mono);color:var(--muted)}
+  .steps li.new{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  .steps li.new::after{content:"new";position:absolute;top:9px;right:10px;font:500 10px/1 var(--mono);letter-spacing:.06em;
+                       text-transform:uppercase;color:var(--accent)}
+  .cmd{font:12.5px/1.6 var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+       overflow-x:auto;white-space:pre;margin-top:12px;color:var(--ink)}
+
+  /* moves */
+  .moves{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:18px}
+  .move{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+  .move video{display:block;width:100%;height:auto;aspect-ratio:1024/768;background:#111;max-width:100%}
+  .move .body{padding:14px 16px 16px;display:grid;gap:10px;align-content:start}
+  .move .title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .chip{font:500 11px/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:4px 7px;border-radius:5px;
+        border:1px solid var(--line);color:var(--ink2);background:var(--panel2);white-space:nowrap}
+  dl.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:13px}
+  dl.kv dt{color:var(--muted)}
+  dl.kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .arrow{color:var(--muted)}
+  .move .note{font-size:13px;color:var(--ink2);line-height:1.5}
+
+  /* charts + tables */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:18px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .panel h3{margin-bottom:4px}
+  .panel .cap{font-size:13px;color:var(--ink2);margin-bottom:10px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  svg.chart{display:block;width:100%;height:auto;max-width:100%}
+  svg.chart text{font-family:var(--mono);font-size:11.5px;fill:var(--ink2)}
+  svg.chart .val{fill:var(--ink);font-weight:500}
+  svg.chart .axis{stroke:var(--line)}
+  svg.chart .gridl{stroke:var(--grid)}
+  .tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font:500 11.5px/1.3 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--panel2)}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  .pill{display:inline-block;font:500 11px/1 var(--mono);padding:3px 6px;border-radius:4px;letter-spacing:.03em}
+  .pill.kept{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+  .pill.dropped{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+  .pill.open{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  tr.chosen td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+
+  /* image pairs */
+  .verdict{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
+  @media (max-width:760px){.verdict{grid-template-columns:1fr}}
+  .pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px;margin-top:18px}
+  .pair{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px}
+  .pair .imgs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .pair figure{margin:0;display:grid;gap:5px}
+  .pair .ph{border-radius:7px;overflow:hidden;aspect-ratio:416/608;max-width:100%}
+  .pair .ph img{display:block;width:100%;height:100%;object-fit:contain}
+  .pair .ph.chk{background-color:var(--chk1);
+      background-image:conic-gradient(var(--chk2) 25%,transparent 0 50%,var(--chk2) 0 75%,transparent 0);background-size:14px 14px}
+  .pair figcaption{font:11.5px/1.35 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+  .pair figcaption b{font-weight:500;color:var(--ink2)}
+  .pair .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .pair .who h3{font-size:16px}
+  .flag{font:500 11px/1 var(--mono);color:var(--bad)}
+
+  /* notes */
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px}
+  .note-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:grid;gap:8px;align-content:start}
+  .note-card p{font-size:14px;color:var(--ink2)}
+  .note-card .big{font:700 22px/1.1 var(--cond);color:var(--ink)}
+  .issue{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:18px;align-items:center}
+  @media (max-width:760px){.issue{grid-template-columns:1fr}}
+  .issue img{border-radius:10px;border:1px solid var(--line);background:var(--panel2);display:block;width:100%;height:auto}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:grid;gap:6px}
+  footer code{font-family:var(--mono);font-size:12px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto!important} }
+  html{scroll-behavior:smooth}
+
+  .facts{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+  /* archive */
+  details.arch{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-top:14px}
+  details.arch>summary{cursor:pointer;list-style:none;padding:14px 18px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+  details.arch>summary::-webkit-details-marker{display:none}
+  details.arch>summary::before{content:"+";font:600 16px/1 var(--mono);color:var(--accent);width:14px}
+  details.arch[open]>summary::before{content:"\2212"}
+  details.arch>summary b{font:600 16px/1.3 var(--cond)}
+  details.arch>summary span{font-size:13px;color:var(--muted)}
+  details.arch>.inner{padding:0 18px 18px;border-top:1px solid var(--line)}
+  details.arch>.inner section{padding-top:22px}
+  /* studio shots and figures */
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:16px}
+  .shot{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid}
+  .shot img{display:block;width:100%;height:auto;max-width:100%}
+  .shot figcaption{padding:10px 14px 12px;font-size:13px;color:var(--ink2)}
+  .shot figcaption b{color:var(--ink)}
+  figure.wide{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+  figure.wide img,figure.wide video{display:block;width:100%;height:auto;border-radius:8px;max-width:100%}
+  figure.wide figcaption{margin-top:10px;font-size:13px;color:var(--ink2)}
+  /* polish cards */
+  .fix{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start;background:var(--panel);
+       border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:16px}
+  @media (max-width:820px){.fix{grid-template-columns:1fr}}
+  .fix img{display:block;width:100%;height:auto;border-radius:8px;border:1px solid var(--line);max-width:100%}
+  .fix .txt{display:grid;gap:8px;align-content:start}
+  .fix .txt p{font-size:14px;color:var(--ink2)}
+  .fix .num{font:700 20px/1.1 var(--cond);color:var(--ink)}
+  .fix .num small{font:500 12px var(--mono);color:var(--muted)}
+  .tag{font:500 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+  /* new characters */
+  .cast{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+  .who{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+  .who video,.who img.hero{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;background:#1b2027;max-width:100%}
+  .who .body{padding:12px 14px 14px;display:grid;gap:8px;align-content:start}
+  .who .title{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .who .prompt{font-size:13px;color:var(--ink2);font-style:italic}
+  .who .refrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .who .refrow img{width:100%;height:auto;border-radius:6px;border:1px solid var(--line);background:var(--panel2)}
+  .who .refrow figcaption{font:11px/1.3 var(--mono);color:var(--muted);margin-top:3px}
+  .who figure{margin:0}
+  .fixlist{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px;align-items:start}
+  .fixlist > :first-child{grid-row:span 2}
+  @media (max-width:760px){.fixlist{grid-template-columns:1fr}.fixlist > :first-child{grid-row:auto}}
+  .angles{display:grid;grid-template-columns:1fr;gap:16px}
+  .angles figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;overflow:hidden}
+  .angles video{display:block;width:100%;height:auto;border-radius:8px;background:#0a0c10;max-width:100%}
+  .angles figcaption{margin-top:8px;font:600 14px/1.3 var(--cond);color:var(--ink);display:flex;justify-content:space-between;gap:12px}
+  .angles figcaption .hint{font:400 12px/1.3 var(--sans);color:var(--muted)}
+  .angles video{cursor:pointer}
+  ul.left{margin:0;padding-left:18px;display:grid;gap:8px;max-width:78ch}
+  ul.left li{font-size:14px;color:var(--ink2)}
+  ul.left li b{color:var(--ink)}
+  .nbbanner{background:var(--panel2);border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
+  .nbbanner .in{max-width:1100px;margin:0 auto;padding:9px 20px}
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Sections">
+  <div class="in">
+    <a class="brand" href="./" style="color:var(--ink);text-decoration:none;border:0">CharForge Lab Notebook</a>
+    <a href="#studio">Studio</a>
+    <a href="#prompts">Few-word prompts</a>
+    <a href="#pipeline">How it is made</a>
+    <a href="#polish">Polish</a>
+    <a href="#cast">New characters</a>
+    <a href="#moves">Moves from video</a>
+    <a href="#angles">Four sides</a>
+    <a href="#fidelity">How close</a>
+    <a href="#hands">Hands</a>
+    <a href="#mac">On the Mac</a>
+    <a href="#left">What is left</a>
+    <a href="#archive">Archive</a>
+  </div>
+</nav>
+<div class="nbbanner"><div class="in">This is the <b>lab notebook</b>: the chronological record of every
+  experiment, kept as it was written. The curated account - method, evaluation, references - is the
+  <a href="./">CharForge paper</a>; open work is in the <a href="https://github.com/majieddd/charforge/blob/main/research/TRACKER.md">experiment tracker</a>.</div></div>
+
+<div class="wrap">
+  <header class="opener" id="top">
+    <div class="eyebrow">24-26 September 2026 · M5 MacBook, 24 GB shared memory</div>
+    <h1>What CharForge makes now, and what fixing it took</h1>
+    <p class="sub">A prompt or a picture becomes a rigged, animated game character on this laptop, and a video becomes a
+      move on it. This round went through every character in the poses that break things and traced each fault to
+      its cause before touching it: Pip's vest no longer lifts into wings when he raises his arms, no texture carries
+      another garment's paint, a hem stays with the hips instead of the thighs, and a reference drawn in the wrong pose
+      is drawn again before half an hour goes into it. Then the characters made from a few words in the Studio came out
+      poor, and that was traced too: <a href="#prompts">a short prompt is written out</a> before anything is drawn, and a
+      model with the picture's backdrop built into it as a board is made again. Every move can now be watched from
+      <a href="#angles">four sides at once</a>, which found an elbow folded through an arm and feet standing off the
+      floor. CharForge Studio does all of it without a terminal. The page leads with how things work now; what they
+      replaced is in the <a href="#archive">archive</a> at the end.</p>
+
+    <div class="facts">
+      <div class="fact"><div class="v">1,529 → 8 <small>faces</small></div><div class="k">of Pip's texture sharing texels with another surface - his vest's paint on his sleeves. Every character had 224–2,602; now 6–31</div></div>
+      <div class="fact"><div class="v">wings → none</div><div class="k">Pip's vest stays on his torso with his arms overhead; the rig's rule for it had never acted - its flood walked onto the vest</div></div>
+      <div class="fact"><div class="v">Studio <small>:8830</small></div><div class="k">make, watch, turn round and walk your own characters in a local app - <span class="mono">python charforge.py studio</span></div></div>
+      <div class="fact"><div class="v">3 new</div><div class="k">characters made with the pipeline as it is now - Knight, Kaito and Bo</div></div>
+      <div class="fact"><div class="v">0.77–0.84 <small>IoU</small></div><div class="k">the rig's silhouette on the video's figure, four moves from video in three styles, every frame</div></div>
+      <div class="fact"><div class="v">30° → 8°</div><div class="k">how far Aoi's hands point from the video's, turned to DWPose's reading - palms the right way 62% → 99% of frames</div></div>
+    </div>
+    <div class="licence"><span aria-hidden="true">⚠</span><div><b>Licences.</b> The videos of moves on this page come from MiniMax H3 (the Singularity community fine-tune). Its licence excludes the US, EU, UK and South Korea and covers what it generates - this page is private; check before sharing it. Qwen-Image 2.1, which draws the references, is under a research-only licence: commercial use needs a licence from Qwen.</div></div>
+  </header>
+
+  <section id="studio">
+    <div class="sechead">
+      <div class="eyebrow">Make your own · a local web app, nothing uploaded anywhere</div>
+      <h2>CharForge Studio</h2>
+      <p>Everything this page describes, run from the browser: describe a character in a few words or drop in a picture,
+        pick a style, press Make. <b>Write it out</b> shows what the image model will be asked for - the few words
+        completed with an age and a build, skin and hair, and each garment in its own colour, by a local model - and lets
+        you edit it; the height follows from it unless you set one. A name already taken is refused on the spot (a new
+        prompt under an old name used to give back the old character). Jobs run one at a time in a queue that says what each is doing and how long it has
+        left - learned from the stages' own logs on this Mac. Each character gets a page: turn it round in 3D, play its
+        clips, compare its moves with the videos they came from, watch any clip from the front, the side and above at once
+        (<b>Angles</b>), download the <span class="mono">.glb</span> and
+        <span class="mono">.fbx</span>, add moves from video, rerun from any stage. <b>Walk around</b> opens the
+        playground with every character on this Mac, not only the published ones. The Studio can be closed and opened
+        again while a job runs; it finds the job and waits for it.</p>
+    </div>
+    <div class="cmd">cd charforge
+python charforge.py studio            # opens http://localhost:8830
+# or double-click "CharForge Studio.command" in Finder</div>
+    <div class="shots" style="margin-top:16px">
+      <figure class="shot"><img src="media/studio_grid.webp" alt="The Studio's character grid: the fourteen characters on this Mac with their styles, heights and moves" width="1440" height="900" loading="lazy">
+        <figcaption><b>Characters</b> - everything in <span class="mono">work/</span> and <span class="mono">out/</span>, newest first.</figcaption></figure>
+      <figure class="shot"><img src="media/studio_char.webp" alt="Aoi's page in the Studio: the 3D model on a grid, clip controls, her prompt and numbers, her move from video and the stages" width="1440" height="900" loading="lazy">
+        <figcaption><b>A character</b> - the model playing its clips, its moves beside their videos with their scores, every stage.</figcaption></figure>
+      <figure class="shot"><img src="media/studio_new.webp" alt="The New character form: 'a boy scout' written out as a ten-year-old scout in a striped shirt, khaki shorts and hiking boots, with the height set from it" width="1440" height="900" loading="lazy">
+        <figcaption><b>New character</b> - a few words, <b>Write it out</b>, edit what comes back; style, and a height that follows the description.</figcaption></figure>
+      <figure class="shot"><img src="media/studio_jobs.webp" alt="The Jobs page: the running job's stage and progress bar with the time left, and the queued jobs with when each starts and how long it takes" width="1440" height="900" loading="lazy">
+        <figcaption><b>Jobs</b> - the stage each job is in, its time left, when the next ones start; logs one click away.</figcaption></figure>
+      <figure class="shot" style="grid-column:1/-1"><img src="media/studio_angles.webp" alt="The Angles panel on Mara's page, paused at the top of her roundhouse kick: the video, its camera, the left side and above, with the joint readout under them and play, frame-step and scrub controls below" width="1440" height="900" loading="lazy">
+        <figcaption><b>Angles</b> - any clip from four sides at once, the joint readout under it, and a frame at a time
+        (<span class="mono">,</span> and <span class="mono">.</span>) to find the worst one. Paused here at the top of Mara's kick.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="prompts">
+    <div class="sechead">
+      <div class="eyebrow">Few-word prompts · three characters made in the Studio by a user</div>
+      <h2>From a few words to a character</h2>
+      <p>Made from the Studio with short prompts, they came out poor, and each for its own reason. "A boy scout" came back a
+        grown man, at the height slider's default adult 1.72 m, and his model lost the picture's face and hair. "Gray alien
+        that is extremely muscular" came back a grey clay sculpture - no clothes, no colour - and its 3D model a flat board
+        with a body behind it. "A young knight in steel armor" gave back the Knight already made, in 0.0 minutes: the name
+        was taken, every stage was cached, and the new prompt was quietly written over the old character's.</p>
+    </div>
+    <div class="fixlist">
+      <div class="note-card"><div class="eyebrow">A prompt is written out first</div>
+        <p>A local language model (Ollama, on this Mac; unloaded as soon as it has answered) fills in what a few words leave
+        open - an age and a build, skin and hair, the face, and the top, the bottom and the shoes each with its own colour -
+        and the sentence is put together from its fields. Asked for free prose under rules, 3B and 7B models broke them one
+        prompt in two ("holding a wooden badge", "a small shield", "standing at 1.5 meters tall"), so a field that names a
+        prop, a pose or a height is dropped, and the age comes from your own words. "A boy scout" now reads: <i>a boy scout, fit and energetic, light skin, short brown hair, cheeky grin and bright blue eyes, wearing a blue scout uniform shirt, khaki scout shorts and brown leather scout shoes, with a yellow scout neckerchief and a small blue badge</i>. The Studio shows it before anything is drawn, to edit; a prompt of 20 words or more is used as written.</p></div>
+      <div class="note-card"><div class="eyebrow">The height follows the description</div>
+        <p>A child 1.2-1.5 m, a teenager about 1.6, an adult about 1.75 - unless you set it. The slider no longer sends 1.72
+        for everyone.</p></div>
+      <div class="note-card"><div class="eyebrow">A name already taken is refused</div>
+        <p>In the Studio as you type (with a free name offered), and by <span class="mono">charforge.py make</span>, which will
+        not write a new prompt, style or height over a character that exists - rerun it from a stage for that.</p></div>
+    </div>
+    <figure class="wide" style="margin-top:18px"><img src="media/prompts_board.webp" alt="TRELLIS's first pass seen from the front: Gray's is a flat grey board hiding the figure, Knight's has a board behind him, Kaito's a board through his legs; Bo's is clean" width="1218" height="300" loading="lazy">
+      <figcaption><b>A board built into the model.</b> TRELLIS's first pass from the front, with how its silhouette lies on the
+      picture's: sound models 0.90-0.94, these 0.35-0.44 - the picture's plain backdrop made solid, in front of the figure,
+      behind it or through it. Knight's membranes and Kaito's loose pieces were what was left of it after the later stages.
+      Both passes are now checked from the front, and a model that does not match is made again on a new seed.
+      Made again from the picture with its background cut away, all four match: Knight 0.92, Kaito 0.91, Gray 0.93, the boy scout 0.91.</figcaption></figure>
+    <figure class="wide" style="margin-top:18px"><img src="media/prompts_before_after.webp" alt="The boy scout and the grey alien: the picture and the model as they first came out, and as they come out now" loading="lazy"><figcaption><b>Two characters from a user’s few-word prompts, before and now.</b> Made again with each prompt written out. "A boy scout" is a boy now, 1.20 m, in the scout's blue shirt and yellow neckerchief. "Gray alien, extremely muscular" is clothed and coloured, his 3D model whole (0.93 against his picture instead of a board), and his hands are his own grey and as broad as his forearms - at first the hand step gave him a person's peach hand, small on a forearm twice its width. His all-black outfit is the older prompt model's choice (What is left).</figcaption></figure>
+  </section>
+
+  <section id="pipeline">
+    <div class="sechead">
+      <div class="eyebrow">How a character is made now · steps marked new changed this round</div>
+      <h2>Two lanes, one skeleton</h2>
+      <p>A character is built once from a prompt or an image. Moves are then added to it from videos - one video per move
+        serves every character, because the clip it becomes is a standard Mixamo skeleton.</p>
+    </div>
+    <div class="lanes">
+      <div class="lane">
+        <h3>Making a character <span class="eyebrow">charforge.py make · ~35 min</span></h3>
+        <ol class="steps">
+          <li class="new"><b>The prompt, written out</b><span>a local model completes a few words into a character - age and build, skin and hair, each garment in its own colour, nothing held in the hands - and the height follows from it</span><code>describe.py</code></li>
+          <li class="new"><b>Reference image, checked</b><span>Qwen-Image 2.1 draws it in an A-pose with its own alpha; a pose model reads the arms and it is drawn again, up to three times, while the hands touch the body</span><code>reference · pose_gate.py</code></li>
+          <li class="new"><b>3D model, checked from the front</b><span>TRELLIS.2, a second pass seeing repainted side and back views; a model whose front silhouette does not lie on the picture's (a board built in with the figure) is made again on a new seed</span><code>generate · multiview</code></li>
+          <li><b>Solid, joints, hands</b><span>closed into a solid, limbs traced to their tips, modelled hands with 15 finger bones each</span><code>solidify · joints · hands</code></li>
+          <li class="new"><b>Arms cut free</b><span>of whatever they were generated against below the armpit, then checked slab by slab and cut again - wider and further out - where an arm still reaches the body</span><code>free_arms.py</code></li>
+          <li class="new"><b>Mesh, UVs, texture</b><span>game topology; UV islands folded onto themselves unwrapped again; the source images projected back on - not beside a nearer surface's outline - the hands in the face's skin tone</span><code>retopo · texture</code></li>
+          <li class="new"><b>Rig</b><span>weights measured through the body; the arm's weight on the arm alone below the armpit; a vest's armhole with the collarbone and a jacket's hem with the pelvis, told apart by colour</span><code>weights · rig</code></li>
+          <li><b>Face, clips, package</b><span>jaw and five shapes; 18 Mixamo clips with planted feet; glTF + FBX with LODs and a manifest</span><code>face · animate · package</code></li>
+        </ol>
+      </div>
+      <div class="lane">
+        <h3>Adding a move from video <span class="eyebrow">charforge.py move · ~40 min each</span></h3>
+        <ol class="steps">
+          <li><b>Write the move</b><span>timed beats - ready, the move, recovery - in MiniMax's six-section prompt format</span><code>motion_prompts.json</code></li>
+          <li><b>Generate the video</b><span>MiniMax H3 in ComfyUI: the reference image in, 5 s of the character doing it out</span><code>motion_video.py</code></li>
+          <li><b>Read the pose</b><span>ViTPose's 17 points on every frame; DWPose's 21 per hand</span><code>video_motion.py · dwpose.py</code></li>
+          <li><b>Nearest capture, fitted</b><span>the closest of 2,453 Mixamo clips, bent toward the video only where it misses by more than the pose model's jitter (-34% error on moves the library lacks)</span><code>match · --fit</code></li>
+          <li><b>Clip onto the rig</b><span>retargeted, the character's own limbs, spine and head aimed along the fit, feet planted</span><code>retarget.py</code></li>
+          <li><b>Refine against the video</b><span>the character's mesh re-posed frame by frame until its silhouette, joints, face and hands lie on the video</span><code>refine_pose.py</code></li>
+        </ol>
+        <div class="cmd">python charforge.py move --name mara --move punch_combo,roundhouse_kick
+python charforge.py move --name juno3 --move punch_combo@mara,spell_cast@aoi   # other characters' videos</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="polish">
+    <div class="sechead">
+      <div class="eyebrow">Polish · every character in the poses that break things, front-left and back-right</div>
+      <h2>What broke when the characters moved, and what fixed it</h2>
+      <p>Each character was rendered at the extremes of its clips and moves - the jump's crouch, the landing, the wave, the
+        fall, arms overhead - and every fault traced to its cause before anything was changed. Twice the obvious cause
+        was the wrong one, and the fix that looked right changed nothing; those are in the <a href="#archive">archive</a>.
+        Left of each pair: this morning. Right: now.</p>
+    </div>
+    <article class="fix">
+      <img src="media/polish_wings.webp" alt="Pip from behind in five poses, before and after: before, the yellow vest flares out like wings and a pocket juts from his thigh; after, the vest stays on his torso" width="1224" height="486" loading="lazy">
+      <div class="txt">
+        <div class="tag">the rig</div>
+        <h3>Pip's vest no longer lifts into wings</h3>
+        <div class="num">555 + 1,280 <small>vest vertices now let go of the arms (before: 0 and 5)</small></div>
+        <p>Three causes, stacked. The 3D model glued his arms to the vest's sides - now cut free below the armpit. The rig's
+         rule that keeps an arm's weight on the arm floods the arm's own surface from the sleeve's outside, and it started
+         at the very slab where the cut opens, where sleeve and vest are still one surface: it walked onto the vest on both
+         arms and changed nothing. It starts a little lower now. Above the cut, the vest's armhole <em>is</em> the arm's
+         surface and took half its weight, as any shoulder does; the vest's yellow and the sleeve's blue tell them apart, and
+         the armhole now moves with the collarbone.</p>
+         <p>The cargo pocket that stood off his thigh like a plank: the part labeller calls it an accessory, and accessories
+         rode the torso. Below the hip joints one now stays on its leg (off-thigh vertices in the landing 122 → 25).</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_cheer.webp" alt="Pip's victory cheer with both arms straight up, before and after: before, the vest's sides rise with the arms; after, the vest stays down and the armpits stretch" width="1218" height="300" loading="lazy">
+      <div class="txt">
+        <div class="tag">the rig</div>
+        <h3>Arms overhead</h3>
+        <div class="num">vest down <small>armpit stretches</small></div>
+        <p>With both arms straight up the vest stays on his torso. What is left is the stretch between vest and sleeve at the
+         armpit: they are one surface, and a surface joining a garment that stays to a sleeve that rises has to stretch
+         somewhere. The fix for that is the vest as its own layer.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_uv.webp" alt="The back of Pip's upper arm: before, patches of the vest's yellow on his blue sleeve; after, clean blue" width="1218" height="300" loading="lazy">
+      <div class="txt">
+        <div class="tag">the texture</div>
+        <h3>No garment carries another's paint</h3>
+        <div class="num">224–2,602 → 6–31 <small>faces sharing texels, per character</small></div>
+        <p>The patches looked like a projection error, and three rounds of fixes to the projection changed nothing. The cause
+         was the UV layout: unwrapped on a smoothed copy of the mesh, islands folded onto themselves wherever it curls, and
+         two surfaces painted the same texels - 1,529 faces on Pip, 2,602 on Vex. Repacking cannot part an island
+         from itself; the overlapping faces are unwrapped again, finer each time, and every island brought back to one texel
+         density (unwrapped alone, they took 42% of Pip's atlas).</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_aoi.webp" alt="Aoi's trouser texture before and after: before, pale slashes across the dark fabric; after, clean" width="806" height="600" loading="lazy">
+      <div class="txt">
+        <div class="tag">the texture</div>
+        <h3>Aoi's trousers lost their light streaks</h3>
+        <div class="num">10–20 px <small>her side view's hands stood off the mesh's</small></div>
+        <p>Not the generated hands the modelled ones replaced (masking them changed 12,513 texels and left the streaks): in
+         the generated side view her hands hang a little lower than the mesh's, and the trouser texels just past the mesh's
+         hand read the picture's hand. A generated view now fades out beside the outline of anything nearer - a depth jump
+         between neighbouring pixels. Not in the reference, which the mesh was made from: half of Aoi's face lies behind a
+         lock of her hair.</p>
+         <p>The same pass found the modelled hands' region reaching into her hip (36,482 texels painted skin) and 161,553 texels
+         of Pip: a texel is the hand's now only if it stands outside the body the hand was joined to.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_hands.webp" alt="Pip's hands before and after: brown and grey before, peach like his face after" width="726" height="360" loading="lazy">
+      <div class="txt">
+        <div class="tag">the texture</div>
+        <h3>Hands the colour of the face</h3>
+        <div class="num">(137, 95, 71) → (222, 152, 122)</div>
+        <p>The modelled hands took the median of every skin-like colour on the body - on Pip that is his orange hair, khaki
+         shorts and the vest's shading as much as skin. The face's own texels decide it now.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_hem.webp" alt="Juno crouching, before and after: before, the red jacket's hem is pulled down between her thighs; after, it hangs level over her hips" width="1458" height="270" loading="lazy">
+      <div class="txt">
+        <div class="tag">the rig</div>
+        <h3>A jacket's hem follows the hips, not the thighs</h3>
+        <div class="num">1,118 <small>vertices of Juno's jacket moved from the thighs to the pelvis</small></div>
+        <p>The lowest part of Pip's vest carried half its weight on his thighs (median 0.50), and spreading the legs in a
+         jump pulled its hem into a W; Juno's windbreaker wrapped round her thighs in a squat. Where the torso's colours and
+         the upper thighs' differ, the upper garment near the hips follows the pelvis, and a long jacket still rides on the
+         seat below it; one colour top to bottom - Mara's olive and tan are 5 apart - nothing changes, and her kick still
+         drags her jacket along the raised thigh.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_webs.webp" alt="Knight waving and jumping, before and after: before, grey sheets hang from his arms to his hips; after, none" width="1218" height="300" loading="lazy">
+      <div class="txt">
+        <div class="tag">the solid</div>
+        <h3>Webs between an arm and the body - most of them a board</h3>
+        <div class="num">8,286 + 10,349 → 1,877 + 2,326 <small>voxels of web between Knight's arms and body</small></div>
+        <p>Waving stretched grey sheets from Knight's arms to his hips. Cutting thin webs out of the solid before the arm
+         is freed took some (anything under about 9 mm goes, and pieces the cuts split off are dropped), but fins and a strap
+         remained - because most of it was not a web: TRELLIS had built the picture's backdrop into his model as a board
+         behind him (see <a href="#prompts">Few-word prompts</a>), and the later stages cut it into sheets. Made again through
+         TRELLIS's own background remover, his model has no board, the web cut finds a fifth as much, and the sheets, fins
+         and strap are gone.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_loose.webp" alt="Kaito crouching: before, a hair spike floats beside his head, left where the rest pose had it; after, it moves with his head" width="726" height="360" loading="lazy">
+      <div class="txt">
+        <div class="tag">the rig</div>
+        <h3>Loose pieces ride with the body</h3>
+        <div class="num">37 <small>loose pieces on Kaito, now each riding with the body part nearest it</small></div>
+        <p>Kaito's mesh came as 40 pieces: the body, the two modelled hands, and 37 bits the generator left detached - the
+         inner toes of his split-toe boots, hair spikes. The weights follow paths through the body and never reached them,
+         so they stayed where the rest pose left them. Each now rides rigidly with the body part nearest it.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_elbow.webp" alt="Aoi's spell cast at 1.5 and 2 seconds: the video; before, at 1.5 seconds her left jacket sleeve sticks far out sideways past an elbow folded back on itself; after, both elbows out as in the video with her hands in front of her chest. At 2 seconds the elbow was already within range and nothing changes" width="912" height="606" loading="lazy">
+      <div class="txt">
+        <div class="tag">the move</div>
+        <h3>Elbows no longer fold back through the arm</h3>
+        <div class="num">176° → 150° <small>her most folded elbow in the spell; the motion library's reach 159° at most</small></div>
+        <p>In her spell cast Aoi presses her hands together in front of her chest, elbows out. One camera cannot say how far a
+    bone reaches toward it, so the fit takes each bone's depth from its length in the image - up to a sign - and it took the
+    matched capture's side for her upper arm: tipped back. The elbow came out folded to 176°, the forearm back through
+    the upper arm, and her jacket sleeves, which move with the upper arm, stuck straight out sideways past the fold. The hand
+    score caught it: the pose model read those sleeve ends as her hands.</p>
+    <p>The fit now chooses an upper arm's side and its forearm's together. An elbow folded past 150-160° costs - the motion
+    library's pass 150° in 0.05% of frames - and so does a wrist within the chest's width and height put behind the torso,
+    as 1% of the library's such wrists are. That alone brought this elbow to 162°: where the video shows an upper arm at
+    its full length there is no side left to choose (the pose model puts her elbow at the outside of a puffy sleeve). So the
+    refine stage also holds every elbow under 150°: 150°, with the silhouette and the hands where they were. On 40
+    library moves it had never seen, the new fit is as close as the old (0.212 → 0.211 torso lengths).</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_feet.webp" alt="Aoi's spell cast from the side at 0, 1 and 2 seconds: before, both boots hover above the grid's floor line; now they stand on it" width="1710" height="140" loading="lazy">
+      <div class="txt">
+        <div class="tag">the move</div>
+        <h3>Feet back on the floor after the refine</h3>
+        <div class="num">3.1 → 0.6 cm <small>Aoi's lowest shoe above the floor, most of her spell cast</small></div>
+        <p>Seen from the side for the first time, Aoi's spell cast stood 2-6 cm in the air. The retarget had put her planted
+    soles on the floor (0.02 cm off it on average); the refine then turned her hips, knees and ankles toward the video,
+    which lifted them, and nothing put them back. The correction step now measures each key's lowest shoe before the turn
+    and after, and moves the pelvis by the difference - the lowest foot goes back to where the retarget had it, on the floor
+    while planted, as high as it was in a jump. Where her feet run off the bottom of the video's frame, the video cannot say where the floor is, and the retarget's planting is kept: that stretch is the 1.9 cm left.</p>
+      </div>
+    </article>
+    <article class="fix">
+      <img src="media/polish_bo.webp" alt="Bo the chef: the first reference with his fists on his hips, the model it made with shredded hands at his belt, and the reference drawn again with his arms clear" width="1092" height="360" loading="lazy">
+      <div class="txt">
+        <div class="tag">the reference</div>
+        <h3>A picture in the wrong pose is drawn again</h3>
+        <div class="num">0.33 <small>torso lengths from Bo's wrists to his hips; good references 0.60–0.79</small></div>
+        <p>Asked for an A-pose in so many words, the image model drew a chef's habitual stance - fists on hips - and 32 minutes
+         later the fused hands came out in shreds at his belt. A pose model now reads the arms of every new reference, and
+         below 0.45 it is drawn again on a new seed. A picture you give is only warned about.</p>
+      </div>
+    </article>
+  </section>
+
+  <section id="cast">
+    <div class="sechead">
+      <div class="eyebrow">New characters · made start to finish by the pipeline as it is now</div>
+      <h2>Knight, Kaito and Bo</h2>
+      <p>Three new characters in the three styles, each from one sentence, made by the pipeline as it stands after this round - the reference checked, the arms cut free and checked, the UVs repaired, the rig's rules for garments applied. Left to right: the video is the game rig walking, waving and turning; below it the reference, the model at rest and the model mid-jump.</p>
+    </div>
+    <div class="cast"><article class="who">
+        <video src="media/cast_knight.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Knight walking, waving and turning"></video>
+        <div class="body">
+          <div class="title"><h3>Knight</h3><span class="chip">realistic</span></div>
+          <p class="prompt">"a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots"</p>
+          <dl class="kv"><dt>height</dt><dd>1.80 m</dd><dt>triangles</dt><dd>67,380</dd><dt>made in</dt><dd>about 35 min</dd><dt>notes</dt><dd style="font-family:var(--sans)">Three failures on the way, each now a rule: macOS stopped his 3D model on the GPU (it is evaluated in smaller pieces now); his armour's texture failed the web build's quality gate (it steps up the quality instead); and TRELLIS built the picture's backdrop into his model as a board, which the later stages cut into grey sheets hanging from his arms - made again through TRELLIS's own background remover, it has none. Last, his face: his picture's would not lie on his model's, and went on unaligned with every feature twice; his generator's own face is kept now, and with eyes it can find, the face stage gave him blinks and a jaw.</dd></dl>
+          <div class="refrow"><figure><img src="media/cast_knight_ref.webp" alt="Knight's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_knight_rest.webp" alt="Knight at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_knight_jump.webp" alt="Knight mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
+        </div>
+      </article><article class="who">
+        <video src="media/cast_kaito.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Kaito walking, waving and turning"></video>
+        <div class="body">
+          <div class="title"><h3>Kaito</h3><span class="chip">anime</span></div>
+          <p class="prompt">"an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots"</p>
+          <dl class="kv"><dt>height</dt><dd>1.70 m</dd><dt>triangles</dt><dd>72,646</dd><dt>made in</dt><dd>49 min, sharing the GPU</dd><dt>notes</dt><dd style="font-family:var(--sans)">His first model was 40 pieces: the picture's backdrop built into it as a board through his legs (front match 0.35), his boots' inner toes and hair spikes detached. Made again from the picture with its background cut away (0.91), it is one solid - 7 specks of 80 vertices ride with the part nearest them - and his open sandals have whole toes.</dd></dl>
+          <div class="refrow"><figure><img src="media/cast_kaito_ref.webp" alt="Kaito's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_kaito_rest.webp" alt="Kaito at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_kaito_jump.webp" alt="Kaito mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
+        </div>
+      </article><article class="who">
+        <video src="media/cast_bo.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Bo walking, waving and turning"></video>
+        <div class="body">
+          <div class="title"><h3>Bo</h3><span class="chip">stylised</span></div>
+          <p class="prompt">"a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs"</p>
+          <dl class="kv"><dt>height</dt><dd>1.60 m</dd><dt>triangles</dt><dd>59,981</dd><dt>made in</dt><dd>about 35 min</dd><dt>notes</dt><dd style="font-family:var(--sans)">His first reference had his fists on his hips; the model fused them and shredded his hands at his belt. The new reference check rejects that picture and draws him again.</dd></dl>
+          <div class="refrow"><figure><img src="media/cast_bo_ref.webp" alt="Bo's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_bo_rest.webp" alt="Bo at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_bo_jump.webp" alt="Bo mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
+        </div>
+      </article></div>
+  </section>
+
+  <section id="moves">
+    <div class="sechead">
+      <div class="eyebrow">Moves from video · 4 runs</div>
+      <h2>The video, and the rig doing it</h2>
+      <p>Left of each clip: H3's video, generated from the character's single reference image and the written move. Right:
+        the character's game rig playing the clip read off that video, from the same camera angle - as the pipeline makes
+        it now, with every fix in the next section.</p>
+    </div>
+    <div class="moves">
+      <article class="move">
+        <video src="media/mara_punch_combo.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Mara's punch combo: generated video beside the rigged character"></video>
+        <div class="body">
+          <div class="title"><h3>Mara · punch combo</h3><span class="chip">realistic</span></div>
+          <dl class="kv">
+            <dt>video</dt><dd>35.6 min for 5.2 s</dd>
+            <dt>nearest capture</dt><dd>cost 0.167</dd>
+            <dt>image error</dt><dd>0.130 <span class="arrow">→</span> 0.034 torso lengths</dd>
+            <dt>vs the video</dt><dd>joints 0.053 · IoU 0.844</dd>
+          </dl>
+          <p class="note">Guard, jab, cross, hook, back to guard. The closest of the four now: joints about 5% of a torso length from the video's on average.</p>
+        </div>
+      </article>
+      <article class="move">
+        <video src="media/mara_roundhouse_kick.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Mara's roundhouse kick: generated video beside the rigged character"></video>
+        <div class="body">
+          <div class="title"><h3>Mara · roundhouse kick</h3><span class="chip">realistic</span></div>
+          <dl class="kv">
+            <dt>video</dt><dd>48.3 min (more swapping)</dd>
+            <dt>nearest capture</dt><dd>cost 0.254</dd>
+            <dt>image error</dt><dd>0.194 <span class="arrow">→</span> 0.043 torso lengths</dd>
+            <dt>vs the video</dt><dd>joints 0.069 · IoU 0.830</dd>
+          </dl>
+          <p class="note">A head-height kick with the torso leaning 30°. At its top the rig's leg is up at head height as in the video (<a href="#angles">four sides</a>); the pose model misreads the render of that leg for 7 frames, most of this score - without them, joints 0.049.</p>
+        </div>
+      </article>
+      <article class="move">
+        <video src="media/aoi_spell_cast.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Aoi's spell cast: generated video beside the rigged character"></video>
+        <div class="body">
+          <div class="title"><h3>Aoi · spell cast</h3><span class="chip">anime</span></div>
+          <dl class="kv">
+            <dt>video</dt><dd>32.0 min</dd>
+            <dt>nearest capture</dt><dd>cost 0.294 (no real match)</dd>
+            <dt>image error</dt><dd>0.213 <span class="arrow">→</span> 0.035 torso lengths</dd>
+            <dt>vs the video</dt><dd>joints 0.118 · IoU 0.771</dd>
+          </dl>
+          <p class="note">H3 kept her cel-shaded look from one reference. No clip in the library casts a spell; her long legs and short torso are what bent the old fit.</p>
+        </div>
+      </article>
+      <article class="move">
+        <video src="media/pip_victory_cheer.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Pip's victory cheer: generated video beside the rigged character"></video>
+        <div class="body">
+          <div class="title"><h3>Pip · victory cheer</h3><span class="chip">stylised</span></div>
+          <dl class="kv">
+            <dt>video</dt><dd>34.6 min</dd>
+            <dt>nearest capture</dt><dd>cost 0.263</dd>
+            <dt>image error</dt><dd>0.151 <span class="arrow">→</span> 0.042 torso lengths</dd>
+            <dt>vs the video</dt><dd>joints 0.069 · IoU 0.817</dd>
+          </dl>
+          <p class="note">His elbows were rigged 4 cm too far down the arm - fixed. With his arms overhead his vest now stays on his torso (<a href="#polish">Polish</a>).</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="angles">
+    <div class="sechead">
+      <div class="eyebrow">Every move from four sides at once · tools/make_angles.py</div>
+      <h2>The same frame from the video's camera, the side and above</h2>
+      <p>One camera cannot see depth: from the video's angle a clip can look right while an arm folds back through itself or
+        the feet float. Each move is now rendered from several cameras at once, side by side in one video with the video
+        itself - every panel orthographic and at one scale, on a 10 cm grid, so what lies in front of what, and how far,
+        reads straight off it - and each elbow's and knee's bend and each shoe's height above the floor are read out under
+        the panels, red where they go further than the motion library ever does. The Studio has it for any clip of any
+        character (<b>Angles</b>).</p>
+    </div>
+    <div class="angles"><figure><video src="media/angles_aoi_spell_cast.mp4" poster="media/angles_aoi_spell_cast.webp" autoplay muted loop playsinline preload="metadata" onclick="this.paused ? this.play() : this.pause()" title="Click to pause or play" aria-label="Aoi · spell cast from the video, its camera, the side and above"></video><figcaption>Aoi · spell cast <span class="hint">click to pause</span></figcaption></figure><figure><video src="media/angles_mara_punch_combo.mp4" poster="media/angles_mara_punch_combo.webp" autoplay muted loop playsinline preload="metadata" onclick="this.paused ? this.play() : this.pause()" title="Click to pause or play" aria-label="Mara · punch combo from the video, its camera, the side and above"></video><figcaption>Mara · punch combo <span class="hint">click to pause</span></figcaption></figure><figure><video src="media/angles_mara_roundhouse_kick.mp4" poster="media/angles_mara_roundhouse_kick.webp" autoplay muted loop playsinline preload="metadata" onclick="this.paused ? this.play() : this.pause()" title="Click to pause or play" aria-label="Mara · roundhouse kick from the video, its camera, the side and above"></video><figcaption>Mara · roundhouse kick <span class="hint">click to pause</span></figcaption></figure><figure><video src="media/angles_pip_victory_cheer.mp4" poster="media/angles_pip_victory_cheer.webp" autoplay muted loop playsinline preload="metadata" onclick="this.paused ? this.play() : this.pause()" title="Click to pause or play" aria-label="Pip · victory cheer from the video, its camera, the side and above"></video><figcaption>Pip · victory cheer <span class="hint">click to pause</span></figcaption></figure></div>
+    <p class="ink2" style="margin-top:12px">It found what the front view hid - Aoi's elbow folded back through her arm, and
+      the feet of every move from video standing off the floor after the refine (<a href="#polish">Polish</a>). And two
+      things about the checking itself. The video beside the rig ran 25% fast: the 24 fps video was stretched onto the
+      renders' 30 fps by taking each frame once, never twice, so Mara's jab seemed to land 0.2 s late and her last guard
+      held while she kept punching. Every compare video here has been remade in time. And the dip in her kick's score at
+      its top is the pose model misreading the render, not the rig: from the side and above her leg is up at head height
+      as in the video.</p>
+  </section>
+
+  <section id="fidelity">
+    <div class="sechead">
+      <div class="eyebrow">How close to the video · the same pose model on both, every frame</div>
+      <h2>Making the rig move the way the video does</h2>
+      <p>The measure: the character's clip is rendered at the video's timing from the video's camera angle, and one pose
+        model reads both. <b>Joints</b> - their mean distance from the video's, in torso lengths. <b>Silhouette</b> - how much
+        of the character's outline overlaps the video's figure (IoU, 1 is identical). <b>Face</b> - the nose, eyes and ears
+        about their own centre: which way the head turns. At rest the 3D model already lies on its reference picture at
+        0.90-0.93 IoU, so nearly all of what was missing was in the motion.</p>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Silhouette overlap with the video</h3>
+        <p class="cap">Mean over 124 frames; grey at the start of the day, blue as the pipeline makes it now.</p>
+        <div class="legend"><span><i style="background:var(--bar-a)"></i>start</span><span><i style="background:var(--bar-b)"></i>now</span></div>
+        <svg class="chart" viewBox="0 0 460 222" role="img" aria-label="Silhouette overlap with the video per move, at the start of the day and now">
+          <line class="gridl" x1="118" y1="26" x2="118" y2="214"/><text x="110" y="16">0</text><line class="gridl" x1="190.5" y1="26" x2="190.5" y2="214"/><text x="182.5" y="16">0.25</text><line class="gridl" x1="263.0" y1="26" x2="263.0" y2="214"/><text x="255.0" y="16">0.5</text><line class="gridl" x1="335.5" y1="26" x2="335.5" y2="214"/><text x="327.5" y="16">0.75</text><line class="gridl" x1="408" y1="26" x2="408" y2="214"/><text x="400" y="16">1</text>
+          <text x="0" y="52">Mara · punch</text><rect x="118" y="34" width="217.8" height="14" rx="2" fill="var(--bar-a)"/><text x="341.8" y="45">0.75</text><rect x="118" y="51" width="244.6" height="14" rx="2" fill="var(--bar-b)"/><text class="val" x="368.6" y="62">0.84</text><text x="0" y="98">Mara · kick</text><rect x="118" y="80" width="180.4" height="14" rx="2" fill="var(--bar-a)"/><text x="304.4" y="91">0.62</text><rect x="118" y="97" width="240.6" height="14" rx="2" fill="var(--bar-b)"/><text class="val" x="364.6" y="108">0.83</text><text x="0" y="144">Aoi · spell</text><rect x="118" y="126" width="176.6" height="14" rx="2" fill="var(--bar-a)"/><text x="300.6" y="137">0.61</text><rect x="118" y="143" width="223.7" height="14" rx="2" fill="var(--bar-b)"/><text class="val" x="347.7" y="154">0.77</text><text x="0" y="190">Pip · cheer</text><rect x="118" y="172" width="178.6" height="14" rx="2" fill="var(--bar-a)"/><text x="302.6" y="183">0.62</text><rect x="118" y="189" width="236.8" height="14" rx="2" fill="var(--bar-b)"/><text class="val" x="360.8" y="200">0.82</text>
+        </svg>
+      </div>
+      <div class="panel">
+        <h3>Joints, silhouette, face - step by step</h3>
+        <p class="cap">Joints in torso lengths (lower is better), silhouette IoU (higher is better). Each scored from the fit's own
+          camera estimate - no search for a flattering angle.</p>
+        <div class="tscroll" style="border:0">
+          <table style="min-width:0">
+            <thead><tr><th>move</th><th class="num">start</th><th class="num">own body + aimed limbs</th><th class="num">now</th><th class="num">face now</th></tr></thead>
+            <tbody>
+              <tr><td>Mara · punch</td><td class="num">0.086 · 0.751</td><td class="num">0.073 · 0.796</td><td class="num good">0.053 · 0.844</td><td class="num">0.012</td></tr>
+              <tr><td>Mara · kick</td><td class="num">0.187 · 0.622</td><td class="num">0.121 · 0.747</td><td class="num good">0.069 · 0.830</td><td class="num">0.013</td></tr>
+              <tr><td>Aoi · spell</td><td class="num">0.214 · 0.609</td><td class="num">0.167 · 0.651</td><td class="num good">0.118 · 0.771</td><td class="num">0.032</td></tr>
+              <tr><td>Pip · cheer</td><td class="num">0.127 · 0.616</td><td class="num">0.114 · 0.714</td><td class="num good">0.069 · 0.817</td><td class="num">0.020</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:30px 0 10px">How the rig follows the video</h3>
+    <ol class="steps">
+      <li class="new"><b>Fit on the video's own body</b><span>each bone as long as the video shows it at its longest. On the Mixamo actor's lengths, Aoi's short torso - her legs 1.03 torso lengths to Mixamo's 0.80 - came out as a 28° lean back. Fit error 0.061 → 0.035.</span><code>video_motion.py</code></li>
+      <li class="new"><b>Aim the character's own limbs</b><span>copying rotations carried the two skeletons' rest-pose differences into every frame - thighs 4-12°, collarbones 16-27°. Aimed along the fit, the rig lands within 0.5° of it.</span><code>retarget.py</code></li>
+      <li class="new"><b>Turn the head to the face</b><span>the capture's head looked down and aside; the video's nose, eyes and ears, held against where the pose model finds them on the character's own head, cut face error 2-3 times.</span><code>calibrate_joints.py</code></li>
+      <li class="new"><b>Refine against the video</b><span>the character's skinned mesh, posed in PyTorch and seen by the video's camera, has 20 bones nudged each frame until its silhouette, joints and face lie on the video: +0.07-0.10 IoU on its own.</span><code>refine_pose.py</code></li>
+      <li class="new"><b>Put Pip's elbows back</b><span>rigged 63% of the way down the arm - measured along a centre line that wandered through his puffy sleeve. Now 55%, joint to joint, where the video shows him bend.</span><code>refine_joints.py</code></li>
+    </ol>
+
+    <h3 style="margin:30px 0 10px">Before and now</h3>
+    <div class="grid2">
+      <figure class="panel" style="margin:0">
+        <img src="media/fid_aoi.webp" alt="Aoi in frames 24 and 72: the video, the old rig with her head tipped down and arms low, and the rig now standing upright with arms raised" width="921" height="921" style="width:100%;height:auto;border-radius:8px">
+        <figcaption class="cap" style="margin:10px 0 0">Aoi, frames 24 and 72. Before: head tipped down, body twisted, arms low. Now: upright, head level, arms up. Her palms face the camera in the video and down on the rig - hands are not tracked yet.</figcaption>
+      </figure>
+      <figure class="panel" style="margin:0">
+        <img src="media/fid_pip.webp" alt="Pip in frames 24 and 60: the video, the old rig with his head thrown back, and the rig now facing forward with arms overhead" width="921" height="921" style="width:100%;height:auto;border-radius:8px">
+        <figcaption class="cap" style="margin:10px 0 0">Pip, frames 24 and 60. Before: head thrown back, arms short of overhead. Now: facing forward, arms up as in the video. (The vest's wings in the before picture are gone too - see Polish.)</figcaption>
+      </figure>
+    </div>
+
+    <div class="issue" style="margin-top:22px">
+      <img src="media/fid_kick_apex.webp" alt="The top of Mara's kick before the refine: in the video the leg points up at head height while the pose model's leg points are bunched near her hip; the rig's leg is folded" width="614" height="460">
+      <div style="display:grid;gap:10px">
+        <h3>What is left</h3>
+        <p class="ink2" style="font-size:14px"><b>The pose model's blind spots.</b> This picture is from before the refine, when the rig followed the pose model's folded reading of the kick. Now the rig's leg is up at head height as in the video, seen from the side and above (<a href="#angles">four sides</a>), and the skeleton is 0.12-0.14 torso lengths off the video at the top, as through the rest of the kick. What dips is the score: reading the <i>render</i>, the pose model puts her right ankle 2.9 torso lengths from where her skeleton has it, in frames 61-67. Without those frames the kick scores 0.049 instead of 0.069. What the rig still does wrong there: it lowers the leg a little early - at 2.8 s her knee is bent 70° while the video's leg is still up.</p>
+        <p class="ink2" style="font-size:14px"><b>Parts fused to the body.</b> Aoi's hair is one surface with the back it lies on, so it cannot swing apart from it. Pip's vest now moves with his torso (<a href="#polish">Polish</a>).</p>
+        <p class="ink2" style="font-size:14px"><b>Tried: DWPose,</b> a whole-body model (133 points - body, feet, face and 21 per hand; 134 MB, Apache-2.0). It does not rescue the kick: at the apex it folds the leg too, the ankle at her fists at confidence 0.16-0.21, where ViTPose's three good frames (62-64) follow it to the foot at 0.58-0.68. It does read hands, at median confidence 0.75-0.88 - and the rig's hands now follow them (<a href="#hands">Hands</a>).</p>
+      </div>
+    </div>
+    <figure class="panel" style="margin:22px 0 0">
+      <img src="media/dw_kick_hands.webp" alt="Three panels: Mara at the top of her kick with ViTPose's skeleton reaching the raised foot; the same frame with DWPose's skeleton folding the leg at her fists; Aoi with DWPose's finger points on both open palms" width="1118" height="520" style="width:100%;height:auto;border-radius:8px">
+      <figcaption class="cap" style="margin:10px 0 0">The top of Mara's kick (frame 63) read by both pose models, and Aoi's hands (frame 72). ViTPose follows the raised leg to the foot, ankle confidence 0.68; DWPose folds it, the ankle at her fists, 0.16. On Aoi's open palms DWPose places every finger - what ViTPose's 17 points never reach, and what the rig's hands should turn to next.</figcaption>
+    </figure>
+  </section>
+
+  <section id="hands">
+    <div class="sechead">
+      <div class="eyebrow">Hands · DWPose's 21 points a hand, on the video and on the render</div>
+      <h2>Turning the hands to the video</h2>
+      <p>ViTPose's 17 points stop at the wrists, so every clip kept the motion capture's hands: Aoi's palms faced down where
+        the video's face the camera, and Pip's hands hung half open where the video makes fists. DWPose reads each hand as
+        21 points - the wrist, three joints a finger and the tips - and the refine stage now turns the wrists, the forearms
+        about their length and the thirty finger joints until the character's hands lie on that reading. Each finger joint
+        bends only as a finger does - toward the palm, and apart at the knuckles - within a finger's range. The same model
+        reads the render to score it.</p>
+    </div>
+    <figure class="panel" style="margin:0">
+      <img src="media/hands_aoi.webp" alt="Aoi's spell cast at frames 52 and 72: the video, the rig before with curled palm-down hands, and the rig now with open hands, palms to the camera" width="1032" height="566" style="width:100%;height:auto;border-radius:8px">
+      <figcaption class="cap" style="margin:10px 0 0">Aoi's spell, frames 52 and 72. Before, the capture's hands: curled, palms down. Now: open, palms to the camera and fingers spread as the video draws them - the hand points 8° off the video's, from 30°.</figcaption>
+    </figure>
+    <div class="grid2" style="margin-top:18px">
+      <div class="panel">
+        <h3>The hands, scored</h3>
+        <p class="cap">DWPose on the video and on the render, every hand it is sure of: the points about the wrist in palm lengths
+          (lower is better), how often the palm faces the video's way, how far off the hand points. Re-scored on 26 September after the rebuilds, with the median beside each mean. Aoi's mean is carried by 21 frames (53% of it) where the pose model reads the light cuff of her jacket sleeve, sticking out past a strongly bent elbow, as her hand - her own hands are where the video's are; see What is left. Body scores held: joints,
+          silhouette and face within 0.006 of before on all four moves.</p>
+        <div class="tscroll" style="border:0">
+          <table style="min-width:0">
+            <thead><tr><th>move</th><th class="num">hand error</th><th class="num">palm facing</th><th class="num">pointing</th></tr></thead>
+            <tbody>
+              <tr><td>Mara · punch</td><td class="num">0.24 → <b class="good">0.20</b> <small class="ink2">median 0.18</small></td><td class="num">93% → <b class="good">97%</b></td><td class="num">10° → <b class="good">8°</b></td></tr><tr><td>Mara · kick</td><td class="num">0.24 → <b class="good">0.14</b> <small class="ink2">median 0.12</small></td><td class="num">51% → <b class="good">100%</b></td><td class="num">12° → <b class="good">5°</b></td></tr><tr><td>Aoi · spell</td><td class="num">0.64 → <b class="good">0.33</b> <small class="ink2">median 0.17</small></td><td class="num">62% → <b class="good">95%</b></td><td class="num">30° → <b class="good">19°</b></td></tr><tr><td>Pip · cheer</td><td class="num">0.23 → <b class="good">0.20</b> <small class="ink2">median 0.19</small></td><td class="num">99% → <b class="good">99%</b></td><td class="num">7° → <b class="good">6°</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>What it took</h3>
+        <ol class="steps" style="grid-template-columns:1fr">
+          <li class="new"><b>Only the hand turns</b><span>allowed to swing the arm, the hands lifted Aoi's to her chin where the video holds them at her chest (silhouette −0.005); held to the wrist, the forearm's twist and the fingers, the arm stays where the body's terms put it</span><code>refine_pose.py</code></li>
+          <li class="new"><b>Weighted up, since it can no longer bend the body</b><span>ten times the first weight: Aoi's hands 0.32 → 0.24 palm lengths, her body's scores the same</span><code>--w-hands 0.2</code></li>
+          <li class="new"><b>Where DWPose sees a wrist</b><span>on Pip's cartoon hand, at his sleeve's cuff - 4 cm up from his wrist bone. Measured on his own wave, idle and jump and trusted as far as it holds from pose to pose: his hands 0.21 → 0.18</span><code>calibrate_hands.py</code></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section id="mac">
+    <div class="sechead">
+      <div class="eyebrow">Running it on the Mac · MiniMax H3 is a 33B-parameter model</div>
+      <h2>What it took to run H3 on 24 GB</h2>
+      <p>H3 is built for data-centre GPUs. The fine-tune ships in ComfyUI's 4-bit format; three problems stood between it and this laptop.</p>
+    </div>
+    <div class="notes">
+      <div class="note-card">
+        <div class="eyebrow">Apple's GPU has no float8</div>
+        <div class="big">11.8 → 15.4 GB, lossless</div>
+        <p>The fine-tune's per-group scales are float8, which PyTorch on Apple GPUs cannot hold - the first layer failed. They are rewritten as float32 once (<span class="mono">f8_scales_to_f32.py</span>, 21 s); a real layer then matched the original on the CPU to 0.036%.</p>
+      </div>
+      <div class="note-card">
+        <div class="eyebrow">ComfyUI's LoRA patching swapped the Mac to a halt</div>
+        <div class="big">20 min stuck → loads in 1 min</div>
+        <p>On a Mac ComfyUI loads a model whole and keeps a backup of every weight a LoRA patches: 15 GB became 30. It also requantizes each weight - 4.5% error to carry the turbo LoRA's 0.02% change. Baked in offline instead, on each layer's own 4-bit grid: 0.1% of codes moved, 0.5% noise, 7.5 min on the CPU (the GPU took 53 s a layer to the CPU's 1.1).</p>
+      </div>
+      <div class="note-card">
+        <div class="eyebrow">Time per clip</div>
+        <div class="big">32–48 min / 5 s</div>
+        <p>Text encoder (Qwen3-VL 32B) on the CPU: 87–108 s. Video model load: ~1 min. Four sampling steps: 29 min at 6–7.5 min each - attention over ~13,000 video tokens is the cost. Decoding: ~4 min. Everything else on the Mac slows down while it runs.</p>
+      </div>
+      <div class="note-card">
+        <div class="eyebrow">A bug the preview caught</div>
+        <div class="big">elbows 173° → 54°</div>
+        <p>The first clip on Mara's rig had its arms stuck out in a T-pose: Blender had exported the boxing guard as the skeleton's rest, so every guard read as "no change from rest". The FBX now exports with the capture's T-pose showing, and the round trip checks it.</p>
+      </div>
+
+      <div class="note-card">
+        <div class="eyebrow">macOS stops a GPU job that holds the display up</div>
+        <div class="big">6 blocks → 2 a buffer</div>
+        <p>Knight's and Kaito's 3D models died at TRELLIS's 1024 stage (~8,000 tokens) with "Impacting Interactivity": macOS kills a GPU command buffer that runs too long while the screen needs the GPU. The flow model now evaluates two transformer blocks at a time, and a killed pass is retried once a block at a time with fewer operations per buffer. Both then built.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="left">
+    <div class="sechead">
+      <div class="eyebrow">What is left · measured, ranked by what it costs a character</div>
+      <h2>Open problems</h2>
+    </div>
+    <ul class="left">
+      <li><b>Layered garments and hair are one surface with what they lie on.</b> Pip's vest now moves with his torso, but
+        with both arms overhead the surface between vest and sleeve stretches at the armpit; Aoi's hair and Mara's and Wren's
+        braids stay rigid because a chain on a fused part tears it. The fix is upstream: generate them as their own layers.</li>
+      <li><b>A join survives where the arm cut begins.</b> The cut starts a quarter of the way down the upper arm and is checked slab by slab; a join still survives somewhere on Pip, Mara, Juno, Rowan, Wren, Vex, Knight, Kaito, Bo, and there the rig keeps that side of the garment with the arm as before.</li>
+      <li><b>Armour is the hardest case.</b> Most of what looked like membranes between Knight's plates was a board the 3D
+        model had built behind him; made from the cut-out picture, he is clean. Gloves and gauntlets are not: the hand step
+        models a hand and paints it with the face's skin, so knight2's hands are bare. Remade the same way, Kaito's
+        loose boot toes are whole bare toes in open sandals, as drawn - painted with smudges of the sandal's black.</li>
+      <li><b>A sleeve that ends past the elbow.</b> Bent far, an elbow folds the forearm back but the part of a jacket
+        sleeve beyond the joint keeps pointing along the upper arm, as linear skinning does: in Aoi's spell cast her sleeve
+        cuffs stick out sideways past her elbows, and the pose model reads their light lining as her hands (her hand score's
+        mean 0.33 against a median of 0.17). Corrective shapes at the elbow, or sleeves generated apart from the arm, would
+        reach it.</li>
+      <li><b>The prompt model is small.</b> Gemma 4 (e4b), the default now, kept 19 of 20 rules in the test set; the
+        7B model before it dressed the grey alien all in black against "each garment its own colour", and he keeps that
+        outfit. What any of them adds is a guess. A better local model plugs in on the Studio's Setup page, and the
+        written-out text can always be edited before drawing.</li>
+      <li><b>A face the rig will not guess.</b> The face stage places blinks, a jaw and a mouth only on eyes and a
+        mouth it can find, and refuses rather than guess: Bo's eyes are behind round glasses and his mouth under a
+        moustache, so he plays every clip but neither blinks nor talks. (Knight was refused too, until his face was
+        painted where his geometry has it - then it found both, and he has all five shapes.)</li>
+      <li><b>The reference check reads the arms only.</b> A held prop, a cape or a hat the 3D model will fuse is still for a person to catch.</li>
+      <li><b>Poses the pose models rarely saw.</b> Reading the render of Mara at the top of her high kick, ViTPose loses the raised leg for 7 frames, which is most of the kick's score (0.069; 0.049 without them) - the score, not the rig, which kicks as the video does but lowers the leg a little early. Hands blurred by a fast move, under hair or overhead at the frame's edge keep the capture's angle.</li>
+      <li><b>Depth in moves from video</b> is borrowed from the nearest library capture; a move unlike anything in the library is right in the image and approximate in depth.</li>
+      <li><b>Licences.</b> H3's for anything public; Qwen-Image 2.1 is research-only (Krea 2 remains a flag away); a licence-clean video model (Wan 2.2, Apache-2.0) is the alternative to try.</li>
+    </ul>
+  </section>
+
+  <section id="archive">
+    <div class="sechead">
+      <div class="eyebrow">Archive · methods and experiments this page used to lead with</div>
+      <h2>What was replaced, and what was tried</h2>
+      <p>Kept for the numbers and the reasoning: each of these was measured, and several obvious-looking ideas in them are
+        worse than what ships. Open one to read it.</p>
+    </div>
+    <details class="arch"><summary><b>Dead ends, and the problems open before this round</b><span>the table of what was tried and dropped, now with this round's</span></summary><div class="inner"><section id="old-open">
+    <div class="sechead">
+      <div class="eyebrow">Dead ends &amp; open problems</div>
+      <h2>What did not work (until 25 September)</h2>
+    </div>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Idea</th><th>Measured</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Lift the video's joints to 3D directly</td><td class="ink2">4× worse on moves the library has (0.022 → 0.088)</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Depth from the best of several captures</td><td class="ink2">0.186 vs 0.178 torso lengths</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>A three-quarter camera in the video prompt</td><td class="ink2">no better than front or side in 40 tests</td><td><span class="pill dropped">not adopted</span></td></tr>
+          <tr><td>Let ComfyUI apply the turbo LoRA</td><td class="ink2">20 min of swapping, no load; 4.5% requantizing error</td><td><span class="pill dropped">replaced</span></td></tr>
+          <tr><td>Fade the upper-arm weight off clothing on the body's side of the shoulder</td><td class="ink2">no visible change - the vest panels ride the collarbone</td><td><span class="pill dropped">reverted</span></td></tr>
+          <tr><td>Fit the video with the capture's bone lengths</td><td class="ink2">bent short torsos into leans - Aoi 28° back</td><td><span class="pill dropped">replaced</span></td></tr>
+          <tr><td>Calibrate the arms on a T-pose render</td><td class="ink2">the pose model took Aoi's cuffs for her wrists</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Tie Pip's vest to the chest, found by its colour</td><td class="ink2">found the vest exactly; tore the fused surface into streaks where it meets the sleeve</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Skip foot planting on clips from video</td><td class="ink2">worse: Pip 0.114 → 0.128 joints</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>DWPose, a whole-body pose model, for the top of the kick</td><td class="ink2">folds the leg too: ankle confidence 0.16-0.21 at the apex, ViTPose 0.58-0.68</td><td><span class="pill dropped">not adopted</span></td></tr>
+          <tr><td>Fill unsure joints from the parent's motion; weight the fit's smoothing by confidence</td><td class="ink2">close to neutral: kick 0.083 → 0.079, the rest within 0.001</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Let the hands swing the arm to point them</td><td class="ink2">hands 0.64 → 0.24 on Aoi, but silhouette −0.005 and her hands at her chin</td><td><span class="pill dropped">replaced</span></td></tr>
+          <tr><td>Move all 21 hand points to where DWPose sees them on the rig</td><td class="ink2">worse where the offsets were small: Aoi 0.24 → 0.29, Mara's punch 0.20 → 0.22</td><td><span class="pill dropped">wrist only</span></td></tr>
+          <tr><td>Turn the wrists and fingers to DWPose's hands</td><td class="ink2">palms facing the video's way 51-99% → 95%-99%</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Refine the pose against the video's silhouette</td><td class="ink2">+0.07-0.10 IoU on every move</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Knee hinge rule</td><td class="ink2">0.178 → 0.177; blocks a visible fault</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Let a vest's side go below the armpit wherever its colour says vest</td><td class="ink2">joins between arm and vest stretched into sheets up to the raised elbow - worse than the flap</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Colour an arm's unseen surface with the arm's colour at its height</td><td class="ink2">no visible change once the folded UV islands were found and repaired</td><td><span class="pill dropped">removed</span></td></tr>
+          <tr><td>Mask where the source images show the old generated hands</td><td class="ink2">12,513 texels changed; Aoi's trouser streaks stayed - the side view's hands were the cause</td><td><span class="pill dropped">not wired in</span></td></tr>
+          <tr><td>Check the arm cut in slabs of the nearest section</td><td class="ink2">torso voxels went to the armpit's sections; Vex's joins went unseen</td><td><span class="pill dropped">replaced</span></td></tr>
+          <tr><td>Cut more directions where a join survives</td><td class="ink2">the ring ran inside a bulging sleeve (Vex, right arm at 0.41) - nothing changed; the ring moves outward instead</td><td><span class="pill dropped">replaced</span></td></tr>
+          <tr><td>Repair folded UV islands on the shipped mesh, down to an island a face</td><td class="ink2">atlas coverage 0.58 → 0.42 - a third of the texture wasted</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Tell a jacket from the trousers by the human parser's classes where their colours are too close</td><td class="ink2">the parser gave the lower back of Mara's, Juno's and Rowan's jackets to their trousers; the hem rule split each jacket across the seat, and a crouch showed a pale band</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Fill the arm cut's new surfaces from the nearest texel facing the same way</td><td class="ink2">through the air, the back of a sleeve and the back of the vest beside it both face backwards</td><td><span class="pill dropped">replaced</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="issue" style="margin-top:22px">
+      <img src="media/pip_vest_wings.webp" alt="Pip with both arms overhead, front and side: the yellow vest's side panels lifted into wings" width="840" height="560">
+      <div style="display:grid;gap:10px">
+        <h3>Was open: Pip's vest lifts into wings (fixed 25 September - see Polish)</h3>
+        <p class="ink2" style="font-size:14px">A move from video found what the 18 standard clips never reach: with his arms overhead, Pip's puffy vest rises with his collarbones. The vest and his hoodie sleeve are one fused surface, both labelled clothing. Told apart by colour, the vest is found exactly - but tied to the chest it tears where it meets the sleeve, and faded in from its edge the wings stay. It needs to be its own layer, generated or cut that way.</p>
+        <h3 style="margin-top:6px">Also open then</h3>
+        <p class="ink2" style="font-size:14px">Poses the pose model rarely saw (the top of a high kick - DWPose misses it too); hands DWPose cannot be sure of - blurred by a fast move, under hair, overhead at the frame's edge (Pip's); joints that leave the frame; H3's licence for anything public; a licence-clean video model (Wan 2.2, Apache-2.0) as the alternative.</p>
+      </div>
+    </div>
+  </section></div></details>
+    <details class="arch"><summary><b>Where the error in moves from video came from</b><span>the first measurement of the old pipeline, stage by stage - replaced by the fit on the video's own body and the refine stage</span></summary><div class="inner"><section id="old-errsrc"><h3 style="margin:30px 0 10px">Where the error came from</h3>
+    <p class="ink2" style="margin-bottom:12px">The same score at each stage of the old pipeline (joints, torso lengths). Fitting the capture to the video and
+      writing it as an FBX lost nothing; moving it onto the character's own rig doubled or tripled the error.</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>move</th><th class="num">fit</th><th class="num">FBX</th><th class="num">character's rig</th><th class="num">render</th></tr></thead>
+        <tbody>
+          <tr><td>Mara · punch</td><td class="num">0.041</td><td class="num">0.042</td><td class="num bad">0.072</td><td class="num">0.080</td></tr>
+          <tr><td>Mara · kick</td><td class="num">0.035</td><td class="num">0.037</td><td class="num bad">0.099</td><td class="num">0.178</td></tr>
+          <tr><td>Aoi · spell</td><td class="num">0.070</td><td class="num">0.071</td><td class="num bad">0.196</td><td class="num">0.219</td></tr>
+          <tr><td>Pip · cheer</td><td class="num">0.063</td><td class="num">0.064</td><td class="num bad">0.120</td><td class="num">0.129</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    </section></div></details>
+    <details class="arch"><summary><b>Bending the nearest capture toward the video: how the fit was built</b><span>the self-test, the steps that made it, and solving it into bones - the fit itself is still a step</span></summary><div class="inner"><section id="old-fit">
+    <div class="sechead">
+      <div class="eyebrow">The fit, measured · library clips as ground truth</div>
+      <h2>Bending the nearest capture toward the video</h2>
+      <p>The test: take a library clip, show it to the matcher from a random camera angle with pose-model noise, a 3 s
+        stretch and a speed change, and measure the recovered 3D pose against the true one, in torso lengths. Run once with the
+        clip in the library, and once with it and its near-twins taken out - a move the library does not have. The way the
+        body faces is not counted: a game's controller turns it.</p>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Pose error, 40 tests each</h3>
+        <p class="cap">Lower is better. The fit only runs where the capture misses the video by more than the pose model's jitter.</p>
+        <div class="legend"><span><i style="background:var(--bar-a)"></i>capture as matched</span><span><i style="background:var(--bar-b)"></i>fitted to the video</span></div>
+        <svg class="chart" viewBox="0 0 440 220" role="img" aria-label="Pose error: move in the library, capture 0.048, fitted 0.037; move not in the library, capture 0.269, fitted 0.178">
+          <line class="gridl" x1="40" x2="430" y1="190" y2="190"/>
+          <line class="gridl" x1="40" x2="430" y1="130" y2="130"/>
+          <line class="gridl" x1="40" x2="430" y1="70" y2="70"/>
+          <line class="gridl" x1="40" x2="430" y1="10" y2="10"/>
+          <text x="34" y="194" text-anchor="end">0</text>
+          <text x="34" y="134" text-anchor="end">0.1</text>
+          <text x="34" y="74" text-anchor="end">0.2</text>
+          <text x="34" y="14" text-anchor="end">0.3</text>
+          <!-- scale: 600 px per torso length, baseline y=190 -->
+          <rect x="80" y="161.2" width="44" height="28.8" rx="3" fill="var(--bar-a)"/>
+          <rect x="130" y="167.8" width="44" height="22.2" rx="3" fill="var(--bar-b)"/>
+          <text class="val" x="102" y="155" text-anchor="middle">0.048</text>
+          <text class="val" x="152" y="161" text-anchor="middle">0.037</text>
+          <rect x="270" y="28.6" width="44" height="161.4" rx="3" fill="var(--bar-a)"/>
+          <rect x="320" y="83.2" width="44" height="106.8" rx="3" fill="var(--bar-b)"/>
+          <text class="val" x="292" y="22" text-anchor="middle">0.269</text>
+          <text class="val" x="342" y="77" text-anchor="middle">0.178</text>
+          <line class="axis" x1="40" x2="430" y1="190" y2="190"/>
+          <text x="127" y="210" text-anchor="middle">move in the library</text>
+          <text x="317" y="210" text-anchor="middle">move not in the library</text>
+        </svg>
+        <p class="cap" style="margin:8px 0 0">Of the remaining 0.178, depth is 0.143 - the part one camera cannot see, still borrowed from the capture.</p>
+      </div>
+      <div class="panel">
+        <h3>Does the camera angle matter?</h3>
+        <p class="cap">The 40 moves not in the library, split by where the camera stood. A three-quarter view was expected to help; it did not.</p>
+        <div class="legend"><span><i style="background:var(--bar-a)"></i>capture as matched</span><span><i style="background:var(--bar-b)"></i>fitted</span></div>
+        <svg class="chart" viewBox="0 0 440 220" role="img" aria-label="By camera angle: front 0.261 to 0.163 (7 tests), three-quarter 0.271 to 0.184 (21), side 0.271 to 0.176 (12)">
+          <line class="gridl" x1="40" x2="430" y1="190" y2="190"/>
+          <line class="gridl" x1="40" x2="430" y1="130" y2="130"/>
+          <line class="gridl" x1="40" x2="430" y1="70" y2="70"/>
+          <line class="gridl" x1="40" x2="430" y1="10" y2="10"/>
+          <text x="34" y="194" text-anchor="end">0</text>
+          <text x="34" y="134" text-anchor="end">0.1</text>
+          <text x="34" y="74" text-anchor="end">0.2</text>
+          <text x="34" y="14" text-anchor="end">0.3</text>
+          <rect x="60" y="33.4" width="36" height="156.6" rx="3" fill="var(--bar-a)"/>
+          <rect x="100" y="92.2" width="36" height="97.8" rx="3" fill="var(--bar-b)"/>
+          <text class="val" x="78" y="27" text-anchor="middle">0.261</text>
+          <text class="val" x="118" y="86" text-anchor="middle">0.163</text>
+          <rect x="185" y="27.4" width="36" height="162.6" rx="3" fill="var(--bar-a)"/>
+          <rect x="225" y="79.6" width="36" height="110.4" rx="3" fill="var(--bar-b)"/>
+          <text class="val" x="203" y="21" text-anchor="middle">0.271</text>
+          <text class="val" x="243" y="73" text-anchor="middle">0.184</text>
+          <rect x="310" y="27.4" width="36" height="162.6" rx="3" fill="var(--bar-a)"/>
+          <rect x="350" y="84.4" width="36" height="105.6" rx="3" fill="var(--bar-b)"/>
+          <text class="val" x="328" y="21" text-anchor="middle">0.271</text>
+          <text class="val" x="368" y="78" text-anchor="middle">0.176</text>
+          <line class="axis" x1="40" x2="430" y1="190" y2="190"/>
+          <text x="98" y="210" text-anchor="middle">front / back · 7</text>
+          <text x="223" y="210" text-anchor="middle">three-quarter · 21</text>
+          <text x="348" y="210" text-anchor="middle">side · 12</text>
+        </svg>
+        <p class="cap" style="margin:8px 0 0">So the video prompt keeps its near-front camera, which shows both arms most clearly.</p>
+      </div>
+    </div>
+
+    <h3 style="margin:30px 0 10px">How the fit got there</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Change</th><th>Why</th><th class="num">In library</th><th class="num">Not in library</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Capture alone</td><td class="ink2">the retrieval the pipeline had</td><td class="num">0.022</td><td class="num">0.234</td><td><span class="pill kept">baseline</span></td></tr>
+          <tr><td>Take each bone's image from the video, depth from its length</td><td class="ink2">the obvious fit</td><td class="num bad">0.088</td><td class="num">—</td><td><span class="pill dropped">4× worse</span></td></tr>
+          <tr><td>Keep the capture where it agrees within the pose model's noise</td><td class="ink2">depth = √(L² − l²) swings with noise near the image plane</td><td class="num">0.055</td><td class="num">0.165</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Blend whole bones, not depths recomputed from a blend</td><td class="ink2">noise alone moved flat bones</td><td class="num">0.045</td><td class="num">0.157</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Smooth only the correction, not the capture</td><td class="ink2">a jab lasts three frames at 15 fps</td><td class="num">0.036</td><td class="num">0.156</td><td><span class="pill kept">kept</span></td></tr>
+          <tr class="chosen"><td>Gate: fit only if the capture misses by &gt; 1.2× jitter</td><td class="ink2">matched clips leave 0.66–0.84 jitters, novel ones 1.5–6</td><td class="num good">0.037*</td><td class="num good">0.178*</td><td><span class="pill kept">kept</span></td></tr>
+          <tr><td>Depth from the best of the top four captures</td><td class="ink2">agreeing in the image ≠ agreeing in depth</td><td class="num">—</td><td class="num bad">0.186*</td><td><span class="pill dropped">dropped</span></td></tr>
+          <tr><td>Knees only bend one way</td><td class="ink2">guards against visible backward knees</td><td class="num">—</td><td class="num">0.177*</td><td><span class="pill kept">kept, neutral</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:8px">Torso lengths, mean of 12 tests (seed 5); * 40 tests (seed 21), whose capture-alone baseline is 0.048 / 0.269.</p>
+
+    <h3 style="margin:30px 0 10px">Solving the fit into bones</h3>
+    <p class="ink2" style="font-size:14px;margin-bottom:10px">The fit gives 13 points per frame; Blender turns the capture's bones to reach them, then exports and re-imports the FBX to measure. The kick's 30° lean showed the spine was solved wrong. Worst arm error per move, cm:</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Spine solve</th><th class="num">Punch</th><th class="num">Kick</th><th class="num">Spell</th><th class="num">Cheer</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>One bone aimed along the hips-to-shoulders line</td><td class="num">1.81</td><td class="num bad">5.65</td><td class="num">1.51</td><td class="num">0.75</td><td class="ink2">pivots differ: a lean slides the shoulders</td></tr>
+          <tr><td>The same bone aimed from its own head</td><td class="num">1.29</td><td class="num">1.88</td><td class="num">2.74</td><td class="num">—</td><td class="ink2">fixes the kick, hurts the spell</td></tr>
+          <tr><td>Three spine bones bring the shoulders' midpoint home</td><td class="num">1.81</td><td class="num">2.43</td><td class="num bad">3.91</td><td class="num">0.70</td><td class="ink2">midpoint right, twist wrong</td></tr>
+          <tr><td>Three bones fitted to both shoulders (Kabsch)</td><td class="num">0.45</td><td class="num">3.49</td><td class="num">1.57</td><td class="num">0.39</td><td class="ink2">best arms - but the head drifts 17 cm</td></tr>
+          <tr class="chosen"><td>…with the head at half weight</td><td class="num good">0.47</td><td class="num">2.77</td><td class="num">1.45</td><td class="num good">0.28</td><td class="ink2">chosen: 12 fitted joints within 0.2–1.7 cm on average</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section></div></details>
+    <details class="arch"><summary><b>Does a turntable video make the model more accurate?</b><span>an experiment: not worth 30 minutes of H3 per character</span></summary><div class="inner"><section id="old-views">
+    <div class="sechead">
+      <div class="eyebrow">More angles for the 3D model · a 360° video as the test</div>
+      <h2>Does a turntable video make the model more accurate?</h2>
+      <p>The reference shows only the front, so the model's sides and back had no measure. H3 was asked for one more
+        move - turn slowly through a full circle - and turned Mara cleanly and consistently from her single reference image.
+        Each frame's figure is held against a model's silhouette from the angle that fits it best.</p>
+    </div>
+    <img src="media/tt_sheet.webp" alt="Twelve frames of the generated turntable: Mara turning through a full circle, front, side, back, side and front again" width="1152" height="576" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line);display:block">
+    <div class="grid2" style="margin-top:18px">
+      <div class="panel">
+        <h3>Silhouette over the turn</h3>
+        <p class="cap">97 frames none of the models was built from; IoU, higher is better.</p>
+        <div class="tscroll" style="border:0">
+          <table style="min-width:0">
+            <thead><tr><th>built from</th><th class="num">mean</th><th class="num">front</th><th class="num">sides</th><th class="num">back</th></tr></thead>
+            <tbody>
+              <tr><td>the reference alone</td><td class="num">0.778</td><td class="num">0.805</td><td class="num">0.711 / 0.776</td><td class="num">0.780</td></tr>
+              <tr><td>+ repainted side and back (now)</td><td class="num">0.781</td><td class="num">0.802</td><td class="num">0.731 / 0.778</td><td class="num">0.771</td></tr>
+              <tr><td>+ three turntable frames</td><td class="num">0.786</td><td class="num">0.818</td><td class="num">0.724 / 0.768</td><td class="num">0.773</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ink2" style="font-size:14px;margin-top:10px">More views barely move the shape. What limits the score is pose: she steps through the turn while the models stand in the reference's A-pose.</p>
+      </div>
+      <div class="panel">
+        <h3>Verdict</h3>
+        <p class="ink2" style="font-size:14px">Not worth ~30 minutes of H3 per character in the standard build. The turntable frames do pull the unseen sides' colours toward the video's, but where the views disagree the model averages them: Mara's braid hangs over her shoulder in the reference and down her back in H3's back view, and the model built from both lost it at the back.</p>
+        <p class="ink2" style="font-size:14px;margin-top:8px">Kept as a check: <code>charforge.py move --move turntable</code> and <code>tools/turntable_fidelity.py</code> show any model from every side against the video.</p>
+      </div>
+    </div>
+    <figure class="panel" style="margin:18px 0 0">
+      <img src="media/tt_views.webp" alt="Mara from behind and three-quarter behind: the video, then the model from the reference alone, with repainted views, and with turntable frames" width="1018" height="780" style="width:100%;height:auto;border-radius:8px">
+      <figcaption class="cap" style="margin:10px 0 0">From behind, two angles the models were not built from. Left to right: the video, the reference alone, with the repainted views, with turntable frames.</figcaption>
+    </figure>
+  </section></div></details>
+    <details class="arch"><summary><b>Krea 2 against Qwen-Image 2.1</b><span>the comparison that made Qwen-Image 2.1 the default image model</span></summary><div class="inner"><section id="old-images">
+    <div class="sechead">
+      <div class="eyebrow">Image models · same prompt, same seed, 832 × 1216</div>
+      <h2>Krea 2 against Qwen-Image 2.1</h2>
+      <p>Each character's reference drawn by both models from the pipeline's own prompt. Qwen's images are shown on a
+        checkerboard: the background is its own alpha, not a colour cut out afterwards.</p>
+    </div>
+    <div class="verdict">
+      <div class="tscroll">
+        <table>
+          <thead><tr><th></th><th class="num">Krea 2</th><th class="num">Qwen 2.1</th></tr></thead>
+          <tbody>
+            <tr><td>Broken figures</td><td class="num bad">1 of 6 (Rowan)</td><td class="num good">0 of 6</td></tr>
+            <tr><td>Whole figure in frame</td><td class="num">5 of 6</td><td class="num good">6 of 6</td></tr>
+            <tr><td>Background</td><td class="num">flat grey, removed by rembg</td><td class="num good">alpha, 1.2–1.7% soft edge</td></tr>
+            <tr><td>Hands from the hips <span class="muted">(torso lengths)</span></td><td class="num good">0.61–0.72</td><td class="num"><span class="warn">0.28–0.37</span> → <span class="good">0.58–0.70</span></td></tr>
+            <tr><td>Time per image <span class="muted">(M5)</span></td><td class="num">3.9–5.1 min · 8 steps</td><td class="num">5.9–6.6 min · 30 steps</td></tr>
+            <tr><td>Licence</td><td class="num">Krea's terms</td><td class="num warn">research only</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel" id="apose">
+        <h3>The one thing Krea did better</h3>
+        <p class="cap">Qwen reads "arms slightly away from the body" literally, and hands that close to the thighs can fuse to them in the 3D model. The prompt now spells out the angle.</p>
+        <div id="apose-body" class="ink2" style="font-size:14px"><div class="pair" style="border:0;padding:0;background:none">
+          <div class="imgs">
+            <figure><div class="ph chk"><img src="media/mara_qwen21.webp" alt="Mara by Qwen with the first prompt: hands near the thighs" loading="lazy" width="416" height="608"></div>
+              <figcaption><b>first prompt</b> · hands 0.30</figcaption></figure>
+            <figure><div class="ph chk"><img src="media/apose_mara_qwen21.webp" alt="Mara by Qwen with the angle spelled out: arms well clear" loading="lazy" width="416" height="608"></div>
+              <figcaption><b>angle spelled out</b> · hands 0.70</figcaption></figure>
+          </div>
+        </div>
+        <p style="margin-top:10px">Mara 0.30 → <b class="good">0.70</b>, Pip 0.37 → <b class="good">0.58</b> torso lengths (Krea: 0.63, 0.61), edges still clean. With that, Qwen-Image 2.1 is the pipeline's default; <span class="mono">--image-model krea2</span> keeps Krea for commercial work.</p></div>
+      </div>
+    </div>
+    <div class="pairs">
+      <article class="pair">
+        <div class="who"><h3>Mara</h3><span class="chip">realistic</span></div>
+        <div class="imgs">
+          <figure><div class="ph"><img src="media/mara_krea2.webp" alt="Mara drawn by Krea 2" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Krea 2</b> · 250 s · hands 0.63</figcaption></figure>
+          <figure><div class="ph chk"><img src="media/mara_qwen21.webp" alt="Mara drawn by Qwen-Image 2.1, transparent background" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Qwen 2.1</b> · 397 s · hands 0.29 · edge 1.4%</figcaption></figure>
+        </div>
+      </article>
+      <article class="pair">
+        <div class="who"><h3>Juno</h3><span class="chip">realistic</span></div>
+        <div class="imgs">
+          <figure><div class="ph"><img src="media/juno3_krea2.webp" alt="Juno drawn by Krea 2" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Krea 2</b> · 232 s · hands 0.67</figcaption></figure>
+          <figure><div class="ph chk"><img src="media/juno3_qwen21.webp" alt="Juno drawn by Qwen-Image 2.1, transparent background" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Qwen 2.1</b> · 355 s · hands 0.28 · edge 1.3%</figcaption></figure>
+        </div>
+      </article>
+      <article class="pair">
+        <div class="who"><h3>Rowan</h3><span class="flag">Krea: no head or legs</span></div>
+        <div class="imgs">
+          <figure><div class="ph"><img src="media/rowan_krea2.webp" alt="Rowan drawn by Krea 2" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Krea 2</b> · 259 s · hands 0.66</figcaption></figure>
+          <figure><div class="ph chk"><img src="media/rowan_qwen21.webp" alt="Rowan drawn by Qwen-Image 2.1, transparent background" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Qwen 2.1</b> · 355 s · hands 0.30 · edge 1.2%</figcaption></figure>
+        </div>
+      </article>
+      <article class="pair">
+        <div class="who"><h3>Wren</h3><span class="flag">Krea: figure touches the edge</span></div>
+        <div class="imgs">
+          <figure><div class="ph"><img src="media/wren_krea2.webp" alt="Wren drawn by Krea 2" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Krea 2</b> · 289 s · hands 0.72</figcaption></figure>
+          <figure><div class="ph chk"><img src="media/wren_qwen21.webp" alt="Wren drawn by Qwen-Image 2.1, transparent background" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Qwen 2.1</b> · 356 s · hands 0.34 · edge 1.3%</figcaption></figure>
+        </div>
+      </article>
+      <article class="pair">
+        <div class="who"><h3>Aoi</h3><span class="chip">anime</span></div>
+        <div class="imgs">
+          <figure><div class="ph"><img src="media/aoi_krea2.webp" alt="Aoi drawn by Krea 2" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Krea 2</b> · 304 s · hands 0.69</figcaption></figure>
+          <figure><div class="ph chk"><img src="media/aoi_qwen21.webp" alt="Aoi drawn by Qwen-Image 2.1, transparent background" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Qwen 2.1</b> · 358 s · hands 0.33 · edge 1.6%</figcaption></figure>
+        </div>
+      </article>
+      <article class="pair">
+        <div class="who"><h3>Pip</h3><span class="chip">stylised</span></div>
+        <div class="imgs">
+          <figure><div class="ph"><img src="media/pip_krea2.webp" alt="Pip drawn by Krea 2" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Krea 2</b> · 274 s · hands 0.61</figcaption></figure>
+          <figure><div class="ph chk"><img src="media/pip_qwen21.webp" alt="Pip drawn by Qwen-Image 2.1, transparent background" loading="lazy" width="416" height="608"></div>
+            <figcaption><b>Qwen 2.1</b> · 365 s · hands 0.37 · edge 1.7%</figcaption></figure>
+        </div>
+      </article>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:10px">The automatic checks passed Krea's Rowan - a jacket with no head or legs still has "arms" to a pose model. Looking at the pictures is still part of the check.</p>
+  </section></div></details>
+  </section>
+
+  <footer>
+    <div>Built from <code>charforge/</code> on 24-25 September 2026. Numbers from each character's logs in <code>work/&lt;name&gt;/logs/</code> (<code>arms</code>, <code>retopo</code>, <code>texture</code>, <code>rig</code>), <code>work/&lt;name&gt;/motion_videos/*_fidelity.json</code> and <code>refine.json</code>, <code>results/v3/</code>, and the renders from <code>blender/render_poses.py</code>; the review of this round is in <code>REVIEW.md</code>, "the polish pass".</div>
+    <div>Every figure on this page was measured by a script in the repository; nothing is estimated except the time per clip, which varies with what else the Mac is doing.</div>
+  </footer>
+</div>
+</body>
+</html>

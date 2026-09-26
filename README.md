@@ -16,6 +16,13 @@ hard landing), hold <kbd>Q</kbd> or the right mouse button to aim - the characte
 and strafes - <kbd>E</kbd> waves, the number keys play moves made from a video, hold <kbd>T</kbd> to talk. Swing the camera and the character
 turns in place. Each character downloads only when selected; **Download** fetches its package.
 
+**[📄 Read the paper](https://majieddd.github.io/charforge/paper/)** - *CharForge: rigged, animated game characters
+from a few words or one image, on a laptop*, a living research paper: the method stage by stage, every measurement
+(regenerated from the pipeline's own files), related work with sources, negative results and the roadmap. Beside it:
+the [lab notebook](https://majieddd.github.io/charforge/paper/notebook.html) (the day-by-day record) and the
+[experiment tracker](research/TRACKER.md) (what is planned, running, done and dropped - start there to pick the work
+up). Rebuild the paper with `python paper/collect.py && python paper/build.py`.
+
 <!--ROSTER-->
 | | style | made from | height | triangles (LOD0 / 1 / 2) | face | package |
 |---|---|---|---|---|---|---|

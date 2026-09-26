@@ -1,0 +1,37 @@
+{
+ "_about": "Numbers measured before a change, which the current files no longer hold (the pipeline has moved on). Each with where it was recorded. paper/build.py reads these beside paper/data/metrics.json.",
+ "moves_start": {
+  "_source": "Lab notebook, 24 September 2026 (first fidelity run, before the fit on the video's own body, the aimed limbs and the refine stage)",
+  "mara/punch_combo": {"joints": 0.086, "iou": 0.751},
+  "mara/roundhouse_kick": {"joints": 0.187, "iou": 0.622},
+  "aoi/spell_cast": {"joints": 0.214, "iou": 0.609},
+  "pip/victory_cheer": {"joints": 0.127, "iou": 0.616}
+ },
+ "moves_mid": {
+  "_source": "Lab notebook, 24 September 2026 (own body + aimed limbs, before the refine stage)",
+  "mara/punch_combo": {"joints": 0.073, "iou": 0.796},
+  "mara/roundhouse_kick": {"joints": 0.121, "iou": 0.747},
+  "aoi/spell_cast": {"joints": 0.167, "iou": 0.651},
+  "pip/victory_cheer": {"joints": 0.114, "iou": 0.714}
+ },
+ "hands_start": {
+  "_source": "Lab notebook, 25 September 2026 (the capture's hands, before DWPose)",
+  "mara/punch_combo": {"error": 0.24, "facing": 0.93, "pointing": 10},
+  "mara/roundhouse_kick": {"error": 0.24, "facing": 0.51, "pointing": 12},
+  "aoi/spell_cast": {"error": 0.64, "facing": 0.62, "pointing": 30},
+  "pip/victory_cheer": {"error": 0.23, "facing": 0.99, "pointing": 7}
+ },
+ "boards": {
+  "_source": "REVIEW.md 'characters made from a few words'; front-view silhouette IoU of TRELLIS's first pass",
+  "sound": [0.90, 0.94],
+  "gray": [0.42, 0.93], "knight": [0.40, 0.92], "kaito": [0.35, 0.91], "boyscout": [0.35, 0.91]
+ },
+ "feet_before_pct": {"_source": "REVIEW.md, second pass (clip selection, grounding, foot IK)", "range": [30, 79]},
+ "dqs": {"_source": "web/playground.html header comment; jacket faces below half their rest area", "walk": [8.8, 6.1], "run": [11.5, 6.0]},
+ "gpu_overlap": {"_source": "REVIEW.md 'jobs sharing the GPU'", "aoi_iou": [0.672, 0.647], "kick_iou": [0.733, 0.485], "alone": [0.82, 0.86]},
+ "elbow": {"_source": "REVIEW.md polish pass", "before_deg": 176, "frames_before": 16, "fit_deg": 162, "after_deg": 150, "frames_after": 4},
+ "feet_refine": {"_source": "REVIEW.md 'seeing a move from every side'", "before_mean_cm": 3.1, "before_max_cm": 5.5, "after_mean_cm": 0.6, "after_max_cm": 1.9},
+ "face_quantisation": {"_source": "REVIEW.md; blender/face_render.py", "before_mm": 3.9, "after_mm": 0.5, "offset_mean_mm": 2.5, "offset_max_mm": 5.9},
+ "uv_folds": {"_source": "REVIEW.md polish pass", "before": [224, 2602], "after": [6, 31], "layered": [97, 158]},
+ "turntable": {"_source": "Lab notebook 'more angles'", "reference_only": 0.778, "repainted": 0.781, "turntable_frames": 0.786}
+}

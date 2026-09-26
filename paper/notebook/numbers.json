@@ -1,0 +1,168 @@
+{
+ "uv": {
+  "pip": [
+   1529,
+   8
+  ],
+  "vex": [
+   2602,
+   30
+  ],
+  "min_before": 224,
+  "max_before": 2602,
+  "min_after": 6,
+  "max_after": 31
+ },
+ "pip_rules": {
+  "left_let_go": 555,
+  "right_let_go": 1280
+ },
+ "hem": {
+  "juno3": 1118,
+  "pip": 816
+ },
+ "cast_count": 3,
+ "cast_names": "Knight, Kaito and Bo",
+ "cast_title": "Knight, Kaito and Bo",
+ "cast_intro": "Three new characters in the three styles, each from one sentence, made by the pipeline as it stands after this round - the reference checked, the arms cut free and checked, the UVs repaired, the rig's rules for garments applied. Left to right: the video is the game rig walking, waving and turning; below it the reference, the model at rest and the model mid-jump.",
+ "joins_left": "The cut starts a quarter of the way down the upper arm and is checked slab by slab; a join still survives somewhere on Pip, Mara, Juno, Rowan, Wren, Vex, Knight, Kaito, Bo, and there the rig keeps that side of the garment with the arm as before.",
+ "cast": [
+  {
+   "name": "Knight",
+   "style": "realistic",
+   "video": "cast_knight.mp4",
+   "prompt": "a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots",
+   "height": "1.80 m",
+   "tris": "67,380",
+   "time": "about 35 min",
+   "notes": "Three failures on the way, each now a rule: macOS stopped his 3D model on the GPU (it is evaluated in smaller pieces now); his armour's texture failed the web build's quality gate (it steps up the quality instead); and TRELLIS built the picture's backdrop into his model as a board, which the later stages cut into grey sheets hanging from his arms - made again through TRELLIS's own background remover, it has none. Last, his face: his picture's would not lie on his model's, and went on unaligned with every feature twice; his generator's own face is kept now, and with eyes it can find, the face stage gave him blinks and a jaw.",
+   "refs": [
+    [
+     "cast_knight_ref.webp",
+     "Knight's reference image",
+     "reference"
+    ],
+    [
+     "cast_knight_rest.webp",
+     "Knight at rest",
+     "model"
+    ],
+    [
+     "cast_knight_jump.webp",
+     "Knight mid-jump",
+     "jump"
+    ]
+   ]
+  },
+  {
+   "name": "Kaito",
+   "style": "anime",
+   "video": "cast_kaito.mp4",
+   "prompt": "an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots",
+   "height": "1.70 m",
+   "tris": "72,646",
+   "time": "49 min, sharing the GPU",
+   "notes": "His first model was 40 pieces: the picture's backdrop built into it as a board through his legs (front match 0.35), his boots' inner toes and hair spikes detached. Made again from the picture with its background cut away (0.91), it is one solid - 7 specks of 80 vertices ride with the part nearest them - and his open sandals have whole toes.",
+   "refs": [
+    [
+     "cast_kaito_ref.webp",
+     "Kaito's reference image",
+     "reference"
+    ],
+    [
+     "cast_kaito_rest.webp",
+     "Kaito at rest",
+     "model"
+    ],
+    [
+     "cast_kaito_jump.webp",
+     "Kaito mid-jump",
+     "jump"
+    ]
+   ]
+  },
+  {
+   "name": "Bo",
+   "style": "stylised",
+   "video": "cast_bo.mp4",
+   "prompt": "a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs",
+   "height": "1.60 m",
+   "tris": "59,981",
+   "time": "about 35 min",
+   "notes": "His first reference had his fists on his hips; the model fused them and shredded his hands at his belt. The new reference check rejects that picture and draws him again.",
+   "refs": [
+    [
+     "cast_bo_ref.webp",
+     "Bo's reference image",
+     "reference"
+    ],
+    [
+     "cast_bo_rest.webp",
+     "Bo at rest",
+     "model"
+    ],
+    [
+     "cast_bo_jump.webp",
+     "Bo mid-jump",
+     "jump"
+    ]
+   ]
+  }
+ ],
+ "moves_now": {
+  "mara/punch_combo": {
+   "joints": 0.0535,
+   "iou": 0.8435,
+   "face": 0.0118,
+   "hands": 0.1975,
+   "facing": 0.9677,
+   "pointing": 7.9,
+   "hands_median": 0.176
+  },
+  "mara/roundhouse_kick": {
+   "joints": 0.069,
+   "iou": 0.8297,
+   "face": 0.0132,
+   "hands": 0.1413,
+   "facing": 1.0,
+   "pointing": 5.2,
+   "hands_median": 0.1157
+  },
+  "aoi/spell_cast": {
+   "joints": 0.1178,
+   "iou": 0.7715,
+   "face": 0.0318,
+   "hands": 0.3261,
+   "facing": 0.9451,
+   "pointing": 18.7,
+   "hands_median": 0.1706
+  },
+  "pip/victory_cheer": {
+   "joints": 0.0689,
+   "iou": 0.8166,
+   "face": 0.02,
+   "hands": 0.204,
+   "facing": 0.9929,
+   "pointing": 5.6,
+   "hands_median": 0.1919
+  }
+ },
+ "elbow": {
+  "before": 176,
+  "fit": 162,
+  "after": 150,
+  "frames_fit": 13,
+  "frames_after": 4
+ },
+ "feet": {
+  "before_cm": "3.1",
+  "after_cm": "0.6",
+  "note": "Where her feet run off the bottom of the video's frame, the video cannot say where the floor is, and the retarget's planting is kept: that stretch is the 1.9 cm left."
+ },
+ "prompts": {
+  "scout": "a boy scout, fit and energetic, light skin, short brown hair, cheeky grin and bright blue eyes, wearing a blue scout uniform shirt, khaki scout shorts and brown leather scout shoes, with a yellow scout neckerchief and a small blue badge",
+  "board_note": "Made again from the picture with its background cut away, all four match: Knight 0.92, Kaito 0.91, Gray 0.93, the boy scout 0.91.",
+  "after_note": "Made again with each prompt written out. \"A boy scout\" is a boy now, 1.20 m, in the scout's blue shirt and yellow neckerchief. \"Gray alien, extremely muscular\" is clothed and coloured, his 3D model whole (0.93 against his picture instead of a board), and his hands are his own grey and as broad as his forearms - at first the hand step gave him a person's peach hand, small on a forearm twice its width. His all-black outfit is the older prompt model's choice (What is left)."
+ },
+ "hands_note": "Re-scored on 26 September after the rebuilds, with the median beside each mean. Aoi's mean is carried by 21 frames (53% of it) where the pose model reads the light cuff of her jacket sleeve, sticking out past a strongly bent elbow, as her hand - her own hands are where the video's are; see What is left."
+}

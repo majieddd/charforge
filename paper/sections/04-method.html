@@ -1,0 +1,195 @@
+<section>
+<h2 id="sec-method">Method</h2>
+<p>We describe each stage by what it does and the failure that made it necessary. Experiment identifiers link to the
+  tracker, where each has its question, metric and result.</p>
+
+<h3 id="sec-m-prompt">A few words, written out</h3>
+<p>Users type little: "a boy scout", "gray alien that is extremely muscular". Passed straight to an image model, the
+  first came back a grown man at the height slider's default of 1.72 m and the second a grey clay sculpture - no
+  clothes, no colour. Following Make-A-Character's use of a language model to parse a prompt into attributes [@mach], a
+  local model [@gemma] fills a fixed set of fields - who, age, build, skin, hair, face, top, bottom, shoes, extras - and
+  the sentence is composed from them in code. Asked instead for free prose under rules, 3B-8B models broke a rule in
+  about one prompt in two ("holding a wooden badge", "standing at 1.5 meters tall"); fields that name a prop, a pose or a
+  height are now dropped, and the age group is taken from the prompt's own words, not the model's. The height follows
+  the age group unless the user sets it, and a name that exists is refused rather than overwritten [E016].</p>
+<p>We scored nine local models on five prompts against four rules each [E015]; [#tab-prompts] gives the results.
+  Gemma 2 9B kept all 20 checks but took {{pm.gemma2:9b-instruct-q5_K_M.secs|1}} s a prompt; Gemma 4 e4b kept
+  {{pm.gemma4:e4b.score}} in {{pm.gemma4:e4b.secs|1}} s and is the default. Gemma 4 answered nothing until its
+  "thinking" mode was switched off, which only models that report the capability are sent. The Studio shows the
+  written-out text before anything is drawn, to edit.</p>
+<figure id="tab-prompts">
+  <div class="tscroll"><!--TABLE:prompts--></div>
+  <figcaption>Local language models writing out five short prompts: at least seven fields filled, no prop, pose or
+    height, top, bottom and shoes in three colours, no bald human - 20 checks. Time per prompt on the M5, model loaded.</figcaption>
+</figure>
+
+<h3 id="sec-m-reference">The reference image</h3>
+<p>Everything is generated from one picture of the character standing in an A-pose on a plain background. We compared
+  two local image models on six characters with the same prompt and seed [E013]: Krea 2 drew one broken figure in six (a
+  jacket with no head or legs, which the automatic checks passed, since it still has "arms"), Qwen-Image 2.1
+  [@qwenimage; @qwenimage2] none, with a real alpha cut-out every time. Qwen read "arms slightly away from the body"
+  literally - wrists 0.28-0.37 torso lengths from the hips, close enough to fuse in 3D - until the angle was spelled
+  out (0.58-0.70). It is the default; Krea stays a flag away because Qwen-Image's licence is research-only.</p>
+<p>A reference in the wrong pose costs half an hour before it shows. Bo, a cartoon chef, was drawn with his fists on his
+  hips despite the prompt; the 3D model fused them and his hands came out in shreds at his belt. The pose model now reads
+  every reference's arms: our references put the wrists 0.60-0.79 torso lengths from the hips, Bo's 0.33, and below
+  0.45 the picture is drawn again on a new seed [E028].</p>
+
+<h3 id="sec-m-generation">The 3D model, checked from the front</h3>
+<p>TRELLIS.2 [@trellis2] builds a mesh with PBR textures from the reference. On four characters its first pass built
+  the picture's plain backdrop into the model as a solid board - in front of the figure, behind it, or through its legs -
+  which later stages cut into grey sheets hanging from the arms ([#fig-board]). Rendered from the front, a sound model
+  lies on the picture's silhouette at IoU {{b.boards.sound.0}}-{{b.boards.sound.1}}; these lay at 0.35-0.44. The model
+  is now checked from the front, and below 0.8 made again from the picture cut out by a salient-object model
+  [@u2net], then on a new seed [E014]: Gray {{b.boards.gray.0}} → {{gray.front_iou}}, Knight {{b.boards.knight.0}} →
+  {{knight.front_iou}}, Kaito {{b.boards.kaito.0}} → {{kaito.front_iou}}, the boy scout {{b.boards.boyscout.0}} →
+  {{boyscout.front_iou}}.</p>
+<figure id="fig-board">
+  <img src="media/prompts_board.webp" width="1218" height="300" alt="TRELLIS's first pass from the front for four characters: Gray is a flat grey board hiding the figure, Knight has a board behind him, Kaito a board through his legs, Bo is clean">
+  <figcaption>A backdrop built into the model: TRELLIS's first pass from the front, labelled with the silhouette IoU
+    against the picture. Bo (right) is a sound model.</figcaption>
+</figure>
+<p>A second pass conditions TRELLIS on side and back views repainted from renders of the first. Scored against a
+  generated 360° video of Mara [E012], the second pass moved the mean silhouette IoU from {{b.turntable.reference_only}}
+  to {{b.turntable.repainted}}, and three turntable frames as extra views to {{b.turntable.turntable_frames}}: more
+  views barely change the shape, and where views disagree the model averages them (Mara's braid, over her shoulder in
+  the reference and down her back in the video, was lost at the back). The second pass is also the slowest stage
+  ([#tab-times]); whether it earns its place is part of [E106].</p>
+
+<h3 id="sec-m-geometry">Solid, joints, arms and hands</h3>
+<p>The generated mesh is closed into one solid (OpenVDB level sets [@openvdb]), its flakes, inner shells and shards
+  removed. Orbit renders give per-vertex part labels from a human parser [@segformer] and 3D joints from the pose model;
+  each joint is then moved onto the centre line of its limb, traced through the solid. A traced line can double back:
+  on knight2 the arm's trace reached his gauntlet and turned 36 cm back up the vambrace, and the hand was placed a
+  forearm's length behind the wrist; the trace now ends at its farthest point [E018].</p>
+<p><b>Arms cut free.</b> Generators glue arms to whatever they hang against - a hip, a vest, a bag. Rigged as is, the
+  surface between moves with both, and a raised arm pulls the vest into wings. The arms are cut free below the armpit
+  (T-pose faces stretched past 3x: 1,150 → 390 on Pip), thin webs opened first, and the cut checked slab by slab along
+  the arm and repeated where a join survives: 3-9 joined slabs an arm after the first cut, 1-3 after the second
+  [E025] [E026].</p>
+<p><b>Modelled hands.</b> Generated hands are paddles. They are carved off at the wrist and replaced by a modelled hand
+  (a signed distance function with anatomical proportions, 15 finger bones) unioned onto the solid. The modelled wrist
+  was a person's; on Gray, "extremely muscular", whose forearms measure 11-13 cm at the wrist, each arm ended in a flat
+  step like a cuff and the waving hand read as a small hook ([#fig-hands-bulk]). A sleeve's cuff measures just as wide,
+  so width cannot tell a bulky forearm from a sleeve - but the part labels can: the vertices just above the cut are
+  labelled bare skin on 0.92-1.00 of a bare forearm and 0.13 or less under a sleeve or gauntlet. On a bare forearm the
+  hand is now scaled across its width and thickness to meet it, up to 1.6x (Gray {{gray.hand_bulk|2}}x) [E021].</p>
+<figure id="fig-hands-bulk">
+  <img src="media/fix_gray_hands.webp" width="1704" height="420" alt="Gray's hand before and after: before, the waving hand is a small hook and the resting hand thin under a cuff-like step; now, an open hand as broad as the forearm">
+  <figcaption>A person's hand on a hulk's forearm (left of each pair) and a hand sized to the bare forearm it ends
+    (right). A faint ring still marks the join.</figcaption>
+</figure>
+
+<h3 id="sec-m-texture">Mesh and texture</h3>
+<p>The solid is decimated to about 60,000 triangles, unwrapped, and its colour, normal, roughness/metal and ambient
+  occlusion baked from the generated model. Smart UV projection on a smoothed copy folded islands onto themselves
+  wherever the copy curls ({{b.uv_folds.before.0}}-{{b.uv_folds.before.1}} faces per character sharing texels with
+  another surface - the backs of Pip's sleeves showed his vest's paint); the overlapping faces are unwrapped again as
+  their own islands at one texel density, leaving {{b.uv_folds.after.0}}-{{b.uv_folds.after.1}} [E027].</p>
+<p>The bake is soft, so the reference is projected back onto the mesh, aligned to renders of the mesh by a similarity
+  transform on the silhouettes and then by optical flow [@dis], together with the repainted side and back views; the
+  reference sets the palette, colour-matched group by group. Like CharacterGen's back-projection [@charactergen] a view
+  only paints surfaces it sees face-on and unoccluded; unlike it, views are blended by weight rather than by Poisson
+  blending [@poisson] - comparing the two is [E105]. The face is painted from a detailed image: the reference's face
+  region enlarged 3-5x and re-detailed by the image model at low strength, laid on through a finer flow of its own.</p>
+<p>That face flow is refused when it would move features more than 2.5% of the figure's height, because on drawn faces
+  a larger warp painted a second pair of eyes. Knight's generated face sat 2.5% from his picture's: refused, the
+  picture went on unaligned, his fringe across one eye and every feature doubled; forced, the eyes smeared into bands.
+  For realistic characters whose face the flow refuses, the front view now leaves the face and fringe to the generator's
+  own texture, which is softer but lies on its geometry [E022] ([#fig-knight-face]). The face stage then found Knight's
+  eyes and mouth, and he has a face rig. The price is visible too: his fringe carries the generator's blotchier colour.
+  The modelled hands take the body's skin tone from warm, skin-coloured texels of the face; a grey alien has none, and
+  Gray's hands fell back to a fixed human peach until the face's own colour became the fallback [E020].</p>
+<figure id="fig-knight-face">
+  <img src="media/fix_knight_face.webp" width="1704" height="420" alt="Knight's face before and after, from the front and at 35 degrees: before, the fringe falls across one eye and the features are doubled; now, one face on the geometry, with blotchier hair at the fringe">
+  <figcaption>Knight's face, projected unaligned (left pair) and kept from the generator where the reference cannot be
+    laid on it (right pair).</figcaption>
+</figure>
+
+<h3 id="sec-m-rig">Weights and rig</h3>
+<p>Skin weights come from distances measured through the solid body rather than through the air [@geodesicvoxel], so a
+  vest that touches an arm is still far from the arm's bone. Three rules handle garments the generator fused to the
+  body [E025]. The arm's own surface is flooded from the sleeve's outside starting past the cut (0.30 of the upper arm),
+  so it does not walk onto the vest; a vest's armhole moves with the collarbone where colour tells the torso garment
+  from the sleeve; and an upper garment near the hips follows the pelvis rather than the thighs, so a jump does not pull
+  a hem into a W. Loose pieces the generator left (Kaito came as 40: hair spikes, the inner toes of his sandals) each
+  ride rigidly with the body part nearest them. The skeleton uses Mixamo's bone names [@mixamo] - 64 bones with fingers
+  and a jaw - so any Mixamo animation applies; bone chains are hung on what should swing (braids, ponytails, bags).
+  Engines skin linearly [@lbs]; the playground patches three.js [@threejs] to dual quaternion skinning [@dqs], which
+  cuts jacket faces collapsed below half their area during the walk from {{b.dqs.walk.0}}% to {{b.dqs.walk.1}}% and
+  during the run from {{b.dqs.run.0}}% to {{b.dqs.run.1}}% with the same weights [E024].</p>
+<figure id="fig-wings">
+  <img src="media/polish_wings.webp" width="1224" height="486" alt="Pip in five poses before and after the garment rules: before, his yellow vest lifts into wings with his arms; after, it stays on his torso">
+  <figcaption>Pip before and after the garment rules: the vest fused to his sleeves lifted into wings with his arms.</figcaption>
+</figure>
+
+<h3 id="sec-m-face">Face rig</h3>
+<p>The head is rendered from the front, unlit, together with the world position under every pixel. Eyes are found as
+  blobs and the mouth by its colour and the pose model's face points; from them the face stage cuts the mouth open,
+  adds a jaw bone and five shapes (blinks, smile, raised brows, pucker). It places nothing it cannot find: on Bo, eyes
+  behind round glasses and a mouth under a moustache, it builds no face rig rather than a guessed one [E109]. Two
+  characters lost their face rig because the frame stopped above the chin on a tall head [E017]. The position render
+  had its own error: written as position + 4 into EEVEE's half-float film, every position was read in
+  {{b.face_quantisation.before_mm}} mm steps, {{b.face_quantisation.offset_mean_mm}} mm off on average; written around
+  the frame's centre the step is {{b.face_quantisation.after_mm}} mm [E019].</p>
+
+<h3 id="sec-m-clips">Clips, feet and packaging</h3>
+<p>Eighteen motion captures (idle, walk, jog, run, sprint, backpedals, strafes, turns, crouch, jump, fall, land, wave)
+  are retargeted onto the rig with the fingers. Feet are planted by clip selection, grounding and foot IK, and the
+  playground drives all locomotion from one stride clock, so the foot on the floor slides a median {{feet.median}}% of
+  ground speed ([#sec-eval-feet]) [E029]. The package follows engine conventions: real height in metres, origin on the
+  floor under the pelvis, glTF [@gltf] and FBX with three levels of detail, and a manifest with the collision capsule,
+  each clip's ground speed, direction and contact phase, the jump's take-off and landing, and the face's morph targets.</p>
+
+<h3 id="sec-m-motion">Moves from generated video</h3>
+<p><b>The video.</b> The character's reference image and a written move - timed beats: ready, the move, recovery - go to
+  a reference-to-video model [@h3], which returns 5.2 s at 24 fps of the character performing it (32-48 minutes on
+  the laptop, [E030]). Because the performer is the character, its proportions are close to the rig's.</p>
+<p><b>Retrieval.</b> ViTPose [@vitpose] reads 17 points in every frame. The sequence is matched against a library of
+  2,453 captures [@mixamo] by dynamic time warping [@dtw] of each clip's 2D projection from 16 camera angles, mirrored or
+  not. In a self-test on 40 library clips shown from random angles with pose noise, a stretch and a speed change, the
+  right clip or an exact duplicate ranked first every time, and the angle was off by {{st.left_out.angle_error_deg_median}}°
+  (median) [E001].</p>
+<p><b>The fit.</b> A move the library lacks is approximated by its nearest capture, then bent toward the video bone by
+  bone: each bone's direction in the image from the video, its depth from its length - kept from the capture where the
+  two agree within the pose model's noise, and only when the capture misses the video by more than 1.2 times that noise
+  [E002]. The bone lengths are the video's own, measured where the capture shows each bone flat to the camera [E003]:
+  with a capture actor's lengths, Aoi's short torso bent into a 28° lean. [#tab-selftest] shows the trade-off on the
+  self-test: on the actor's own body the capture's lengths are, as they must be, slightly better; on another body - the
+  real case - the video's own lengths are clearly better. An arm's two depth signs are chosen together, so an elbow
+  cannot bend past what the library's elbows ever do [E007].</p>
+<figure id="tab-selftest">
+  <div class="tscroll"><!--TABLE:selftest--></div>
+  <figcaption>3D pose error of the fit, in torso lengths, against the true motion (40 library moves each, shown to the
+    matcher from random cameras with noise, a stretch and a speed change). "Left out": the move and its near-duplicates
+    removed from the library. "Another body": the video's performer has different proportions from the capture actor.</figcaption>
+</figure>
+<p><b>Onto the character, and refined.</b> The fitted clip is retargeted by copying rotations and then aiming the
+  character's own limbs, spine and head along the fitted bones, which removes rest-pose differences of 4-12° at the thighs
+  and 16-27° at the collarbones [E004]. Finally the character's own skinned mesh is posed in PyTorch - forward kinematics
+  mirroring Blender's - projected with the video's camera, and 20 bones a frame are optimised against the video in the
+  manner of SMPLify [@smplify], but on the character rather than a body model [E005]: the silhouette's chamfer both
+  ways, the joints, the face points, DWPose's hands [@dwpose] (wrists, forearm twist and 30 finger joints [E006]), a
+  prior to the fitted clip, smoothness, joint limits, and a bend limit at the elbow. The feet are then put back on the
+  video's floor line [E008].</p>
+<figure id="fig-compare">
+  <video src="media/mara_punch_combo.mp4" poster="media/angles_mara_punch_combo.webp" autoplay muted loop playsinline controls preload="metadata" aria-label="Mara's punch combo: the generated video beside the rigged character playing the recovered clip"></video>
+  <figcaption>Left, the generated video; right, the character's rig playing the clip recovered from it, from the video's
+    camera: guard, jab, cross, hook, back to guard.</figcaption>
+</figure>
+
+<h3 id="sec-m-runtime">Running it on a laptop</h3>
+<p>Everything runs on a 24 GB M5 MacBook with shared memory. Two jobs on the GPU at once do not merely slow down: two
+  refines corrupted each other's results (Aoi's silhouette {{b.gpu_overlap.aoi_iou.0}} → {{b.gpu_overlap.aoi_iou.1}},
+  the kick's {{b.gpu_overlap.kick_iou.0}} → {{b.gpu_overlap.kick_iou.1}}, where each alone reaches
+  {{b.gpu_overlap.alone.0}}-{{b.gpu_overlap.alone.1}}; one ended in NaN), and a 3D pass beside another job was stopped by
+  the operating system's GPU watchdog. A machine-wide lock now serialises every GPU step of every job [E023]. The
+  video model is a 33-billion-parameter model; running it here took rewriting its float8 scales for a GPU without float8
+  and merging its LoRA offline, since patching it at load doubled its memory [E030]. The Studio
+  ([#fig-studio-new]) queues jobs, survives its own restart mid-job, and shows each job's stage and time left.</p>
+<figure id="fig-studio-new">
+  <img src="media/studio_new.webp" width="1440" height="900" alt="The Studio's New character form: a few words typed, the written-out description shown for editing, style and height">
+  <figcaption>Making a character in the Studio: a few words, <i>Write it out</i>, edit what comes back, choose a style;
+    the height follows the description unless set.</figcaption>
+</figure>
+</section>

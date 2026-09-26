@@ -23,6 +23,7 @@
   #title{top:calc(14px + env(safe-area-inset-top,0px));left:14px;padding:11px 14px;max-width:min(330px,calc(100vw - 28px))}
   #title h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
   #title p{margin:5px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.45}
+  #title a{color:var(--accent)}
   #keys{bottom:calc(14px + env(safe-area-inset-bottom,0px));left:14px;padding:10px 13px}
   #keys table{border-collapse:collapse;font-size:11.5px}
   #keys td{padding:2px 0}
@@ -101,6 +102,8 @@
   <p>Deformation uses <b>dual quaternion skinning</b>: blending rotations as rotations keeps
   bent joints from hollowing out (jacket faces collapsed below half their area: 8.8% linear,
   6.1% dual quaternion, over the walk). Toggle it to see the difference.</p>
+  <p>How it works, measured: <a href="https://majieddd.github.io/charforge/paper/" target="_blank" rel="noopener">the
+  CharForge paper</a> &middot; <a href="https://majieddd.github.io/charforge/paper/notebook.html" target="_blank" rel="noopener">lab notebook</a>.</p>
   <div class="btns">
     <button id="b-dqs" aria-pressed="true">Dual-quat skin</button>
     <button id="b-parts" aria-pressed="false">Show parts</button>

@@ -1,0 +1,1242 @@
+{
+ "_about": "Written by paper/collect.py from the pipeline's measurement files; read by paper/build.py.",
+ "collected": "2026-09-26",
+ "roster": [
+  {
+   "id": "aoi",
+   "name": "Aoi",
+   "style": "anime",
+   "in_playground": true,
+   "released": true,
+   "prompt": "a young anime adventurer girl with a long high ponytail of silver-blue hair, a short fitted navy jacket with gold trim over a white shirt, fitted black trousers and knee-high brown leather boots",
+   "from_image": false,
+   "height_m": 1.62,
+   "triangles_lods": [
+    76578,
+    30631,
+    11485
+   ],
+   "bones": 64,
+   "clips": 19,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "bo",
+   "name": "Bo",
+   "style": "stylized",
+   "in_playground": true,
+   "released": false,
+   "prompt": "a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs",
+   "from_image": false,
+   "height_m": 1.6,
+   "triangles_lods": [
+    59981,
+    23991,
+    8997
+   ],
+   "bones": 63,
+   "clips": 18,
+   "face": null,
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "boyscout",
+   "name": "boyscout",
+   "style": "stylized",
+   "in_playground": false,
+   "released": false,
+   "prompt": "a boy scout",
+   "from_image": false,
+   "height_m": 1.2,
+   "triangles_lods": [
+    76719,
+    30686,
+    11506
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": 0.909,
+   "generate_input": "rembg",
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "gray",
+   "name": "gray",
+   "style": "stylized",
+   "in_playground": false,
+   "released": false,
+   "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+   "from_image": false,
+   "height_m": 1.76,
+   "triangles_lods": [
+    73785,
+    29514,
+    11067
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": 0.931,
+   "generate_input": "rembg",
+   "hand_bulk": 1.6,
+   "forearm_bare_skin": 1.0
+  },
+  {
+   "id": "juno3",
+   "name": "Juno",
+   "style": "realistic",
+   "in_playground": true,
+   "released": true,
+   "prompt": "a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut",
+   "from_image": false,
+   "height_m": 1.7,
+   "triangles_lods": [
+    66015,
+    26406,
+    9902
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "kaito",
+   "name": "Kaito",
+   "style": "anime",
+   "in_playground": true,
+   "released": false,
+   "prompt": "an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots",
+   "from_image": false,
+   "height_m": 1.7,
+   "triangles_lods": [
+    72646,
+    29057,
+    10896
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": 0.905,
+   "generate_input": "rembg",
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "knight",
+   "name": "Knight",
+   "style": "realistic",
+   "in_playground": true,
+   "released": false,
+   "prompt": "a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots",
+   "from_image": false,
+   "height_m": 1.8,
+   "triangles_lods": [
+    67380,
+    26951,
+    10107
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": 0.917,
+   "generate_input": "rembg",
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "knight2",
+   "name": "knight2",
+   "style": "stylized",
+   "in_playground": false,
+   "released": false,
+   "prompt": "a young knight in steel armor",
+   "from_image": false,
+   "height_m": 1.85,
+   "triangles_lods": [
+    69910,
+    27964,
+    10486
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": 0.931,
+   "generate_input": "alpha",
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "mara",
+   "name": "Mara",
+   "style": "realistic",
+   "in_playground": true,
+   "released": true,
+   "prompt": "a young woman field researcher with a long dark brown braided ponytail, a fitted olive green field jacket with the sleeves rolled to the forearm, a grey t-shirt, tan cargo trousers and brown leather hiking boots",
+   "from_image": false,
+   "height_m": 1.68,
+   "triangles_lods": [
+    69434,
+    27773,
+    10414
+   ],
+   "bones": 64,
+   "clips": 20,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "pip",
+   "name": "Pip",
+   "style": "stylized",
+   "in_playground": true,
+   "released": true,
+   "prompt": "a cheerful cartoon courier with messy orange hair and freckles, a puffy yellow vest over a blue hoodie, baggy khaki cargo shorts, striped socks and chunky red sneakers",
+   "from_image": false,
+   "height_m": 1.55,
+   "triangles_lods": [
+    78233,
+    31293,
+    11733
+   ],
+   "bones": 64,
+   "clips": 19,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "rowan",
+   "name": "Rowan",
+   "style": "realistic",
+   "in_playground": true,
+   "released": true,
+   "prompt": "a man in a green bomber jacket with medium-length wavy hair",
+   "from_image": false,
+   "height_m": 1.78,
+   "triangles_lods": [
+    67217,
+    26886,
+    10082
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "vex",
+   "name": "Vex",
+   "style": "stylized",
+   "in_playground": true,
+   "released": true,
+   "prompt": null,
+   "from_image": true,
+   "height_m": 1.72,
+   "triangles_lods": [
+    63979,
+    25591,
+    9596
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "blink_L",
+    "blink_R",
+    "brows_up",
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  },
+  {
+   "id": "wren",
+   "name": "Wren",
+   "style": "realistic",
+   "in_playground": true,
+   "released": true,
+   "prompt": "a woman in a brown leather jacket with a satchel and a braid",
+   "from_image": false,
+   "height_m": 1.68,
+   "triangles_lods": [
+    64617,
+    25846,
+    9692
+   ],
+   "bones": 64,
+   "clips": 18,
+   "face": [
+    "pucker",
+    "smile"
+   ],
+   "springs": false,
+   "front_iou": null,
+   "generate_input": null,
+   "hand_bulk": null,
+   "forearm_bare_skin": null
+  }
+ ],
+ "feet": {
+  "aoi": {
+   "walk": {
+    "slip_pct": 1.0,
+    "deepest_cm": -0.07
+   },
+   "jog": {
+    "slip_pct": 1.7,
+    "deepest_cm": -0.04
+   },
+   "run": {
+    "slip_pct": 0.7,
+    "deepest_cm": -0.05
+   },
+   "sprint": {
+    "slip_pct": 1.1,
+    "deepest_cm": -0.04
+   },
+   "walk_back": {
+    "slip_pct": 4.2,
+    "deepest_cm": -0.07
+   },
+   "jog_back": {
+    "slip_pct": 1.0,
+    "deepest_cm": -0.15
+   },
+   "strafe_left": {
+    "slip_pct": 2.0,
+    "deepest_cm": -0.21
+   },
+   "strafe_right": {
+    "slip_pct": 3.8,
+    "deepest_cm": -0.06
+   },
+   "crouch_walk": {
+    "slip_pct": 3.5,
+    "deepest_cm": -0.06
+   }
+  },
+  "juno3": {
+   "walk": {
+    "slip_pct": 2.7,
+    "deepest_cm": -0.22
+   },
+   "jog": {
+    "slip_pct": 3.8,
+    "deepest_cm": -0.23
+   },
+   "run": {
+    "slip_pct": 2.3,
+    "deepest_cm": -0.23
+   },
+   "sprint": {
+    "slip_pct": 2.9,
+    "deepest_cm": -0.24
+   },
+   "walk_back": {
+    "slip_pct": 6.0,
+    "deepest_cm": -0.19
+   },
+   "jog_back": {
+    "slip_pct": 2.4,
+    "deepest_cm": -0.22
+   },
+   "strafe_left": {
+    "slip_pct": 6.9,
+    "deepest_cm": -0.1
+   },
+   "strafe_right": {
+    "slip_pct": 3.4,
+    "deepest_cm": -0.12
+   },
+   "crouch_walk": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.29
+   }
+  },
+  "kaito": {
+   "walk": {
+    "slip_pct": 1.3,
+    "deepest_cm": -0.43
+   },
+   "jog": {
+    "slip_pct": 1.6,
+    "deepest_cm": -0.36
+   },
+   "run": {
+    "slip_pct": 1.2,
+    "deepest_cm": -0.44
+   },
+   "sprint": {
+    "slip_pct": 4.3,
+    "deepest_cm": -0.06
+   },
+   "walk_back": {
+    "slip_pct": 2.6,
+    "deepest_cm": -0.04
+   },
+   "jog_back": {
+    "slip_pct": 2.0,
+    "deepest_cm": -0.24
+   },
+   "strafe_left": {
+    "slip_pct": 8.8,
+    "deepest_cm": -0.13
+   },
+   "strafe_right": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.16
+   },
+   "crouch_walk": {
+    "slip_pct": 1.5,
+    "deepest_cm": -0.47
+   }
+  },
+  "knight": {
+   "walk": {
+    "slip_pct": 1.5,
+    "deepest_cm": -0.0
+   },
+   "jog": {
+    "slip_pct": 1.3,
+    "deepest_cm": 0.0
+   },
+   "run": {
+    "slip_pct": 1.0,
+    "deepest_cm": 0.0
+   },
+   "sprint": {
+    "slip_pct": 1.1,
+    "deepest_cm": 0.0
+   },
+   "walk_back": {
+    "slip_pct": 1.2,
+    "deepest_cm": 0.0
+   },
+   "jog_back": {
+    "slip_pct": 1.4,
+    "deepest_cm": 0.0
+   },
+   "strafe_left": {
+    "slip_pct": 4.5,
+    "deepest_cm": 0.0
+   },
+   "strafe_right": {
+    "slip_pct": 4.8,
+    "deepest_cm": 0.0
+   },
+   "crouch_walk": {
+    "slip_pct": 1.4,
+    "deepest_cm": 0.0
+   }
+  },
+  "mara": {
+   "walk": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.26
+   },
+   "jog": {
+    "slip_pct": 2.7,
+    "deepest_cm": -0.39
+   },
+   "run": {
+    "slip_pct": 2.7,
+    "deepest_cm": -0.31
+   },
+   "sprint": {
+    "slip_pct": 5.4,
+    "deepest_cm": -0.31
+   },
+   "walk_back": {
+    "slip_pct": 7.4,
+    "deepest_cm": -0.33
+   },
+   "jog_back": {
+    "slip_pct": 5.3,
+    "deepest_cm": -0.36
+   },
+   "strafe_left": {
+    "slip_pct": 5.0,
+    "deepest_cm": -0.24
+   },
+   "strafe_right": {
+    "slip_pct": 5.9,
+    "deepest_cm": -0.26
+   },
+   "crouch_walk": {
+    "slip_pct": 2.6,
+    "deepest_cm": -0.47
+   }
+  },
+  "pip": {
+   "walk": {
+    "slip_pct": 4.5,
+    "deepest_cm": -0.23
+   },
+   "jog": {
+    "slip_pct": 3.3,
+    "deepest_cm": -0.42
+   },
+   "run": {
+    "slip_pct": 2.9,
+    "deepest_cm": -0.25
+   },
+   "sprint": {
+    "slip_pct": 8.8,
+    "deepest_cm": -0.11
+   },
+   "walk_back": {
+    "slip_pct": 10.0,
+    "deepest_cm": -0.11
+   },
+   "jog_back": {
+    "slip_pct": 5.6,
+    "deepest_cm": -0.1
+   },
+   "strafe_left": {
+    "slip_pct": 14.6,
+    "deepest_cm": -0.16
+   },
+   "strafe_right": {
+    "slip_pct": 7.2,
+    "deepest_cm": -0.51
+   },
+   "crouch_walk": {
+    "slip_pct": 3.9,
+    "deepest_cm": -0.16
+   }
+  },
+  "rowan": {
+   "walk": {
+    "slip_pct": 3.6,
+    "deepest_cm": -0.28
+   },
+   "jog": {
+    "slip_pct": 2.0,
+    "deepest_cm": -0.05
+   },
+   "run": {
+    "slip_pct": 3.3,
+    "deepest_cm": -0.14
+   },
+   "sprint": {
+    "slip_pct": 5.1,
+    "deepest_cm": -0.12
+   },
+   "walk_back": {
+    "slip_pct": 10.3,
+    "deepest_cm": -0.12
+   },
+   "jog_back": {
+    "slip_pct": 5.1,
+    "deepest_cm": -0.15
+   },
+   "strafe_left": {
+    "slip_pct": 6.2,
+    "deepest_cm": -0.18
+   },
+   "strafe_right": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.19
+   },
+   "crouch_walk": {
+    "slip_pct": 3.3,
+    "deepest_cm": -0.35
+   }
+  },
+  "vex": {
+   "walk": {
+    "slip_pct": 4.6,
+    "deepest_cm": -0.71
+   },
+   "jog": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.47
+   },
+   "run": {
+    "slip_pct": 2.2,
+    "deepest_cm": -0.21
+   },
+   "sprint": {
+    "slip_pct": 9.4,
+    "deepest_cm": -0.36
+   },
+   "walk_back": {
+    "slip_pct": 5.3,
+    "deepest_cm": -0.17
+   },
+   "jog_back": {
+    "slip_pct": 6.9,
+    "deepest_cm": -0.12
+   },
+   "strafe_left": {
+    "slip_pct": 4.3,
+    "deepest_cm": -0.18
+   },
+   "strafe_right": {
+    "slip_pct": 4.2,
+    "deepest_cm": -0.08
+   },
+   "crouch_walk": {
+    "slip_pct": 18.2,
+    "deepest_cm": -0.59
+   }
+  },
+  "wren": {
+   "walk": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.47
+   },
+   "jog": {
+    "slip_pct": 2.6,
+    "deepest_cm": -0.28
+   },
+   "run": {
+    "slip_pct": 2.2,
+    "deepest_cm": -0.42
+   },
+   "sprint": {
+    "slip_pct": 4.6,
+    "deepest_cm": -0.11
+   },
+   "walk_back": {
+    "slip_pct": 6.6,
+    "deepest_cm": -0.1
+   },
+   "jog_back": {
+    "slip_pct": 2.8,
+    "deepest_cm": -0.17
+   },
+   "strafe_left": {
+    "slip_pct": 4.6,
+    "deepest_cm": -0.16
+   },
+   "strafe_right": {
+    "slip_pct": 5.3,
+    "deepest_cm": -0.12
+   },
+   "crouch_walk": {
+    "slip_pct": 11.5,
+    "deepest_cm": -0.46
+   }
+  }
+ },
+ "feet_summary": {
+  "median_slip_pct": 3.6,
+  "max_slip_pct": 18.2,
+  "n": 81
+ },
+ "moves": [
+  {
+   "character": "mara",
+   "move": "punch_combo",
+   "label": "Mara · punch combo",
+   "frames": 124,
+   "joints": 0.053,
+   "joints_p90": 0.098,
+   "iou": 0.844,
+   "iou_p10": 0.794,
+   "face": 0.012,
+   "hands": 0.2,
+   "hands_median": 0.18,
+   "palm_facing": 0.968,
+   "pointing_deg": 7.9,
+   "match_cost": 0.168,
+   "image_error_clip": 0.13,
+   "image_error_fit": 0.034,
+   "stage_fit": 0.037,
+   "stage_fbx": 0.06,
+   "stage_rig": 0.056,
+   "stage_render": 0.05,
+   "misread_frames": [],
+   "joints_trusted": 0.05,
+   "roundtrip_cm": 2.86,
+   "iou_refine_clip": 0.8,
+   "iou_refine_refined": 0.862,
+   "worst_elbow_deg": 149.3,
+   "worst_knee_deg": 63.3
+  },
+  {
+   "character": "mara",
+   "move": "roundhouse_kick",
+   "label": "Mara · roundhouse kick",
+   "frames": 124,
+   "joints": 0.069,
+   "joints_p90": 0.117,
+   "iou": 0.83,
+   "iou_p10": 0.643,
+   "face": 0.013,
+   "hands": 0.14,
+   "hands_median": 0.12,
+   "palm_facing": 1.0,
+   "pointing_deg": 5.2,
+   "match_cost": 0.255,
+   "image_error_clip": 0.197,
+   "image_error_fit": 0.04,
+   "stage_fit": 0.039,
+   "stage_fbx": 0.068,
+   "stage_rig": 0.076,
+   "stage_render": 0.071,
+   "misread_frames": [
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67
+   ],
+   "joints_trusted": 0.049,
+   "roundtrip_cm": 3.94,
+   "iou_refine_clip": 0.773,
+   "iou_refine_refined": 0.864,
+   "worst_elbow_deg": 150.2,
+   "worst_knee_deg": 119.3
+  },
+  {
+   "character": "aoi",
+   "move": "spell_cast",
+   "label": "Aoi · spell cast",
+   "frames": 124,
+   "joints": 0.118,
+   "joints_p90": 0.233,
+   "iou": 0.771,
+   "iou_p10": 0.718,
+   "face": 0.032,
+   "hands": 0.33,
+   "hands_median": 0.17,
+   "palm_facing": 0.945,
+   "pointing_deg": 18.7,
+   "match_cost": 0.306,
+   "image_error_clip": 0.213,
+   "image_error_fit": 0.034,
+   "stage_fit": 0.039,
+   "stage_fbx": 0.1,
+   "stage_rig": 0.125,
+   "stage_render": 0.122,
+   "misread_frames": [],
+   "joints_trusted": 0.122,
+   "roundtrip_cm": 5.11,
+   "iou_refine_clip": 0.696,
+   "iou_refine_refined": 0.823,
+   "worst_elbow_deg": 150.6,
+   "worst_knee_deg": 59.2
+  },
+  {
+   "character": "pip",
+   "move": "victory_cheer",
+   "label": "Pip · victory cheer",
+   "frames": 124,
+   "joints": 0.069,
+   "joints_p90": 0.136,
+   "iou": 0.817,
+   "iou_p10": 0.783,
+   "face": 0.02,
+   "hands": 0.2,
+   "hands_median": 0.19,
+   "palm_facing": 0.993,
+   "pointing_deg": 5.6,
+   "match_cost": 0.263,
+   "image_error_clip": 0.152,
+   "image_error_fit": 0.041,
+   "stage_fit": 0.045,
+   "stage_fbx": 0.091,
+   "stage_rig": 0.055,
+   "stage_render": 0.07,
+   "misread_frames": [],
+   "joints_trusted": 0.07,
+   "roundtrip_cm": 3.97,
+   "iou_refine_clip": 0.784,
+   "iou_refine_refined": 0.849,
+   "worst_elbow_deg": 130.3,
+   "worst_knee_deg": 90.1
+  }
+ ],
+ "fit_selftest": {
+  "in_library": {
+   "tests": 40,
+   "top1": 0.675,
+   "top1_or_tie": 1.0,
+   "angle_error_deg_median": 5.4,
+   "pose_error_capture": 0.031,
+   "pose_error_fit_gated": 0.024
+  },
+  "left_out": {
+   "tests": 40,
+   "top1": 0.675,
+   "top1_or_tie": 1.0,
+   "angle_error_deg_median": 5.4,
+   "pose_error_capture": 0.269,
+   "pose_error_fit_gated": 0.212
+  },
+  "capture_lengths_in_library": {
+   "tests": 40,
+   "top1": 0.675,
+   "top1_or_tie": 1.0,
+   "angle_error_deg_median": 5.4,
+   "pose_error_capture": 0.031,
+   "pose_error_fit_gated": 0.025
+  },
+  "capture_lengths_left_out": {
+   "tests": 40,
+   "top1": 0.675,
+   "top1_or_tie": 1.0,
+   "angle_error_deg_median": 5.4,
+   "pose_error_capture": 0.269,
+   "pose_error_fit_gated": 0.189
+  },
+  "body_in_library": {
+   "tests": 40,
+   "top1": 0.65,
+   "top1_or_tie": 0.95,
+   "angle_error_deg_median": 4.5,
+   "pose_error_capture": 0.132,
+   "pose_error_fit_gated": 0.129
+  },
+  "body_left_out": {
+   "tests": 40,
+   "top1": 0.65,
+   "top1_or_tie": 0.95,
+   "angle_error_deg_median": 4.5,
+   "pose_error_capture": 0.324,
+   "pose_error_fit_gated": 0.259
+  },
+  "capture_lengths_body_in_library": {
+   "tests": 40,
+   "top1": 0.65,
+   "top1_or_tie": 0.95,
+   "angle_error_deg_median": 4.5,
+   "pose_error_capture": 0.132,
+   "pose_error_fit_gated": 0.216
+  },
+  "capture_lengths_body_left_out": {
+   "tests": 40,
+   "top1": 0.65,
+   "top1_or_tie": 0.95,
+   "angle_error_deg_median": 4.5,
+   "pose_error_capture": 0.324,
+   "pose_error_fit_gated": 0.311
+  }
+ },
+ "image_models": [
+  {
+   "character": "mara",
+   "krea2": {
+    "seconds": 250.3,
+    "in_frame": true,
+    "arm_gap": 0.63
+   },
+   "qwen21": {
+    "seconds": 397.2,
+    "in_frame": true,
+    "arm_gap": 0.29
+   }
+  },
+  {
+   "character": "juno3",
+   "krea2": {
+    "seconds": 232.0,
+    "in_frame": true,
+    "arm_gap": 0.67
+   },
+   "qwen21": {
+    "seconds": 355.4,
+    "in_frame": true,
+    "arm_gap": 0.28
+   }
+  },
+  {
+   "character": "rowan",
+   "krea2": {
+    "seconds": 258.7,
+    "in_frame": true,
+    "arm_gap": 0.66
+   },
+   "qwen21": {
+    "seconds": 355.2,
+    "in_frame": true,
+    "arm_gap": 0.3
+   }
+  },
+  {
+   "character": "wren",
+   "krea2": {
+    "seconds": 288.6,
+    "in_frame": false,
+    "arm_gap": 0.72
+   },
+   "qwen21": {
+    "seconds": 355.5,
+    "in_frame": true,
+    "arm_gap": 0.34
+   }
+  },
+  {
+   "character": "aoi",
+   "krea2": {
+    "seconds": 304.1,
+    "in_frame": true,
+    "arm_gap": 0.69
+   },
+   "qwen21": {
+    "seconds": 358.2,
+    "in_frame": true,
+    "arm_gap": 0.33
+   }
+  },
+  {
+   "character": "pip",
+   "krea2": {
+    "seconds": 273.8,
+    "in_frame": true,
+    "arm_gap": 0.61
+   },
+   "qwen21": {
+    "seconds": 364.7,
+    "in_frame": true,
+    "arm_gap": 0.37
+   }
+  }
+ ],
+ "prompt_models": {
+  "gemma2:9b-instruct-q5_K_M": {
+   "score": 20,
+   "of": 20,
+   "secs": 15.0,
+   "errors": 0,
+   "file": "compare_models.json"
+  },
+  "gemma4:e2b": {
+   "score": 19,
+   "of": 20,
+   "secs": 4.8,
+   "errors": 0,
+   "file": "compare_gemma4e4b_gemma4e2b_ministral-38b.json"
+  },
+  "gemma4:e4b": {
+   "score": 19,
+   "of": 20,
+   "secs": 9.2,
+   "errors": 0,
+   "file": "compare_gemma4e4b_gemma4e2b_ministral-38b.json"
+  },
+  "llama3.2:3b": {
+   "score": 19,
+   "of": 20,
+   "secs": 58.3,
+   "errors": 0,
+   "file": "compare_models.json"
+  },
+  "gemma3:4b": {
+   "score": 18,
+   "of": 20,
+   "secs": 7.8,
+   "errors": 0,
+   "file": "compare_models.json"
+  },
+  "qwen2.5vl:7b": {
+   "score": 16,
+   "of": 20,
+   "secs": 14.2,
+   "errors": 0,
+   "file": "compare_models.json"
+  },
+  "qwen2.5:7b": {
+   "score": 15,
+   "of": 20,
+   "secs": 10.2,
+   "errors": 0,
+   "file": "compare_gemma4e4b_gemma4e2b_qwen2.57b_mistral-nemo12b.json"
+  },
+  "ministral-3:8b": {
+   "score": 0,
+   "of": 20,
+   "secs": 0.0,
+   "errors": 5,
+   "file": "compare_gemma4e4b_gemma4e2b_ministral-38b.json"
+  },
+  "mistral-nemo:12b": {
+   "score": 0,
+   "of": 20,
+   "secs": 0.0,
+   "errors": 5,
+   "file": "compare_gemma4e4b_gemma4e2b_qwen2.57b_mistral-nemo12b.json"
+  }
+ },
+ "turntable": {
+  "turntable_mara": {
+   "pass1.glb": {
+    "iou_mean": 0.7751,
+    "by_quarter": {
+     "front": 0.802,
+     "left side": 0.7385,
+     "back": 0.7693,
+     "right side": 0.7636
+    }
+   },
+   "mesh.glb": {
+    "iou_mean": 0.7758,
+    "by_quarter": {
+     "front": 0.7977,
+     "left side": 0.7481,
+     "back": 0.7609,
+     "right side": 0.7683
+    }
+   },
+   "rig.blend": {
+    "iou_mean": 0.7717,
+    "by_quarter": {
+     "front": 0.7847,
+     "left side": 0.732,
+     "back": null,
+     "right side": 0.7637
+    }
+   }
+  },
+  "turntable_mara_heldout": {
+   "pass1.glb": {
+    "iou_mean": 0.778,
+    "by_quarter": {
+     "front": 0.805,
+     "left side": 0.711,
+     "back": 0.7802,
+     "right side": 0.7764
+    }
+   },
+   "mesh.glb": {
+    "iou_mean": 0.7809,
+    "by_quarter": {
+     "front": 0.8024,
+     "left side": 0.7313,
+     "back": 0.7715,
+     "right side": 0.7778
+    }
+   },
+   "mesh_h3views.glb": {
+    "iou_mean": 0.786,
+    "by_quarter": {
+     "front": 0.8176,
+     "left side": 0.7242,
+     "back": 0.7733,
+     "right side": 0.7685
+    }
+   }
+  }
+ },
+ "stage_times": {
+  "hands": {
+   "median_s": 64,
+   "p90_s": 98,
+   "n": 27
+  },
+  "retopo": {
+   "median_s": 62.5,
+   "p90_s": 101,
+   "n": 34
+  },
+  "labels": {
+   "median_s": 1.0,
+   "p90_s": 2,
+   "n": 34
+  },
+  "texclean": {
+   "median_s": 3.0,
+   "p90_s": 3,
+   "n": 32
+  },
+  "texture": {
+   "median_s": 298.0,
+   "p90_s": 587,
+   "n": 34
+  },
+  "weights": {
+   "median_s": 5.0,
+   "p90_s": 8,
+   "n": 34
+  },
+  "rig": {
+   "median_s": 2,
+   "p90_s": 3,
+   "n": 43
+  },
+  "springs": {
+   "median_s": 1,
+   "p90_s": 1,
+   "n": 41
+  },
+  "frame": {
+   "median_s": 1,
+   "p90_s": 1,
+   "n": 43
+  },
+  "tpose": {
+   "median_s": 1,
+   "p90_s": 1,
+   "n": 43
+  },
+  "face": {
+   "median_s": 8,
+   "p90_s": 16,
+   "n": 43
+  },
+  "animate": {
+   "median_s": 46,
+   "p90_s": 97,
+   "n": 57
+  },
+  "refine": {
+   "median_s": 0,
+   "p90_s": 461,
+   "n": 53
+  },
+  "package": {
+   "median_s": 12.0,
+   "p90_s": 23,
+   "n": 54
+  },
+  "web": {
+   "median_s": 13,
+   "p90_s": 28,
+   "n": 53
+  },
+  "reference": {
+   "median_s": 481,
+   "p90_s": 1348,
+   "n": 9
+  },
+  "generate": {
+   "median_s": 469,
+   "p90_s": 1159,
+   "n": 11
+  },
+  "multiview": {
+   "median_s": 969,
+   "p90_s": 1438,
+   "n": 11
+  },
+  "views": {
+   "median_s": 5.0,
+   "p90_s": 7,
+   "n": 12
+  },
+  "parts": {
+   "median_s": 8.0,
+   "p90_s": 12,
+   "n": 12
+  },
+  "skeleton": {
+   "median_s": 5.0,
+   "p90_s": 7,
+   "n": 12
+  },
+  "solidify": {
+   "median_s": 18,
+   "p90_s": 22,
+   "n": 11
+  },
+  "joints": {
+   "median_s": 3.0,
+   "p90_s": 4,
+   "n": 12
+  },
+  "smooth": {
+   "median_s": 1.0,
+   "p90_s": 1,
+   "n": 2
+  }
+ }
+}

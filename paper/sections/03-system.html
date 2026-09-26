@@ -1,0 +1,51 @@
+<section>
+<h2 id="sec-system">System overview</h2>
+<p>CharForge has two lanes that share one skeleton ([#fig-pipeline]). The <b>character lane</b> (<code>charforge.py
+  make</code>, 23 stages) builds a character once, from a prompt or an image. The <b>move lane</b> (<code>charforge.py
+  move</code>) adds a move from a generated video to any character; because every clip it produces is on the standard
+  Mixamo skeleton, one video serves every character. Both lanes are Python and headless Blender [@blender] around
+  local models: an image model for the reference [@qwenimage2], TRELLIS.2 [@trellis2] through its MLX port
+  [@trellis2mlx] for the 3D model, a human parser [@segformer] for part labels, ViTPose [@vitpose] and DWPose
+  [@dwpose] for pose, U<sup>2</sup>-Net [@u2net] for cut-outs, a small language model [@gemma] for prompts, and a
+  reference-to-video model [@h3] through ComfyUI [@comfyui]. A browser application, the Studio, runs the same stages
+  for a user without the command line ([#fig-studio-new]).</p>
+
+<figure id="fig-pipeline">
+  <div class="pipeline">
+    <div class="lane"><h4>Character lane · <code>charforge.py make</code></h4><ol>
+      <li><b>Prompt, written out</b>a local model fills age, build, skin, hair, face and each garment <code>describe</code></li>
+      <li><b>Reference image</b>A-pose, cut out, arms checked <code>reference</code></li>
+      <li><b>3D model</b>TRELLIS.2, checked from the front; second pass on side and back views <code>generate · multiview</code></li>
+      <li><b>Parts and joints</b>orbit renders, human parser, joints traced to limb centre lines <code>views · parts · skeleton · joints</code></li>
+      <li><b>Solid and hands</b>one closed solid; arms cut free; modelled hands <code>solidify · hands</code></li>
+      <li><b>Mesh and texture</b>60k triangles, baked PBR; the reference projected back, the face in detail <code>retopo · texclean · texture</code></li>
+      <li><b>Rig</b>weights through the body, finger bones, springs, metres, T-pose <code>weights · rig · springs · frame · tpose</code></li>
+      <li><b>Face</b>jaw and five shapes where eyes and mouth are found <code>face</code></li>
+      <li><b>18 clips, package</b>captures retargeted with planted feet; glTF, FBX, LODs, manifest <code>animate · package · web</code></li>
+    </ol></div>
+    <div class="lane"><h4>Move lane · <code>charforge.py move</code></h4><ol>
+      <li><b>Write the move</b>timed beats in the video model's prompt format</li>
+      <li><b>Generate the video</b>the character's reference in, 5 s of it performing the move out</li>
+      <li><b>Read the pose</b>figure cut out of each frame; 17 body points, 21 a hand</li>
+      <li><b>Nearest capture</b>dynamic time warping over 2,453 clips and 16 camera angles</li>
+      <li><b>Fit</b>each bone bent toward the video on the video's own body</li>
+      <li><b>Retarget and aim</b>onto the character's rig, its limbs aimed along the fit</li>
+      <li><b>Refine</b>the skinned mesh optimised until silhouette, joints, face and hands lie on the video; feet on its floor</li>
+    </ol></div>
+  </div>
+  <figcaption>The two lanes. The character lane runs once per character; the move lane runs once per move and
+    retargets onto any character.</figcaption>
+</figure>
+
+<p><b>Where the time goes.</b> [#tab-times] gives the median time of each stage over every build logged on this machine.
+  Four stages - the second, multi-view 3D pass, the reference image, the first 3D pass and the texture projection with
+  its detailed face - take {{stage.top4.min}} of the {{stage.total.min}} minutes; everything that turns the generated
+  mesh into a rigged, animated character takes under five. The times include any wait for the GPU while another job
+  held it ([#sec-m-runtime]), so they are what a user waited, not each stage's own cost; timing
+  each stage alone, and cutting what the measurements say is not worth its time, is experiment [E106].</p>
+<figure id="tab-times">
+  <div class="tscroll"><!--TABLE:times--></div>
+  <figcaption>Stage times over every logged build (the <i>builds</i> column; a rebuild from a stage times only the
+    stages it runs). <code>refine</code> is zero for characters without moves from video.</figcaption>
+</figure>
+</section>

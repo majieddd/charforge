@@ -4,6 +4,12 @@ This is the master list: what is being worked on, what is done, and what was tri
 It is the first place to look before starting anything, because several obvious-looking ideas
 have already been measured and are worse than what is shipped.
 
+**Experiments are tracked in [`research/experiments.json`](research/experiments.json)** (rendered as
+[`research/TRACKER.md`](research/TRACKER.md) and Appendix A of the [paper](https://majieddd.github.io/charforge/paper/)).
+Add an entry - question, method, metric - before running something; fill in its result and decision after; then
+`python paper/collect.py && python paper/build.py`, and commit code, data and paper together. The list below is the
+history the tracker was seeded from.
+
 **The rule of this project: a change lands with a number.** Every claim below is backed by a
 script in this repository that you can re-run. "Looks better" is not a result; the deformation
 audit and a full-resolution render are.

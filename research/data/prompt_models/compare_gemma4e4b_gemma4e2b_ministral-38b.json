@@ -1,0 +1,288 @@
+{
+ "gemma4:e4b": {
+  "score": 19,
+  "of": 20,
+  "secs": 9.2,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "secs": 11.6,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "a young boy scout, slight and energetic, fair skin, short brown hair, bright blue eyes and a smudge of dirt on the cheek, wearing a forest green short-sleeved shirt, khaki cargo shorts and brown lace-up boots, with a red neckerchief and a brown leather belt",
+    "fields": {
+     "who": "a young boy scout",
+     "age": "child",
+     "build": "slight and energetic",
+     "skin": "fair skin",
+     "hair": "short brown hair",
+     "face": "bright blue eyes and a smudge of dirt on the cheek",
+     "top": "a forest green short-sleeved shirt",
+     "bottom": "khaki cargo shorts",
+     "shoes": "brown lace-up boots",
+     "extras": [
+      "a red neckerchief",
+      "a brown leather belt"
+     ],
+     "height_m": 1.35
+    }
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "secs": 8.6,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "an adult muscular alien, extremely massive and powerfully built, smooth, pale grey skin, bald, chiseled jawline and deep-set black eyes, wearing a tight, dark blue chest harness, dark charcoal grey fitted trousers and heavy black boots, with a thick silver belt and dark blue wristbands",
+    "fields": {
+     "who": "an adult muscular alien",
+     "age": "adult",
+     "build": "extremely massive and powerfully built",
+     "skin": "smooth, pale grey skin",
+     "hair": "bald",
+     "face": "chiseled jawline and deep-set black eyes",
+     "top": "a tight, dark blue chest harness",
+     "bottom": "dark charcoal grey fitted trousers",
+     "shoes": "heavy black boots",
+     "extras": [
+      "a thick silver belt",
+      "dark blue wristbands"
+     ],
+     "height_m": 2.1
+    }
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "secs": 8.7,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": false,
+    "bald_wrong": false,
+    "text": "an adult knight in steel armor, muscular and broad-shouldered, pale flesh visible at joints, short brown hair, determined jawline and faint battle scars, wearing a steel breastplate with gold trim, steel greaves over dark blue breeches and steel sabatons, with a crimson sash and a silver pauldront",
+    "fields": {
+     "who": "an adult knight in steel armor",
+     "age": "adult",
+     "build": "muscular and broad-shouldered",
+     "skin": "pale flesh visible at joints",
+     "hair": "short brown hair",
+     "face": "determined jawline and faint battle scars",
+     "top": "a steel breastplate with gold trim",
+     "bottom": "steel greaves over dark blue breeches",
+     "shoes": "steel sabatons",
+     "extras": [
+      "a crimson sash",
+      "a silver pauldront"
+     ],
+     "height_m": 1.85
+    }
+   },
+   {
+    "prompt": "a witch",
+    "secs": 9.0,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "an adult witch, slender and slightly hunched, pale, ashen skin, wild, tangled silver braids hair, deep purple eyeshadow and sharp cheekbones, wearing a deep violet velvet bodice, forest green velvet skirt and tall black leather boots, with a silver pentacle pendant and a thin black belt",
+    "fields": {
+     "who": "an adult witch",
+     "age": "adult",
+     "build": "slender and slightly hunched",
+     "skin": "pale, ashen skin",
+     "hair": "wild, tangled silver braids",
+     "face": "deep purple eyeshadow and sharp cheekbones",
+     "top": "a deep violet velvet bodice",
+     "bottom": "forest green velvet skirt",
+     "shoes": "tall black leather boots",
+     "extras": [
+      "a silver pentacle pendant",
+      "a thin black belt"
+     ],
+     "height_m": 1.68
+    }
+   },
+   {
+    "prompt": "a robot chef",
+    "secs": 8.1,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "an adult robot chef, boxy and functional, brushed aluminum plating, bald, glowing blue optical sensors and a small grill vent, wearing a white apron over a silver jumpsuit, dark grey utility trousers and red segmented boots, with a copper piping belt and a small digital display patch",
+    "fields": {
+     "who": "an adult robot chef",
+     "age": "adult",
+     "build": "boxy and functional",
+     "skin": "brushed aluminum plating",
+     "hair": "none",
+     "face": "glowing blue optical sensors and a small grill vent",
+     "top": "a white apron over a silver jumpsuit",
+     "bottom": "dark grey utility trousers",
+     "shoes": "red segmented boots",
+     "extras": [
+      "a copper piping belt",
+      "a small digital display patch"
+     ],
+     "height_m": 1.65
+    }
+   }
+  ]
+ },
+ "gemma4:e2b": {
+  "score": 19,
+  "of": 20,
+  "secs": 4.8,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "secs": 6.2,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "a boy scout, average and energetic, fair skin, short light brown hair, bright blue eyes and a determined mouth, wearing a green short-sleeved shirt, tan khaki shorts and brown leather boots, with a neckerchief with red and white stripes",
+    "fields": {
+     "who": "a boy scout",
+     "age": "child",
+     "build": "average and energetic",
+     "skin": "fair skin",
+     "hair": "short light brown hair",
+     "face": "bright blue eyes and a determined mouth",
+     "top": "a green short-sleeved shirt",
+     "bottom": "tan khaki shorts",
+     "shoes": "brown leather boots",
+     "extras": [
+      "a neckerchief with red and white stripes"
+     ],
+     "height_m": 1.35
+    }
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "secs": 4.3,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "a muscular gray alien, extremely muscular and broad, smooth, matte gray skin, bald, sharp jawline and intense eyes, wearing a tight crimson sleeveless shirt, dark navy tactical shorts and heavy black combat boots, with a silver harness across the chest",
+    "fields": {
+     "who": "a muscular gray alien",
+     "age": "adult",
+     "build": "extremely muscular and broad",
+     "skin": "smooth, matte gray skin",
+     "hair": "bald",
+     "face": "sharp jawline and intense eyes",
+     "top": "a tight crimson sleeveless shirt",
+     "bottom": "dark navy tactical shorts",
+     "shoes": "heavy black combat boots",
+     "extras": [
+      "a silver harness across the chest"
+     ],
+     "height_m": 2.0
+    }
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "secs": 5.0,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": false,
+    "bald_wrong": false,
+    "text": "a young knight, muscular and broad, fair skin, short, neatly trimmed brown hair, a determined jawline and sharp features, wearing polished steel breastplate with a crimson tunic, dark grey padded trousers and polished steel greaves, with a silver chainmail belt",
+    "fields": {
+     "who": "a young knight",
+     "age": "adult",
+     "build": "muscular and broad",
+     "skin": "fair skin",
+     "hair": "short, neatly trimmed brown hair",
+     "face": "a determined jawline and sharp features",
+     "top": "polished steel breastplate with a crimson tunic",
+     "bottom": "dark grey padded trousers",
+     "shoes": "polished steel greaves",
+     "extras": [
+      "a silver chainmail belt"
+     ],
+     "height_m": 1.85
+    }
+   },
+   {
+    "prompt": "a witch",
+    "secs": 4.2,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "an adult witch, slight and slender, pale grey skin, wild white hair in messy braids, sharp cheekbones and intense blue eyes, wearing a deep purple velvet robe, dark green linen skirt and brown leather boots, with a silver chain necklace",
+    "fields": {
+     "who": "an adult witch",
+     "age": "adult",
+     "build": "slight and slender",
+     "skin": "pale grey skin",
+     "hair": "wild white hair in messy braids",
+     "face": "sharp cheekbones and intense blue eyes",
+     "top": "a deep purple velvet robe",
+     "bottom": "dark green linen skirt",
+     "shoes": "brown leather boots",
+     "extras": [
+      "a silver chain necklace"
+     ],
+     "height_m": 1.65
+    }
+   },
+   {
+    "prompt": "a robot chef",
+    "secs": 4.2,
+    "filled": 8,
+    "banned": false,
+    "distinct_colours": true,
+    "bald_wrong": false,
+    "text": "a robot chef, sturdy and blocky, brushed silver metal, bald, two glowing blue optical sensors and a flat grille, wearing a white chef's jacket with orange piping, dark grey apron and heavy black work boots, with a silver utility belt with small compartments",
+    "fields": {
+     "who": "a robot chef",
+     "age": "adult",
+     "build": "sturdy and blocky",
+     "skin": "brushed silver metal",
+     "hair": "none",
+     "face": "two glowing blue optical sensors and a flat grille",
+     "top": "a white chef's jacket with orange piping",
+     "bottom": "dark grey apron",
+     "shoes": "heavy black work boots",
+     "extras": [
+      "a silver utility belt with small compartments"
+     ],
+     "height_m": 1.85
+    }
+   }
+  ]
+ },
+ "ministral-3:8b": {
+  "score": 0,
+  "of": 20,
+  "secs": 0.0,
+  "rows": [
+   {
+    "prompt": "a boy scout",
+    "error": "timed out"
+   },
+   {
+    "prompt": "Gray Alien That is Extremely Muscular and looks like a gigachad",
+    "error": "timed out"
+   },
+   {
+    "prompt": "a young knight in steel armor",
+    "error": "timed out"
+   },
+   {
+    "prompt": "a witch",
+    "error": "timed out"
+   },
+   {
+    "prompt": "a robot chef",
+    "error": "timed out"
+   }
+  ]
+ }
+}
