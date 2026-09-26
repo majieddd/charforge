@@ -4,6 +4,7 @@ from mathutils import Vector
 av=sys.argv[sys.argv.index("--")+1:]
 blend,clip,outdir,res = av[0],av[1],av[2],int(av[3])
 yaw = float(av[4]) if len(av)>4 else 28.0
+every = int(av[5]) if len(av)>5 else 1          # render every n-th frame (a 60 fps clip against a 24 fps video)
 bpy.ops.wm.open_mainfile(filepath=blend)
 sc=bpy.context.scene
 rig=next(o for o in sc.objects if o.type=="ARMATURE")
@@ -49,7 +50,7 @@ sc.render.resolution_x=res; sc.render.resolution_y=res
 sc.view_settings.view_transform="AgX" if "AgX" in {t.name for t in sc.view_settings.bl_rna.properties['view_transform'].enum_items} else "Standard"
 os.makedirs(outdir,exist_ok=True)
 n=0
-for fr in range(f0,f1+1):
+for fr in range(f0,f1+1,every):
     sc.frame_set(fr); sc.render.filepath=os.path.join(outdir,f"f{n:03d}.png")
     bpy.ops.render.render(write_still=True); n+=1
 print(f"[seq] {n} frames -> {outdir}")

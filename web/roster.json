@@ -1,42 +1,60 @@
 {
-  "release": "v3.0.0",
-  "repo": "majieddd/charforge",
-  "characters": [
-    {
-      "id": "aoi",
-      "name": "Aoi",
-      "blurb": "anime \u00b7 cel-shaded"
-    },
-    {
-      "id": "mara",
-      "name": "Mara",
-      "blurb": "realistic \u00b7 field researcher"
-    },
-    {
-      "id": "pip",
-      "name": "Pip",
-      "blurb": "stylised \u00b7 cartoon courier"
-    },
-    {
-      "id": "juno3",
-      "name": "Juno",
-      "blurb": "red windbreaker"
-    },
-    {
-      "id": "rowan",
-      "name": "Rowan",
-      "blurb": "green bomber"
-    },
-    {
-      "id": "wren",
-      "name": "Wren",
-      "blurb": "leather + satchel"
-    },
-    {
-      "id": "vex",
-      "name": "Vex",
-      "blurb": "from a painting",
-      "prompt": "made from a painted concept image, no prompt"
-    }
-  ]
+ "release": "v3.0.0",
+ "repo": "majieddd/charforge",
+ "characters": [
+  {
+   "id": "aoi",
+   "name": "Aoi",
+   "blurb": "anime · cel-shaded"
+  },
+  {
+   "id": "mara",
+   "name": "Mara",
+   "blurb": "realistic · field researcher"
+  },
+  {
+   "id": "pip",
+   "name": "Pip",
+   "blurb": "stylised · cartoon courier"
+  },
+  {
+   "id": "juno3",
+   "name": "Juno",
+   "blurb": "red windbreaker"
+  },
+  {
+   "id": "rowan",
+   "name": "Rowan",
+   "blurb": "green bomber"
+  },
+  {
+   "id": "wren",
+   "name": "Wren",
+   "blurb": "leather + satchel"
+  },
+  {
+   "id": "vex",
+   "name": "Vex",
+   "blurb": "from a painting",
+   "prompt": "made from a painted concept image, no prompt"
+  },
+  {
+   "id": "knight",
+   "name": "Knight",
+   "blurb": "realistic · plate armour",
+   "released": false
+  },
+  {
+   "id": "kaito",
+   "name": "Kaito",
+   "blurb": "anime · ninja",
+   "released": false
+  },
+  {
+   "id": "bo",
+   "name": "Bo",
+   "blurb": "stylised · cartoon chef",
+   "released": false
+  }
+ ]
 }

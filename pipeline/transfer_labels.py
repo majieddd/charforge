@@ -165,6 +165,13 @@ def main(a):
     out = {"retopo": a.retopo, "source": a.source, "group_ids": gid,
            "vertices": int(len(dv)), "reclassified_from_hair": moved,
            "counts": after, "labels": [int(x) for x in lab]}
+    # the parser's own classes too (top, pants, dress, skirt, ...): the rig tells a jacket from the
+    # trousers under it by them where their colours are too close to (Mara's olive jacket and tan
+    # trousers are 5-6 apart in Lab in her texture)
+    if P.get("class_labels") is not None and len(P["class_labels"]) == len(sv):
+        cls = vote(np.asarray(P["class_labels"])[idx], adj, 2)
+        out["classes"] = [int(x) for x in cls]
+        out["class_names"] = P.get("id2label", {})
     json.dump(out, open(a.out, "w"))
     print(f"[labels] -> {a.out}", flush=True)
 

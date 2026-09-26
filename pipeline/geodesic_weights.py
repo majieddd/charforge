@@ -126,7 +126,12 @@ mesh = trimesh.load(a.mesh, force="mesh", process=False)
 Vgl = np.asarray(mesh.vertices)
 V = np.stack([Vgl[:, 0], -Vgl[:, 2], Vgl[:, 1]], axis=1)
 dv, nv = tree.query(V)
-DV = D[nv] + dv[:, None]
+# The step out to a vertex is capped: a pocket flap or a strap the voxels do not hold (Pip's cargo
+# pockets stood up to 3 cm off the solid) took that whole step onto every bone's distance, which
+# evens them out - the flap's own thigh fell to a third of its weight, the pelvis and the other leg
+# took the rest, and a squat pulled it into a plank. Off the solid a vertex takes its nearest voxel's
+# distances, as a pocket follows the thigh it is sewn to.
+DV = D[nv] + np.minimum(dv, 1.5 * vc)[:, None]
 unreached = ~np.isfinite(DV).any(axis=1)
 if unreached.any():                                   # a vertex whose voxel island has no bone
     eu = np.array([[np.linalg.norm(np.cross(t - h, h - x)) / max(np.linalg.norm(t - h), 1e-9)

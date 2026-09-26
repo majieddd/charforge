@@ -171,6 +171,254 @@ def seg_dist(X, p0, p1):
     return np.linalg.norm(X - (p0 + t * ab), axis=1)
 
 
+# ---- the arm is only the arm, below the armpit ------------------------------------------------------
+# free_arms.py cut each arm free of whatever it was generated against below the armpit - a puffy
+# vest's side, a hip. The geodesic weights still reach across the armhole into what was on the other
+# side of the cut: Pip's vest kept a third of the upper arm's weight down its side, and baking the
+# T-pose alone pulled it into a web from his waist to his elbow. So below the armpit the arm's weight
+# stays on the arm's own surface - everything the mesh reaches from the sleeve's outer side without
+# going back above the armpit, which the cut made a closed piece - and whatever else carried it lets
+# go. A radius round the arm decided "the arm's own surface" first, and took the back of Pip's sleeve
+# (wider front to back than side to side) for vest: it let go of the arm and tore. Before the cut this
+# tore the surface everywhere (REVIEW, Tried and dropped); after it there is nothing to tear, and where
+# a bridge survives the flood crosses it and nothing changes.
+# each vertex's colour, for telling two garments apart where the geometry cannot (below)
+vlab = None
+if a.albedo and os.path.exists(a.albedo) and mesh.data.uv_layers:
+    smp = bpy.data.images.load(os.path.abspath(a.albedo), check_existing=False)
+    smp.scale(1024, 1024)
+    px_ = np.empty(1024 * 1024 * 4, np.float32)
+    smp.pixels.foreach_get(px_)
+    px_ = px_.reshape(1024, 1024, 4)[..., :3]
+    bpy.data.images.remove(smp)
+    luv_ = np.empty(len(mesh.data.loops) * 2)
+    mesh.data.uv_layers.active.data.foreach_get("uv", luv_)
+    lvi_ = np.empty(len(mesh.data.loops), np.int64)
+    mesh.data.loops.foreach_get("vertex_index", lvi_)
+    vuv_ = np.zeros((len(V), 2))
+    vuv_[lvi_] = luv_.reshape(-1, 2)
+    xi_ = np.clip((vuv_[:, 0] * 1024).astype(int), 0, 1023)
+    yi_ = np.clip((vuv_[:, 1] * 1024).astype(int), 0, 1023)
+    rgb_ = np.clip(px_[yi_, xi_], 0, 1).astype(np.float64)
+    lin_ = np.where(rgb_ <= 0.04045, rgb_ / 12.92, ((rgb_ + 0.055) / 1.055) ** 2.4)
+    xyz_ = lin_ @ np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]]).T
+    xyz_ /= np.array([0.95047, 1.0, 1.08883])
+    f_ = np.where(xyz_ > 0.008856, np.cbrt(xyz_), 7.787 * xyz_ + 16 / 116)
+    vlab = np.stack([116 * f_[:, 1] - 16, 500 * (f_[:, 0] - f_[:, 1]), 200 * (f_[:, 1] - f_[:, 2])], 1)
+
+me_ = mesh.data
+ed = np.empty(len(me_.edges) * 2, np.int64)
+me_.edges.foreach_get("vertices", ed)
+ed = ed.reshape(-1, 2)
+# the surface as one piece: the imported mesh is split along every UV seam into islands, and a flood
+# over its edges stopped at the first seam - it left the rest of Pip's sleeve and his hands behind
+_, weld = np.unique(np.round(V, 5), axis=0, return_inverse=True)
+weld = weld.ravel()
+ed = np.unique(np.sort(weld[ed], axis=1), axis=0)
+ed = ed[ed[:, 0] != ed[:, 1]]
+nw = int(weld.max()) + 1
+def smooth_on_surface(val, iters=6):
+    """A per-vertex value averaged over its welded neighbours: a ramp across a seam, not a step."""
+    vw_ = np.zeros(nw); cn_ = np.zeros(nw)
+    np.add.at(vw_, weld, val); np.add.at(cn_, weld, 1)
+    vw_ /= np.maximum(cn_, 1)
+    for _ in range(iters):
+        acc_ = vw_.copy(); c2_ = np.ones(nw)
+        np.add.at(acc_, ed[:, 0], vw_[ed[:, 1]]); np.add.at(acc_, ed[:, 1], vw_[ed[:, 0]])
+        np.add.at(c2_, ed[:, 0], 1); np.add.at(c2_, ed[:, 1], 1)
+        vw_ = acc_ / c2_
+    return vw_[weld]
+
+
+
+SPN = [np.array(J[b]) for b in ("pelvis", "spine1", "spine2", "spine3", "neck") if b in J]
+for side in ("left", "right"):
+    if not all(f"{side}_{b}" in J and f"{side}_{b}" in col for b in ("shoulder", "elbow")):
+        continue
+    S_, E_, W_ = (np.array(J[f"{side}_{b}"]) for b in ("shoulder", "elbow", "wrist"))
+    best_d, best_t, best_c = np.full(n, np.inf), np.zeros(n), np.zeros((n, 3))
+    for p0, p1, t0_ in ((S_, E_, 0.0), (E_, W_, 1.0)):
+        ab = p1 - p0
+        u = np.clip(((V - p0) @ ab) / max(float(ab @ ab), 1e-12), 0, 1)
+        c = p0 + u[:, None] * ab
+        d = np.linalg.norm(V - c, axis=1)
+        better = d < best_d
+        best_d[better], best_t[better], best_c[better] = d[better], t0_ + u[better], c[better]
+    zs = np.array([p[2] for p in SPN])
+    ki = np.clip(np.searchsorted(zs, best_c[:, 2]) - 1, 0, len(SPN) - 2)
+    fz = np.clip((best_c[:, 2] - zs[ki]) / np.maximum(zs[ki + 1] - zs[ki], 1e-9), 0, 1)
+    mid = np.array(SPN)[ki] * (1 - fz)[:, None] + np.array(SPN)[ki + 1] * fz[:, None]
+    ax = np.where((best_t < 1.0)[:, None], E_ - S_, W_ - E_)
+    ax /= np.linalg.norm(ax, axis=1, keepdims=True)
+    rad = V - best_c
+    rad -= (rad * ax).sum(1, keepdims=True) * ax
+    med = mid - best_c
+    med -= (med * ax).sum(1, keepdims=True) * ax
+    cosphi = (rad * med).sum(1) / np.maximum(np.linalg.norm(rad, axis=1) * np.linalg.norm(med, axis=1), 1e-9)
+    r_out = np.median(best_d[(best_t > 0.4) & (best_t < 1.6) & (cosphi < -0.7) & (best_d < 0.2)]) \
+        if ((best_t > 0.4) & (best_t < 1.6) & (cosphi < -0.7) & (best_d < 0.2)).sum() > 20 else 0.08
+    # the region below the armpit, and the arm's surface in it: flooded from the sleeve's outer side
+    # as far down as free_arms.py cuts: past it the cuff can still touch a pocket, and the flood went down
+    # the sleeve, across the pocket and up the vest's side. And from a little below where the cut opens
+    # (0.25 of the upper arm), not from the opening itself: there the sleeve and the vest are still one
+    # surface, and the flood walked onto the vest's side on both of Pip's arms - the left let go of
+    # nothing, the right of 5 vertices, and raising his arms lifted the whole vest. From 0.30 the flood
+    # stays on the arm, and 556 and 854 vertices of the vest let go.
+    region = (best_t >= 0.30) & (best_t <= 1.7) & (best_d < 4 * r_out)
+    seed = region & (best_t > 0.4) & (best_t < 1.6) & (cosphi < -0.6) & (best_d < 1.4 * r_out)
+    reg_w = np.zeros(nw, bool)
+    reg_w[weld[region]] = True
+    on_w = np.zeros(nw, bool)
+    on_w[weld[seed]] = True
+    ok_e = reg_w[ed[:, 0]] & reg_w[ed[:, 1]]
+    ea, eb2 = ed[ok_e, 0], ed[ok_e, 1]
+    for _ in range(4000):
+        grow = np.zeros(nw, bool)
+        grow[eb2[on_w[ea] & ~on_w[eb2]]] = True
+        grow[ea[on_w[eb2] & ~on_w[ea]]] = True
+        if not grow.any():
+            break
+        on_w |= grow
+    on_arm = on_w[weld]
+    if os.environ.get("CF_DEBUG_ARMS"):
+        np.savez(os.environ["CF_DEBUG_ARMS"] + f"_{side}.npz", V=V, weld=weld, ed=ed, t=best_t, d=best_d,
+                 cosphi=cosphi, r_out=r_out, seed=seed, region=region, on_arm=on_arm)
+    arm_cols = [col[f"{side}_{b}"] for b in ("shoulder", "elbow", "wrist") if f"{side}_{b}" in col]
+    # The armhole. Round the shoulder a vest's armhole is the arm's surface - the sleeve goes in under
+    # it and the solid has only the outside - so it takes half the arm's weight as any shoulder does,
+    # and raising the arms lifted Pip's vest into flaps. No distance tells the vest from the sleeve
+    # there; their colours can: where the torso's garment beside the arm and the sleeve differ, what is
+    # the torso's garment round the shoulder moves with the collarbone instead of the arm. Below the
+    # armpit, where the flood above reached the vest's side through what the cut left joined (both of
+    # Pip's arms: nothing let go on the left), the same colour lets go of it past the arm's radius.
+    # One colour for both - a jacket - and nothing here changes.
+    vest_s = None
+    if vlab is not None:
+        sl_m = (best_t > 0.5) & (best_t < 0.9) & (cosphi < -0.3) & (best_d < 1.4 * r_out)
+        to_m = (best_t > 0.3) & (best_t < 0.7) & (cosphi > 0.3) & (best_d > 1.6 * r_out) & (best_d < 3.5 * r_out)
+        if sl_m.sum() > 50 and to_m.sum() > 50:
+            c_sl, c_to = np.median(vlab[sl_m], 0), np.median(vlab[to_m], 0)
+            gap_c = float(np.linalg.norm(c_sl - c_to))
+            if gap_c > 20:
+                vest = np.clip((np.linalg.norm(vlab - c_sl, axis=1) - np.linalg.norm(vlab - c_to, axis=1)) / gap_c
+                               + 0.5, 0, 1)
+                vest_s = smooth_on_surface(vest)
+                band = np.clip(best_t / 0.05, 0, 1) * np.clip((0.4 - best_t) / 0.1, 0, 1) * (best_d < 2.5 * r_out)
+                rel = np.clip((vest_s - 0.35) / 0.3, 0, 1) * band
+                aw_ = W[:, arm_cols].sum(1)
+                mv_ = (rel > 0) & (aw_ > 1e-4)
+                if mv_.any():
+                    to_col = col.get(f"{side}_collar", col.get("spine3", 0))
+                    moved = W[np.ix_(mv_, arm_cols)] * rel[mv_, None]
+                    W[np.ix_(mv_, arm_cols)] -= moved
+                    W[mv_, to_col] += moved.sum(1)
+                print(f"[rig] {side} armhole: the torso's garment {tuple(int(x) for x in c_to)} and the sleeve "
+                      f"{tuple(int(x) for x in c_sl)} (Lab, {gap_c:.0f} apart): {int((mv_ & (rel > 0.5)).sum()):,} "
+                      f"vertices round the shoulder moved from the arm to the collarbone", flush=True)
+            else:
+                print(f"[rig] {side} armhole: sleeve and torso the same colour ({gap_c:.0f} apart) - left as weighted",
+                      flush=True)
+    # from just inside where the cut starts (0.25 of the upper arm): above it the vest and the arm are
+    # still one surface
+    f = np.clip((best_t - 0.28) / 0.08, 0, 1) * np.clip((1.7 - best_t) / 0.1, 0, 1)   # the wrist and hand have rules of their own
+    f = f * f * (3 - 2 * f)
+    before_ = W[:, arm_cols].sum(1)
+    hit = region & ~on_arm & (f > 0) & (before_ > 1e-4)
+    leaked = int((on_arm & (best_d > 2.2 * r_out) & (cosphi > 0.3)).sum())
+    if not hit.any():
+        print(f"[rig] {side} arm: nothing beyond it below the armpit carries its weight", flush=True)
+        continue
+    W[np.ix_(hit, arm_cols)] *= (1 - f[hit])[:, None]
+    lost = W[hit].sum(1) < 1e-4                                         # nothing left: the chest carries it
+    if lost.any():
+        W[np.nonzero(hit)[0][lost], col["spine3"] if "spine3" in col else 0] = 1.0
+    print(f"[rig] {side} arm: its own surface below the armpit {int(on_arm.sum()):,} vertices; "
+          f"{int((hit & (f > 0.5)).sum()):,} beyond it let go of the arm"
+          + (f" ({leaked} reached across a surviving bridge)" if leaked else ""), flush=True)
+
+
+# ---- the hem: a jacket over trousers does not follow the thighs --------------------------------------
+# The weights reach from the thighs up over the hips into whatever hangs there: the lowest part of Pip's
+# vest carried half its weight on the thighs (median 0.50, up to 0.70), and spreading the legs in a
+# jump pulled its hem into a W; Juno's and Wren's jackets wrapped round their thighs in a squat. The
+# upper garment's surface near the hips follows the pelvis instead, so the hem is where the stretch
+# goes. Which surface is the upper garment is its colour - the torso's colours against the upper
+# thighs' - and where those are the same (one colour head to foot, or skin above and below) nothing
+# here changes.
+def lab_clusters(X, k=3, iters=8):
+    """Up to k colours that each cover a tenth of X, by k-means."""
+    if len(X) < k * 10:
+        return X.mean(0, keepdims=True)
+    X = X[:: max(1, len(X) // 4000)]
+    C = X[np.linspace(0, len(X) - 1, k).astype(int)].copy()
+    for _ in range(iters):
+        lb = np.argmin(((X[:, None, :] - C[None]) ** 2).sum(-1), 1)
+        C = np.array([X[lb == j].mean(0) if (lb == j).any() else C[j] for j in range(k)])
+    share = np.bincount(lb, minlength=k) / len(X)
+    return C[share > 0.1]
+
+
+leg_names = [b for b in ("left_hip", "right_hip", "left_knee", "right_knee") if b in col]
+if vlab is not None and len(leg_names) == 4 and all(b in J for b in ("left_hip", "right_hip", "left_knee",
+                                                                         "right_knee", "spine1", "spine3")):
+    legc = [col[b] for b in leg_names]
+    armc = [col[b] for b in col if b.startswith(("left_", "right_"))
+            and not b.endswith(("_hip", "_knee", "_ankle", "_foot", "_toe"))]
+    z_hip = float(J["left_hip"][2] + J["right_hip"][2]) / 2
+    z_knee = float(J["left_knee"][2] + J["right_knee"][2]) / 2
+    z_s1, z_s3 = float(J["spine1"][2]), float(J["spine3"][2])
+    lw_ = W[:, legc].sum(1)
+    aw_ = W[:, armc].sum(1) if armc else np.zeros(n)
+    up_band = (V[:, 2] > z_s1) & (V[:, 2] < z_s3) & (aw_ < 0.2) & (lw_ < 0.05)
+    lo_band = (V[:, 2] > z_knee + 0.3 * (z_hip - z_knee)) & (V[:, 2] < z_hip - 0.05 * (z_hip - z_knee)) & (lw_ > 0.7)
+    y_hip = float(J["left_hip"][1] + J["right_hip"][1]) / 2
+
+    def seat(rel_, upper_s_):
+        """A long jacket rides on the seat: behind the hip joints and more than 0.15 of the way from them to
+        the knees, the garment keeps most of the thighs' pull - let go, it stayed with the pelvis while the
+        seat dropped with the thighs, and the stretch between showed the hem's pale underside (Mara, Juno
+        and Rowan crouching). Pip's vest ends 0.12 of the way down and lets go all over. (Measuring how far
+        each garment reaches failed: colour took in Pip's shorts, the parser gave the back of Mara's jacket
+        to her trousers.)"""
+        L_ = z_hip - z_knee
+        s_back = np.clip((V[:, 1] - y_hip) / 0.03 + 0.5, 0, 1)            # the front is -y
+        s_below = np.clip((z_hip - 0.15 * L_ - V[:, 2]) / (0.1 * L_), 0, 1)
+        k_ = s_back * s_below
+        return rel_ * (1 - 0.8 * k_), bool(((k_ > 0.5) & (rel_ > 0)).any())
+
+    # (The human parser's own classes - "top" over "pants" - were tried first and dropped: it gave the
+    # back of Mara's, Juno's and Rowan's jackets to their trousers, the rule split each jacket across
+    # the seat, and crouching stretched it into a pale band.)
+    if up_band.sum() > 200 and lo_band.sum() > 200:
+        Cu, Cl = lab_clusters(vlab[up_band]), lab_clusters(vlab[lo_band])
+        # a colour both have (skin above and below, one fabric throughout) tells nothing: left out of both
+        shared_u = np.array([np.linalg.norm(Cl - c, axis=1).min() < 15 for c in Cu])
+        shared_l = np.array([np.linalg.norm(Cu - c, axis=1).min() < 15 for c in Cl])
+        Cu_, Cl_ = Cu[~shared_u], Cl[~shared_l]
+        if len(Cu_) and len(Cl_):
+            gap_h = float(min(np.linalg.norm(Cl_ - c, axis=1).min() for c in Cu_))
+            du_ = np.min(np.linalg.norm(vlab[:, None, :] - Cu_[None], axis=2), 1)
+            dl_ = np.min(np.linalg.norm(vlab[:, None, :] - np.vstack([Cl_, Cu[shared_u]])[None], axis=2), 1)
+            upper_s = smooth_on_surface(np.clip((dl_ - du_) / max(gap_h, 1e-6) + 0.5, 0, 1))
+            zb = np.clip((V[:, 2] - (z_knee + 0.55 * (z_hip - z_knee))) / (0.15 * (z_hip - z_knee)), 0, 1) \
+                * (V[:, 2] < z_s1)
+            rel = np.clip((upper_s - 0.6) / 0.25, 0, 1) * zb * (aw_ < 0.5)
+            rel, long_ = seat(rel, upper_s)
+            hit_h = (rel > 0) & (lw_ > 1e-4)
+            if hit_h.any():
+                moved = W[np.ix_(hit_h, legc)] * rel[hit_h, None]
+                W[np.ix_(hit_h, legc)] -= moved
+                W[hit_h, col["pelvis"] if "pelvis" in col else 0] += moved.sum(1)
+            fmt = lambda C_: "/".join(f"({int(c[0])},{int(c[1])},{int(c[2])})" for c in C_)
+            print(f"[rig] hem: the torso's garment {fmt(Cu_)} over {fmt(Cl_)} (Lab, {gap_h:.0f} apart): "
+                  f"{int((hit_h & (rel > 0.5)).sum()):,} vertices near the hips let go of the thighs"
+                  + (" (below the seat line it still rides on the seat)" if long_ else ""), flush=True)
+        else:
+            fmt0 = lambda C_: "/".join(f"({int(c[0])},{int(c[1])},{int(c[2])})" for c in C_)
+            print(f"[rig] hem: the torso {fmt0(Cu)} and the thighs {fmt0(Cl)} share their colours - left as weighted",
+                  flush=True)
+
+
 for side, hd in hands.items():
     C = (np.array(hd["wrist"]) - ctr) * k
     L = float(hd["length"]) * k
@@ -186,7 +434,9 @@ for side, hd in hands.items():
         fr = hd["frame"]
         B = np.stack([fr["x"], fr["y"], fr["z"]], axis=1) * L
         q = np.linalg.solve(B, (V[region] - C).T).T                  # unit hand frame (mirror included)
-        dh, _ = hand_model.sdf(q, wrist_r=tuple(hd.get("wrist_radius", (0.15, 0.10))))
+        b_ = float(hd.get("bulk", 1.0))
+        dh, _ = hand_model.sdf(q * np.array([1.0, 1.0 / b_, 1.0 / b_]), wrist_r=tuple(hd.get("wrist_radius", (0.15, 0.10))))
+        dh = dh * b_
         keep_ = dh < 0.035
         idx_ = np.nonzero(region)[0]
         region = np.zeros(n, bool)
@@ -228,6 +478,41 @@ if a.labels and os.path.exists(a.labels):
     lab = np.asarray(Lj["labels"])
     acc = lab == Lj["group_ids"].get("accessory", -1)
     if len(lab) == n and acc.any():
+        # ...but only what hangs from the body. A piece sewn onto a leg - Pip's cargo pocket, labelled an
+        # accessory - bound to the torso stayed behind when the thigh swung and stretched into a plank.
+        # Bags hang from above the hips (Wren's satchel's top 0.22 of her height above the hip joints,
+        # Vex's the same); a pocket sits wholly below them, so a piece whose top is below the hip
+        # joints keeps its leg's weights.
+        _, wld = np.unique(np.round(V, 5), axis=0, return_inverse=True)
+        wld = wld.ravel()
+        acc_w = np.zeros(int(wld.max()) + 1, bool)
+        acc_w[wld[acc]] = True
+        me0 = mesh.data
+        e0 = np.empty(len(me0.edges) * 2, np.int64)
+        me0.edges.foreach_get("vertices", e0)
+        e0 = wld[e0.reshape(-1, 2)]
+        e0 = e0[(e0[:, 0] != e0[:, 1]) & acc_w[e0[:, 0]] & acc_w[e0[:, 1]]]
+        parent_ = np.arange(len(acc_w))
+
+        def root(x):
+            while parent_[x] != x:
+                parent_[x] = parent_[parent_[x]]
+                x = parent_[x]
+            return x
+        for i_, j_ in e0:
+            ri, rj = root(i_), root(j_)
+            if ri != rj:
+                parent_[ri] = rj
+        comp = np.array([root(x) for x in wld])
+        z_hip = (J["left_hip"][2] + J["right_hip"][2]) / 2 if "left_hip" in J and "right_hip" in J else -1e9
+        on_leg = np.zeros(n, bool)
+        for c_ in np.unique(comp[acc]):
+            vv = np.nonzero(acc & (comp == c_))[0]
+            if V[vv, 2].max() < z_hip - 0.02 * 2.0:
+                on_leg[vv] = True
+        if on_leg.any():
+            print(f"[rig] {int(on_leg.sum()):,} accessory vertices below the hip joints left on their leg (a pocket, not a bag)", flush=True)
+        acc = acc & ~on_leg
         torso = [col[b] for b in ("pelvis", "spine1", "spine2", "spine3", "neck", "left_collar", "right_collar")
                  if b in col]
         Wt_ = W[acc][:, torso]
@@ -376,6 +661,49 @@ for s0 in np.where(low_v)[0]:
     W[np.ix_(piece, [col[b] for b in legset[oth]])] = 0.0
     split += 1
 print(f"[rig] {split} leg pieces below mid-thigh bound to their own leg", flush=True)
+
+# ---- loose pieces ride with the body part they sit on ------------------------------------------
+# A piece of the mesh not joined to the body - Kaito's sandal soles, a hair spike, a button - has no
+# path through the body for the weights to follow, and was left behind: his soles stayed on the floor
+# when he jumped. Each rides rigidly with the body part nearest it (the weights of the body vertex
+# closest to it). The modelled hands are pieces of their own and have their own rule, left alone.
+from mathutils.kdtree import KDTree as _KD                         # Blender's Python has no scipy
+lab_w = np.arange(nw)
+while True:                                   # connected pieces: labels spread over the welded edges
+    m_ = np.minimum(lab_w[ed[:, 0]], lab_w[ed[:, 1]])
+    nxt = lab_w.copy()
+    np.minimum.at(nxt, ed[:, 0], m_)
+    np.minimum.at(nxt, ed[:, 1], m_)
+    nxt = nxt[nxt]
+    if np.array_equal(nxt, lab_w):
+        break
+    lab_w = nxt
+_, lab_w = np.unique(lab_w, return_inverse=True)
+_nc = int(lab_w.max()) + 1
+lab_v = lab_w[weld]
+sizes_ = np.bincount(lab_v, minlength=_nc)
+main_ = int(np.argmax(sizes_))
+finger_cols = [col[b] for b in col if any(f in b for f in FINGERS)]
+body_v = np.nonzero(lab_v == main_)[0]
+moved_p = moved_v = 0
+if len(body_v) and _nc > 1:
+    kd_ = _KD(len(body_v))
+    for i_, v_ in enumerate(V[body_v]):
+        kd_.insert(v_.tolist(), i_)
+    kd_.balance()
+    for c_ in range(_nc):
+        if c_ == main_:
+            continue
+        piece = np.nonzero(lab_v == c_)[0]
+        if not len(piece) or (finger_cols and W[np.ix_(piece, finger_cols)].sum() > 1e-3):
+            continue                                                   # a modelled hand
+        best_ = min((kd_.find(v_.tolist()) for v_ in V[piece]), key=lambda r_: r_[2])
+        src_ = body_v[best_[1]]
+        W[piece] = W[src_][None, :]
+        moved_p += 1
+        moved_v += len(piece)
+if moved_p:
+    print(f"[rig] {moved_p} loose pieces ({moved_v:,} vertices) ride with the body part nearest each", flush=True)
 
 # keep the strongest few, renormalise, write the groups
 kmax = a.max_influences

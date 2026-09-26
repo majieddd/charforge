@@ -108,8 +108,10 @@ def main(a):
             art_glb.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run([_sys.executable, str(ROOT / "tools" / "optimize_glb.py"), "--in", str(pkg / f"{cid}.glb"),
                             "--out", str(art_glb), "--res", str(a.artifact_res),
-                            # a preview copy: 1K loses detail against the 4K bake by design
-                            "--min-psnr", "26"], check=True,
+                            # a preview copy: 1K loses detail against the 4K bake by design; and under the
+                            # artifact's 64 MB for ten characters, vertex data quantized, rotation keys
+                            # thinned to a quarter of a degree, normal maps lossy
+                            "--min-psnr", "26", "--quantize", "--lossy-normals", "--quality", "90"], check=True,
                            stdout=subprocess.DEVNULL)
         b64 = base64.b64encode(art_glb.read_bytes()).decode()
         n = math.ceil(len(b64) / CHUNK)

@@ -80,6 +80,24 @@ try:
 except md.PackageNotFoundError:
     note(WARN, "mlx", "needed only for the generation stage; lives with trellis2mlx")
 
+# ---- writing a short prompt out (pipeline/describe.py) ---------------------------------------------
+try:
+    sys.path.insert(0, os.path.join(root, "pipeline"))
+    import describe as _d
+    have = _d._installed()
+    use = next((m for m in _d.MODELS if m in have), None)
+    where = _d.OPENAI_URL or _d.OLLAMA
+    if use:
+        note(OK, "prompts written out by", f"{use} at {where} (CF_DESCRIBE_MODEL, CF_DESCRIBE_URL to change)")
+    elif have:
+        note(WARN, "prompts written out by", f"none of {', '.join(_d.MODELS)} is installed at {where} - "
+             f"`ollama pull {_d.MODELS[0]}`, or CF_DESCRIBE_MODEL=<one of {', '.join(have[:4])}>")
+    else:
+        note(WARN, "prompts written out by", "no local language model answers (Ollama or CF_DESCRIBE_URL) - short "
+             "prompts get a fixed template instead")
+except Exception as e:                                   # noqa: BLE001
+    note(WARN, "prompts written out by", f"could not check: {e}")
+
 # ---- the characters the playground ships ------------------------------------------------------
 import json as _json
 roster = os.path.join(root, "web", "roster.json")

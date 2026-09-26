@@ -33,8 +33,10 @@ def roster(cfg):
         parts = (["jaw"] if face.get("jaw_bone") else []) + [x.replace("_L", "").replace("_R", "")
                                                               for x in face.get("morphs", [])]
         face_s = ", ".join(dict.fromkeys(parts)) or "-"
+        # a character made since the release is built here but has no download yet ("released": false)
+        pkg = f"[{c['id']}.zip]({rel}/{c['id']}.zip)" if c.get("released", True) else "not in a release yet"
         rows.append(f"| **{c['name']}** | {(m.get('style') or {}).get('name', 'realistic')} | {made} | {m['height_m']:.2f} m | {lods} | {face_s} | "
-                    f"[{c['id']}.zip]({rel}/{c['id']}.zip) |")
+                    f"{pkg} |")
     return "\n".join(rows)
 
 

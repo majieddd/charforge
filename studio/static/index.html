@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CharForge Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="9" r="2.2" fill="currentColor"/><path d="M8.5 17c.6-2.4 2-3.6 3.5-3.6s2.9 1.2 3.5 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <span>CharForge <b>Studio</b></span>
+  </a>
+  <nav>
+    <a href="#/" data-nav="chars">Characters</a>
+    <a href="#/new" data-nav="new">New character</a>
+    <a href="#/jobs" data-nav="jobs">Jobs</a>
+    <a href="#/setup" data-nav="setup">Setup</a>
+    <a href="/play/" target="_blank" rel="noopener">Playground ↗</a>
+  </nav>
+  <a class="live" id="live" href="#/jobs" hidden></a>
+</header>
+<main id="view" aria-live="polite"></main>
+<div id="modal" class="modal" hidden><div class="box" role="dialog" aria-modal="true"></div></div>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

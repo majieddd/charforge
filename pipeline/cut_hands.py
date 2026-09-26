@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 
 import numpy as np
 from scipy import ndimage
@@ -35,6 +36,7 @@ ap.add_argument("--sdf", required=True)
 ap.add_argument("--joints", required=True)
 ap.add_argument("--out", required=True)
 ap.add_argument("--spec", required=True)
+ap.add_argument("--parts", default=None, help="parts.json: whether the forearm at the wrist is bare skin")
 a = ap.parse_args()
 
 S = np.load(a.solid)
@@ -85,6 +87,13 @@ for side, sgn in (("left", 1.0), ("right", -1.0)):
         x = (W - back) / np.linalg.norm(W - back)
     else:
         x = (W - E) / np.linalg.norm(W - E)
+    # the hand lies beyond the wrist, away from the elbow: a traced line that turns back there (knight2's
+    # doubled back up his vambrace) would carve the forearm and keep the hand
+    ew = (W - E) / np.linalg.norm(W - E)
+    if x @ ew < 0.3:
+        print(f"[hands] {side}: the traced forearm turns back at the wrist - the elbow-to-wrist direction used",
+              flush=True)
+        x = ew
     R = rotation_between(np.array([sgn, 0.0, 0.0]), x)
     z = R @ np.array([0.0, 0.0, 1.0])
     z -= (z @ x) * x
@@ -127,6 +136,34 @@ for side, sgn in (("left", 1.0), ("right", -1.0)):
 # than a tenth of the body reads as a child's, so that stays the floor.
 L_both = float(np.clip(np.median([meas["left"]["L_meas"], meas["right"]["L_meas"], 0.108 * H]),
                        0.10 * H, 0.125 * H))
+# A bare forearm sets the hand's bulk. The modelled hand has a person's proportions, clipped to a
+# person's wrist; on Gray - "extremely muscular", 11-13 cm across the wrist - that left a normal hand on
+# a forearm twice its width, the forearm ending in a flat step like a cuff. A sleeve measures as wide
+# (Pip's cuffs, knight2's gauntlets, Bo's chef's sleeves), so the width alone cannot say; the part
+# labels can: the vertices on the forearm just above the cut are "arms" (skin) on a bare one and "top"
+# on a sleeve - Gray, Mara and the boy scout 0.92-1.00 skin, every sleeved character 0.13 or less.
+bulk, skin_frac = 1.0, None
+if a.parts and os.path.exists(a.parts):
+    _pl = np.array(json.load(open(a.parts))["class_labels"])
+    if len(_pl) == len(P):
+        n_all = n_skin = 0
+        for side_ in ("left", "right"):
+            m_ = meas[side_]
+            along_ = (P - m_["C"]) @ m_["x"]
+            rad_ = np.linalg.norm((P - m_["C"]) - np.outer(along_, m_["x"]), axis=1)
+            band_ = (along_ > -0.8 * 0.108 * H) & (along_ < -0.1 * 0.108 * H) & (rad_ < 0.06 * H) & (_pl > 0)
+            n_all += int(band_.sum())
+            n_skin += int(np.isin(_pl[band_], (12, 13)).sum())      # "arms", "hands"
+        if n_all >= 100:
+            skin_frac = n_skin / n_all
+    if skin_frac is not None and skin_frac >= 0.6:
+        # one bulk for both hands, from the wrists' own cross-sections against a person's (0.15 x 0.10
+        # of the hand's length), as far as 1.6x
+        L_ = L_both
+        ratios = [np.sqrt(meas[s_]["ry"] * meas[s_]["rz"]) / L_ / np.sqrt(0.15 * 0.10) for s_ in ("left", "right")]
+        bulk = float(np.clip(np.median(ratios), 1.0, 1.6))
+    print(f"[hands] forearm at the wrist: " + ("unlabelled" if skin_frac is None else f"{skin_frac:.0%} bare skin")
+          + (f" - hands {bulk:.2f}x as broad and thick, to meet it" if bulk > 1.01 else " - a person's hand"), flush=True)
 for side, sgn in (("left", 1.0), ("right", -1.0)):
     m_ = meas[side]
     C, x, y, z, ry, rz, L_meas = (m_[k] for k in ("C", "x", "y", "z", "ry", "rz", "L_meas"))
@@ -152,7 +189,7 @@ for side, sgn in (("left", 1.0), ("right", -1.0)):
     spec["sides"][side] = {
         "cut_point": C.tolist(), "x": x.tolist(), "y": y.tolist(), "z": z.tolist(),
         "mirror": side == "left", "length": L, "length_measured": L_meas,
-        "wrist_radius": [ry / L, rz / L],
+        "wrist_radius": [ry / L, rz / L], "bulk": bulk, "bare_skin": skin_frac,
     }
     print(f"[hands] {side}: cut at the wrist; hand length {L / H * 175:.1f} cm (measured {L_meas / H * 175:.1f}); wrist "
           f"{2 * ry / H * 175:.1f} x {2 * rz / H * 175:.1f} cm; carved {int(cut.sum()):,} voxels", flush=True)

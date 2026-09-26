@@ -1,0 +1,69 @@
+{
+ "about": "Moves pipeline/motion_video.py can ask a video model for. Each is written the way MiniMax H3's prompt guides ask - an action chain (ready, trigger, the move, contact, recovery, end state) with timings - because a one-word action ('punches') gives a vague, drifting motion. The camera, backdrop and framing are fixed by the script for every move: a locked-off camera, the whole body in frame, a plain studio, so a pose model can read every joint in every frame. Add a move by adding an entry; {subject} is replaced with the character's label.",
+ "moves": {
+  "punch_combo": {
+   "summary": "a boxing combination: jab, cross and hook, then back to guard",
+   "beats": [
+    "[00:00-00:01] {subject} stands in a relaxed boxing guard, left foot forward, fists raised to the chin, knees soft, bouncing lightly on the balls of the feet.",
+    "[00:01-00:02] {subject} snaps a fast left jab straight forward at head height, the left shoulder rolling forward and the right fist staying at the chin, then pulls the left fist straight back to the guard.",
+    "[00:02-00:03] {subject} drives the right hip and shoulder forward and throws a straight right cross, pivoting on the ball of the right foot so the right heel lifts, the arm fully extended, then retracts it to the chin.",
+    "[00:03-00:04] {subject} turns the torso to the right and swings a tight left hook at head height, the left elbow bent at ninety degrees and the left foot pivoting inward, then returns to the guard.",
+    "[00:04-00:05] {subject} settles back into the relaxed guard, breathing out, feet in the same place as at the start."
+   ],
+   "sound": "Sharp cloth snaps and quick exhales on each punch, light shuffling footsteps on the studio floor."
+  },
+  "roundhouse_kick": {
+   "summary": "a right roundhouse kick at head height from a fighting stance, then back to stance",
+   "beats": [
+    "[00:00-00:01] {subject} stands in a side-on martial arts stance, left foot forward, fists up in front of the face, weight centred.",
+    "[00:01-00:02] {subject} shifts the weight onto the left leg and pivots on the ball of the left foot, turning the hips, lifting the right knee up and across the body.",
+    "[00:02-00:03] {subject} whips the right leg out in a roundhouse kick, the shin travelling in a horizontal arc at head height, the torso leaning back for balance and the arms swinging to counter the rotation.",
+    "[00:03-00:04] {subject} snaps the right knee back in and sets the right foot down behind, landing balanced in the stance again.",
+    "[00:04-00:05] {subject} holds the stance, fists up, weight settled, feet in the same place as at the start."
+   ],
+   "sound": "A whoosh as the leg swings through the air, a soft thud as the foot lands, quiet studio ambience."
+  },
+  "spell_cast": {
+   "summary": "a two-handed spell: gathering energy at the chest, then pushing it forward",
+   "beats": [
+    "[00:00-00:01] {subject} stands with feet shoulder-width apart, arms loose at the sides, looking ahead.",
+    "[00:01-00:02] {subject} steps the left foot slightly forward, sweeps both arms up in wide arcs and brings the hands together in front of the chest, palms facing each other with a small gap, elbows out.",
+    "[00:02-00:03] {subject} bends the knees, draws the hands back to the chest, then pushes both palms forward at shoulder height with the arms fully extended, the torso leaning into the push, as a faint soft glow leaves the palms.",
+    "[00:03-00:04] {subject} holds the push for a moment, recoils slightly as the energy leaves, then lets the arms float down.",
+    "[00:04-00:05] {subject} stands upright again, arms relaxed at the sides, feet back together as at the start."
+   ],
+   "sound": "A low hum building as the hands come together, a soft whoomp on the push, quiet studio ambience."
+  },
+  "victory_cheer": {
+   "summary": "a victory celebration: both fists thrown overhead, a hop, a fist pump",
+   "beats": [
+    "[00:00-00:01] {subject} stands relaxed, arms at the sides, looking ahead.",
+    "[00:01-00:02] {subject} crouches slightly and throws both fists straight up above the head, arms fully extended, chest lifted, head tilted up.",
+    "[00:02-00:03] {subject} hops twice on the spot with both fists still up, landing softly on both feet each time.",
+    "[00:03-00:04] {subject} brings the arms down, then pumps the right fist down and back twice beside the hip, elbow bent, leaning forward slightly.",
+    "[00:04-00:05] {subject} straightens up, smiling, arms relaxed at the sides, feet where they started."
+   ],
+   "sound": "Two soft landings of the hops, cloth rustle, an excited 'yes!' on the fist pump."
+  },
+  "hit_react": {
+   "summary": "struck in the chest from the front, staggering back two steps and recovering",
+   "beats": [
+    "[00:00-00:01] {subject} stands in a ready stance, fists loosely raised, weight centred.",
+    "[00:01-00:02] An unseen blow strikes {subject} in the chest: the torso snaps backward, the head whips forward then back, the arms fling out to the sides.",
+    "[00:02-00:03] {subject} staggers backward two uneven steps, the right foot then the left, arms windmilling for balance, knees bending.",
+    "[00:03-00:04] {subject} catches the balance, crouches briefly with one hand on the chest, then straightens.",
+    "[00:04-00:05] {subject} raises the fists back into the ready stance, shaking the head once."
+   ],
+   "sound": "A dull impact thump, two scuffing footsteps backward, a sharp pained exhale."
+  },
+  "turntable": {
+   "summary": "turns slowly on the spot through a full circle, showing every side, then faces the camera again",
+   "beats": [
+    "[00:00-00:01] {subject} stands facing the camera in a relaxed pose, arms hanging a little away from the body, feet shoulder-width apart, looking straight ahead.",
+    "[00:01-00:04] {subject} turns slowly on the spot to their left in small steps, through a full circle - the left side, then the back, then the right side - keeping the same relaxed pose, arms a little away from the body, head level.",
+    "[00:04-00:05] {subject} completes the circle and stands still facing the camera again, in the same pose as at the start."
+   ],
+   "sound": "Quiet, even footsteps on the studio floor as the feet shift through the turn."
+  }
+ }
+}

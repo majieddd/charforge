@@ -54,16 +54,37 @@ ap.add_argument("--view", action="append", default=[],
 ap.add_argument("--min-iou", type=float, default=0.75,
                 help="a view whose silhouette overlaps the mesh's less than this is not used")
 ap.add_argument("--hands", default=None, help="hands_spec.json - modelled hands, excluded")
-ap.add_argument("--mesh", default=None, help="the mesh labels.json indexes (for per-part colour matching)")
+ap.add_argument("--hands-solid", default=None,
+                help="solid_cut.npz - the solid the modelled hands were joined to: a texel near a wrist is the "
+                     "hand's only if it stands outside that solid (the region round Aoi's wrist took in her hip, "
+                     "which came out in skin tone)")
+ap.add_argument("--mesh", default=None,
+                help="retopo.glb, the mesh labels.json indexes (per-part colour matching); with --solid, an opened "
+                     "surface takes its colour from the old surface nearest along it rather than through the air")
 ap.add_argument("--labels", default=None, help="labels.json - colour is matched per part when given")
 ap.add_argument("--base-weight", type=float, default=0.08)
 ap.add_argument("--face-detail", default=None,
                 help="a detailed image of the reference's face region (pipeline/face_detail.py): the "
                      "front view samples it wherever it lands inside that region")
 ap.add_argument("--face-box", default=None, help="face_src.json - where that region is in the reference")
+ap.add_argument("--face-flow-max", type=float, default=0.025,
+                help="the largest face flow applied, as a share of the figure's height")
+ap.add_argument("--keep-base-face", action="store_true",
+                help="where the face cannot be aligned (the face flow is refused), keep the generated face")
 ap.add_argument("--no-face-flow", action="store_true",
                 help="leave out the finer flow on the head (for faces that are not photographic)")
 ap.add_argument("--debug", default=None, help="write per-view alignment overlays here")
+ap.add_argument("--edge-guard", type=float, default=0.0,
+                help="in the views after the first, fade out paint within this fraction of the view's height "
+                     "of the outline of a nearer surface (the pipeline passes 0.02): a generated view and the "
+                     "mesh never line up exactly, and the texels just past an arm's outline read the arm - "
+                     "Aoi's hands streaked her trousers from the side view")
+ap.add_argument("--old-hands", default=None,
+                help="solid.npz,solid_cut.npz: the generated hands cut_hands.py removed; the pixels each source "
+                     "image shows them in paint nothing (they painted Aoi's trousers and Wren's satchel)")
+ap.add_argument("--solid", default=None,
+                help="the generated solid (solid.npz) when free_arms.py cut the arms free of it: the surfaces "
+                     "the cut opened lie inside it, and take their colour from their own side of the cut")
 a = ap.parse_args()
 
 meta = json.load(open(os.path.join(a.dir, "views.json")))
@@ -239,9 +260,36 @@ if a.hands and os.path.exists(a.hands):
     for sd in json.load(open(a.hands))["sides"].values():
         C, x, L = np.array(sd["cut_point"]), np.array(sd["x"]), float(sd["length"])
         hand |= (((P - C) @ x) > -0.02 * L) & (np.linalg.norm(P - C, axis=1) < 1.35 * L)
+    if a.hands_solid and os.path.exists(a.hands_solid) and hand.any():
+        # The region round the wrist is only where to look: a hip or a bag inside it is the body's own
+        # surface, which lies on the handless solid, while the modelled hand stands outside it.
+        Hs = np.load(a.hands_solid)
+        hv, ho = float(Hs["voxel"]), Hs["origin_ijk"]
+        hi_ = np.nonzero(hand)[0]
+        dh = ndimage.map_coordinates(Hs["sdf"], (P[hi_] / hv - ho).T, order=1, mode="constant", cval=1.0)
+        body_ = dh < 1.5 * hv
+        hand[hi_[body_]] = False
+        print(f"[texproj] hands: {int(body_.sum()):,} texels by a wrist that lie on the body itself are "
+              f"not the modelled hand's", flush=True)
 vmeta = {v["tag"]: v for v in meta["views"]}
+# The generated hands, as cut_hands.py removed them: every source image still shows them, and where the
+# modelled hand does not stand in the same place the mesh behind the old one - a thigh, a bag - read the
+# old hand's skin (Aoi's trousers from her side view, Wren's satchel from the front).
+old_hand_pts = None
+if a.old_hands:
+    f_full, f_cut = a.old_hands.split(",")
+    if os.path.exists(f_full) and os.path.exists(f_cut):
+        Sf, Sc = np.load(f_full), np.load(f_cut)
+        gone = (Sf["sdf"] < 0) & (Sc["sdf"] >= 0)
+        gone[1::2] = False                                            # every other voxel is plenty
+        gone[:, 1::2] = False
+        idx_ = np.argwhere(gone)
+        if len(idx_):
+            old_hand_pts = (idx_ + Sf["origin_ijk"]) * float(Sf["voxel"])
 report = []
+face_skin = None
 face_img, face_box = None, None
+face_unaligned = False
 if a.face_detail and a.face_box and os.path.exists(a.face_detail) and os.path.exists(a.face_box):
     fb = json.load(open(a.face_box))
     face_box = [float(x) for x in fb["box"]]
@@ -305,10 +353,11 @@ for spec in a.view:
         # rowan 1.7%); on the cartoon and anime characters the generator's face disagrees with the
         # reference by more than a local warp can mend (pip 3.4%, aoi 4.7%), and applying it painted
         # pip a second pair of eyes and tore his face at the nose. Left out past 2.5%.
-        if ff is not None and face_flow.p95 > 0.025:
+        if ff is not None and face_flow.p95 > a.face_flow_max:
             report.append(f"face flow left out: it would move features {face_flow.p95:.1%} of the figure's "
-                          f"height (over 2.5%: the generated face and the reference disagree too much)")
+                          f"height (over {a.face_flow_max:.1%}: the generated face and the reference disagree too much)")
             ff = None
+            face_unaligned = True
         if ff is not None:
             flow = flow * (1 - fw[..., None]) + ff * fw[..., None]
     # texel -> render pixel -> image pixel
@@ -332,6 +381,30 @@ for spec in a.view:
     # failed the test and the face view painted nothing
     tol = max(3.0 * px_mesh, 0.002 * (2.0 / scale) / 1.75)
     vis = np.clip(1.0 - (best - tol) / tol, 0.0, 1.0)
+    if a.edge_guard > 0 and spec != a.view[0]:
+        # A texel close to the outline of something in front of it takes little from this view: the
+        # image's arm may stand a few pixels off the mesh's, and the texels just past the mesh's outline
+        # read the image's arm (Aoi's hands streaked her trousers from the side view). An outline is a
+        # depth jump between neighbouring pixels; a surface merely seen at a slant has none. Not in the
+        # reference: the mesh was generated from it and lines up best, and what lies behind an outline
+        # there is what the projection is for - half of Aoi's face is behind a lock of her hair.
+        fcam, _, _ = camera(v)
+        dep = np.nan_to_num(((rpos.astype(np.float32) - ctr) * scale) @ fcam, nan=1e3)   # depth, per pixel
+        jump = 0.03 * 2.0 / 1.75                                                           # 3 cm
+        pad = np.pad(dep, 1, mode="edge")
+        far_nb = np.maximum.reduce([pad[:-2, 1:-1], pad[2:, 1:-1], pad[1:-1, :-2], pad[1:-1, 2:]])
+        outline = (far_nb - dep > jump) & (dep < 1e2)                  # the near side of a depth jump
+        kk_ = max(2, int(round(a.edge_guard * v["res"])))
+        occ = ndimage.minimum_filter(np.where(outline, dep, 1e3), size=2 * kk_ + 1)
+        dist = ndimage.distance_transform_edt(~outline)
+        uu0 = np.clip(ri[:, 0], 0, v["res"] - 1)
+        vv0 = np.clip(ri[:, 1], 0, v["res"] - 1)
+        behind = occ[vv0, uu0] < ((P - ctr) * scale) @ fcam - jump    # that outline is in front of this texel
+        g = np.clip(dist[vv0, uu0] / kk_, 0.0, 1.0)
+        g = np.where(behind, g * g * (3 - 2 * g), 1.0)
+        report.append(f"{tag}: {int(((g < 0.5) & (vis > 0.5)).sum()):,} visible texels by the outline of a "
+                      f"nearer surface left mostly to the other views")
+        vis = vis * g
     ip = rp * s + np.array([tx, ty])
     ii = np.clip(np.round(ip).astype(int), [0, 0], [W_ - 1, H_ - 1])
     ip = ip + flow[ii[:, 1], ii[:, 0]]
@@ -342,10 +415,42 @@ for spec in a.view:
     ii = np.clip(np.round(ip).astype(int), [0, 0], [W_ - 1, H_ - 1])
     w *= np.clip(edge[ii[:, 1], ii[:, 0]] / 6.0, 0, 1) * vis * imask[ii[:, 1], ii[:, 0]]
     w[hand] = 0
+    if tag == "000" and face_box is not None:
+        # the face's own texels, for the hands' skin tone: the middle of the face region, facing the camera
+        fx0, fy0, fx1, fy1 = face_box
+        face_skin = ((np.abs(ip[:, 0] - (fx0 + fx1) / 2) < 0.3 * (fx1 - fx0))
+                     & (np.abs(ip[:, 1] - (fy0 + fy1) / 2) < 0.3 * (fy1 - fy0)) & (vis > 0.5) & (facing > 0.5))
+    if tag == "000" and face_box is not None and face_unaligned and a.keep_base_face:
+        # A realistic face the reference cannot be laid on. Knight's generated face sat 2.5% of his
+        # height from the picture's: projected unaligned, the picture's fringe fell across his eye and
+        # every feature came out twice; forced into line by the flow, his eyes smeared into bands.
+        # The generator's own face is softer but it is where its geometry is - so the front view
+        # leaves the face and the fringe above it alone (in the face frame 0.23-0.77 across, 0.26-0.86
+        # down, fading out beyond): stopped at the hairline, the picture's fringe still fell across his eye.
+        fx0, fy0, fx1, fy1 = face_box
+        u = (ip[:, 0] - (fx0 + fx1) / 2) / (0.27 * (fx1 - fx0))
+        q_ = (ip[:, 1] - (fy0 + 0.56 * (fy1 - fy0))) / (0.30 * (fy1 - fy0))
+        keep_face = np.clip((1.15 - np.sqrt(u * u + q_ * q_)) / 0.30, 0, 1) * (facing > 0.0)
+        w *= 1 - keep_face
+        report.append(f"face: the generated face kept - {int((keep_face > 0.5).sum()):,} texels the front view leaves to it")
+    if old_hand_pts is not None:
+        # where this image shows the old hands: their points through the same camera, alignment and flow
+        hp = to_render_px(old_hand_pts, v) * s + np.array([tx, ty])
+        hi_ = np.clip(np.round(hp).astype(int), [0, 0], [W_ - 1, H_ - 1])
+        hp = hp + flow[hi_[:, 1], hi_[:, 0]]
+        hi_ = np.round(hp).astype(int)
+        ok_ = (hi_[:, 0] >= 0) & (hi_[:, 0] < W_) & (hi_[:, 1] >= 0) & (hi_[:, 1] < H_)
+        om = np.zeros((H_, W_), bool)
+        om[hi_[ok_, 1], hi_[ok_, 0]] = True
+        om = ndimage.binary_dilation(ndimage.binary_closing(om, iterations=2), iterations=max(2, int(0.006 * H_)))
+        in_old = om[ii[:, 1], ii[:, 0]]
+        w[in_old] = 0
+        if tag == "000" or in_old.any():
+            report.append(f"{tag}: {int((in_old & (vis > 0.5)).sum()):,} texels behind the old hands left to the other views")
     w *= vw
     col = np.stack([ndimage.map_coordinates(img[..., c].astype(np.float32), [ip[:, 1], ip[:, 0]],
                                             order=1, mode="nearest") for c in range(3)], 1) / 255.0
-    if tag == "000" and face_img is not None:
+    if tag == "000" and face_img is not None and not (face_unaligned and a.keep_base_face):
         # The face region, from the detailed image instead: the same pixels, four times finer. Read
         # through this view's own alignment - a separate close-up camera aligned on its own landed a
         # few pixels off it and doubled the eyes where the two were blended.
@@ -389,15 +494,97 @@ for line in report:
     print(f"[texproj] {line}", flush=True)
 
 out_t = (acc + a.base_weight * base_t) / (wsum + a.base_weight)[:, None]
+opened = np.zeros(len(ti), bool)
+fill = base_t.copy()                                   # what stands in for the bake where the bake is wrong
+bw = np.full(len(ti), a.base_weight)                   # and how much it counts against the views
+if a.solid and os.path.exists(a.solid):
+    # The surfaces free_arms.py opened between an arm and what it was glued to - the inside of a sleeve,
+    # the side of a vest under it, the back of a sleeve a puffy vest had swallowed - were inside the
+    # generated solid: the source images show whatever covered them, and the bake is the solid's inside
+    # (Pip's armpits came out grey). Each takes the colour of the old surface nearest to it along the
+    # mesh - the cut parted the arm from the torso, so the sleeve's opened side reaches the sleeve round
+    # the cut's edge before the vest - and the views are not used on it: whatever they show there is what
+    # covered it. Nearest through the air, a texel facing the same way can be the other garment across
+    # the gap: the back of a sleeve and the back of the vest beside it both face backwards.
+    from scipy.spatial import cKDTree
+    Sd = np.load(a.solid)
+    vv, oo = float(Sd["voxel"]), Sd["origin_ijk"]
+    d0 = ndimage.map_coordinates(Sd["sdf"], (P / vv - oo).T, order=1, mode="constant", cval=1.0)
+    opened = (d0 < -2.5 * vv) & ~hand
+    left_ = opened.copy()
+    if opened.any() and a.mesh and os.path.exists(a.mesh):
+        import trimesh
+        from scipy.sparse import coo_matrix
+        from scipy.sparse.csgraph import dijkstra
+        mm = trimesh.load(a.mesh, force="mesh", process=False)
+        Vg = np.asarray(mm.vertices, np.float64)
+        Vm = np.c_[Vg[:, 0], -Vg[:, 2], Vg[:, 1]]                     # glTF is y-up; the texel maps are z-up
+        _, weld = np.unique(np.round(Vm, 5), axis=0, return_inverse=True)
+        weld = weld.ravel()
+        nw = int(weld.max()) + 1
+        Vw = np.zeros((nw, 3)); Vw[weld] = Vm                        # one vertex per position: seams do not cut
+        Fw = weld[np.asarray(mm.faces)]
+        E = np.unique(np.sort(np.concatenate([Fw[:, [0, 1]], Fw[:, [1, 2]], Fw[:, [2, 0]]]), axis=1), axis=0)
+        E = E[E[:, 0] != E[:, 1]]
+        el = np.linalg.norm(Vw[E[:, 0]] - Vw[E[:, 1]], axis=1) + 1e-9
+        G = coo_matrix((el, (E[:, 0], E[:, 1])), shape=(nw, nw)).tocsr()
+        dv = ndimage.map_coordinates(Sd["sdf"], (Vw / vv - oo).T, order=1, mode="constant", cval=1.0)
+        src_v = np.nonzero(np.abs(dv) < 1.5 * vv)[0]
+        src_t = np.nonzero(~opened & ~hand & (np.abs(d0) < 1.5 * vv))[0]
+        if len(src_v) and len(src_t):
+            _, _, origin = dijkstra(G, directed=False, indices=src_v, min_only=True, return_predecessors=True)
+            # each old-surface vertex: the colour of the old-surface texels about it
+            _, nb_t = cKDTree(P[src_t]).query(Vw[src_v], k=8)
+            vcol = np.zeros((nw, 3)); vcol[src_v] = out_t[src_t[nb_t]].mean(1)
+            # each opened texel: the vertices of its own surface about it (facing its way), through them the
+            # old-surface vertex each was reached from
+            vn = np.zeros((nw, 3))
+            fn = np.cross(Vw[Fw[:, 1]] - Vw[Fw[:, 0]], Vw[Fw[:, 2]] - Vw[Fw[:, 0]])
+            for k_ in range(3):
+                np.add.at(vn, Fw[:, k_], fn)
+            vn /= np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
+            oi = np.nonzero(opened)[0]
+            dd_, nb_v = cKDTree(Vw).query(P[oi], k=6)
+            wv = np.clip((vn[nb_v] * N[oi][:, None, :]).sum(-1), 0.0, 1.0) / (dd_ + 1e-4)
+            ok_ = origin[nb_v] >= 0
+            wv = wv * ok_
+            reach = wv.sum(1) > 0
+            cv = (vcol[np.where(ok_, origin[nb_v], 0)] * wv[..., None]).sum(1) / np.maximum(wv.sum(1), 1e-12)[:, None]
+            fill[oi[reach]] = cv[reach]
+            left_ = np.zeros(len(ti), bool); left_[oi[~reach]] = True
+            print(f"[texproj] {int(opened.sum()):,} texels opened by the arm cut coloured from the old surface "
+                  f"nearest along the mesh ({float(reach.mean()):.1%} reached)", flush=True)
+    if left_.any():
+        src = np.nonzero(~opened & ~hand & (np.abs(d0) < 1.5 * vv))[0][::3]
+        dist_, nb = cKDTree(P[src]).query(P[left_], k=24)
+        nb = src[nb]
+        same = (N[nb] * N[left_][:, None, :]).sum(-1) > 0.35
+        pick = np.where(same.any(1), same.argmax(1), 0)
+        fill[left_] = out_t[nb[np.arange(len(nb)), pick]]
+        print(f"[texproj] {int(left_.sum()):,} texels opened by the arm cut coloured from the nearest old surface "
+              f"facing their way ({float(same.any(1).mean()):.0%} found one)", flush=True)
+    bw[opened] = 1e3
+out_t = (acc + bw[:, None] * fill) / (wsum + bw)[:, None]
 if hand.any():
     # The modelled hands take the character's skin tone, read from texels that are skin-coloured
     # anywhere on the body outside the hands (face, neck, forearms): warm, mid-light, moderately
     # saturated. The old hand region itself mixes in cuff and shadow (brick red on Juno), and "the
     # top of the figure" is mostly hair on a character like Vex (it came out teal).
     Lh = srgb_to_lab(out_t)
-    skin = (~hand & (Lh[:, 0] > 40) & (Lh[:, 0] < 90) & (Lh[:, 1] > 6) & (Lh[:, 1] < 32)
+    skin = (~hand & ~opened & (Lh[:, 0] > 40) & (Lh[:, 0] < 90) & (Lh[:, 1] > 6) & (Lh[:, 1] < 32)
             & (Lh[:, 2] > 8) & (Lh[:, 2] < 38) & (Lh[:, 2] > 0.6 * Lh[:, 1]))
-    if skin.sum() > 2000:
+    on_face = skin & face_skin if face_skin is not None else np.zeros_like(skin)
+    if on_face.sum() > 500:
+        # the face first: over the whole figure, orange hair, khaki shorts and a vest's shading all pass
+        # for skin, and Pip's hands came out brown (137, 95, 71) against his peach face
+        skin = on_face
+    face_any = (face_skin & ~hand & ~opened) if face_skin is not None else np.zeros_like(skin)
+    from_face = on_face.sum() > 500
+    if skin.sum() <= 500 and face_any.sum() > 500:
+        # skin that is not skin-coloured - a grey alien, a green orc: the face's own colour, whatever
+        # its hue. The warm range found nothing on Gray, and the fallback peach gave him a human hand
+        skin, from_face = face_any, True
+    if skin.sum() > 500:
         # the largest cluster of skin-like colour, not an average over lips and tan clothing
         lab_s = Lh[skin]
         med = np.median(lab_s, 0)
@@ -412,7 +599,8 @@ if hand.any():
     var = np.clip((lum - np.median(lum)) / 60.0, -0.12, 0.12)[:, None]
     out_t[hand] = np.clip(tone * (1.0 + var), 0, 1)
     print(f"[texproj] modelled hands: {int(hand.sum()):,} texels in the body's skin tone "
-          f"{tuple(int(c * 255) for c in tone)} (from {src_n:,} skin texels)", flush=True)
+          f"{tuple(int(c * 255) for c in tone)} (from {src_n:,} skin texels"
+          f"{' of the face' if from_face else ''})", flush=True)
 out = base.reshape(-1, 3).copy()
 out[ti] = out_t
 out = out.reshape(R, R, 3)

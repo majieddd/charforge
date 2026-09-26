@@ -36,7 +36,7 @@ import sys
 
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
@@ -49,6 +49,9 @@ ap.add_argument("--fps", type=int, default=60,
                      "rotations between them slid the pinned foot 13%% in the browser against 3%% at the keys")
 ap.add_argument("--max-frames", type=int, default=600)
 ap.add_argument("--json", default=None)
+ap.add_argument("--calib", default=None,
+                help="the character's joint_calib.json (tools/calibrate_joints.py): its face points, to turn the\n"
+                     "head of a clip made from a video to the video's face")
 ap.add_argument("--keep-root-motion", action="store_true",
                 help="bake horizontal root travel into the clip (default: in-place + metadata)")
 a = ap.parse_args(argv)
@@ -149,6 +152,101 @@ print(f"[retarget] target rig {tgt.name}, {len(tgt.pose.bones)} bones, "
 
 LEGS = (("left_hip", "left_knee", "left_ankle", "left_foot", 0, 1),
         ("right_hip", "right_knee", "right_ankle", "right_foot", 2, 3))
+
+# A clip made from a video carries the points pipeline/video_motion.py --fit solved for: the pose
+# model's 13 points (head; shoulders, elbows, wrists, hips, knees, ankles, left before right) with
+# depth, on the video's own body. Copying rotations from the fitted Mixamo skeleton carries each
+# bone's rest-pose difference into every frame - the two skeletons' thighs differ by 4-12 deg at
+# rest, their collarbones by 16-27 - so the character's limbs are aimed along the fitted bones
+# directly, frame by frame, after the copy (fit_to_points).
+J13 = ["head", "left_shoulder", "left_elbow", "left_wrist", "right_shoulder", "right_elbow", "right_wrist",
+       "left_hip", "left_knee", "left_ankle", "right_hip", "right_knee", "right_ankle"]
+MIRROR13 = [0, 4, 5, 6, 1, 2, 3, 10, 11, 12, 7, 8, 9]
+AIMS = [("left_shoulder", 1, 2), ("left_elbow", 2, 3), ("right_shoulder", 4, 5), ("right_elbow", 5, 6),
+        ("left_hip", 7, 8), ("left_knee", 8, 9), ("right_hip", 10, 11), ("right_knee", 11, 12)]
+SPINE_T = ("spine1", "spine2", "spine3")
+FACE_MIRROR = [0, 2, 1, 4, 3]
+
+
+def kabsch(A, B):
+    """The rotation that best carries point set A onto B, both about their centres."""
+    A, B = A - A.mean(0), B - B.mean(0)
+    U, _, Vt = np.linalg.svd(A.T @ B)
+    d = np.sign(np.linalg.det(Vt.T @ U.T))
+    return Matrix((Vt.T @ np.diag([1.0, 1.0, d]) @ U.T).tolist()).to_quaternion()
+
+
+def fit_to_points(tgt, F, TW, rig_torso, fit_torso, stats, face=None, face_local=None):
+    """Pose the character so its skeleton follows the fitted points F (13 Vectors, world space, already
+    mirrored and turned as the clip is): the pelvis turned onto the fitted hip line; the spine's three
+    bones turned about their heads so both shoulders come onto the fitted ones (Kabsch, three passes;
+    the neck held at the fit's angle to them, half weight); each upper arm, forearm, thigh and shin
+    turned about its head to point along its fitted bone. Collarbones, hands, feet and fingers keep
+    the copied pose - the 13 points do not see them. A bone's twist stays the copy's. With the fit's
+    face points (face) and the character's own (face_local, in its head bone's frame) the neck and
+    head then turn, half each, until the face lies as the video's does."""
+    pbs = tgt.pose.bones
+    TWr = TW.to_3x3().normalized()
+    TWr_inv = TWr.inverted()
+
+    def turn(pb, q):
+        Ra = (TWr_inv @ q.to_matrix() @ TWr).to_4x4()
+        h = pb.head.copy()
+        pb.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ pb.matrix
+        bpy.context.view_layer.update()
+        stats.setdefault(pb.name, []).append(math.degrees(q.angle))
+
+    def pts():
+        return [TW @ pbs[n].head for n in J13]
+
+    pelvis = pbs.get("pelvis")
+    if pelvis is not None:
+        P = pts()
+        turn(pelvis, (P[7] - P[10]).rotation_difference(F[7] - F[10]))
+    # the fitted body laid on the rig's: hips on hips, torso length for torso length
+    P = pts()
+    k = rig_torso / max(fit_torso, 1e-9)
+    hr, hf = (P[7] + P[10]) / 2, (F[7] + F[10]) / 2
+    G = [hr + (f - hf) * k for f in F]
+    sm_f = (F[1] + F[4]) / 2
+    neck = (F[0] - sm_f).normalized()
+    for _ in range(3):
+        for name in reversed(SPINE_T):
+            pb = pbs.get(name)
+            if pb is None:
+                continue
+            P = pts()
+            sm_p, sm_g = (P[1] + P[4]) / 2, (G[1] + G[4]) / 2
+            head_goal = sm_g + neck * (P[0] - sm_p).length
+            pivot = np.array(TW @ pb.head)
+            A = np.array([P[1][:], P[4][:], P[0][:]]) - pivot
+            B = np.array([G[1][:], G[4][:], head_goal[:]]) - pivot
+            wts = np.array([1.0, 1.0, 0.5])[:, None]
+            U, _, Vt = np.linalg.svd((A * wts).T @ B)
+            d = np.sign(np.linalg.det(Vt.T @ U.T))
+            Rm = Vt.T @ np.diag([1.0, 1.0, d]) @ U.T
+            turn(pb, Matrix(Rm.tolist()).to_quaternion())
+    for name, ref, aim in AIMS:
+        pb = pbs.get(name)
+        if pb is None:
+            continue
+        P = pts()
+        now, want = P[aim] - P[ref], F[aim] - F[ref]
+        if now.length > 1e-6 and want.length > 1e-6:
+            turn(pb, now.rotation_difference(want))
+    head = pbs.get("head")
+    if face is not None and face_local is not None and head is not None:
+        B = np.array([tuple(v) for v in face])
+
+        def face_now():
+            M = TW @ head.matrix
+            return np.array([tuple(M @ Vector(l)) for l in face_local])
+        q = kabsch(face_now(), B)
+        neck = pbs.get("neck")
+        if neck is not None:
+            turn(neck, Quaternion().slerp(q, 0.5))
+            q = kabsch(face_now(), B)
+        turn(head, q)
 
 
 def sole_points(tgt, TW):
@@ -502,6 +600,9 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
 
 
 SOLE = sole_points(tgt, tgt.matrix_world.copy())
+FACE_LOCAL = None
+if a.calib and os.path.exists(a.calib):
+    FACE_LOCAL = [f["local"] for f in json.load(open(a.calib)).get("face", [])] or None
 clips = json.load(open(a.clips))
 report = {}
 
@@ -701,6 +802,29 @@ for clip_name, spec_ in clips.items():
         o.z = (hips_path[i].z - rest_hips_z) * scale # height: re-referenced to the floor below
         return o
 
+    # a clip made from a video: its fitted points, mirrored and turned as the clip is (fit_to_points)
+    FIT = FACE = None
+    fit_stats = {}
+    if opts.get("fitted") and opts.get("fit_points") and os.path.exists(opts["fit_points"]):
+        FIT = np.load(opts["fit_points"])["points"].astype(np.float64)
+        if MIR:
+            FIT = FIT[:, MIRROR13] * np.array([-1.0, 1.0, 1.0])
+        FIT = FIT @ np.array(R3).T
+        _sm = (FIT[:, 1] + FIT[:, 4]) / 2
+        _hm = (FIT[:, 7] + FIT[:, 10]) / 2
+        fit_torso = float(np.median(np.linalg.norm(_sm - _hm, axis=1)))
+        _rb = tgt.data.bones
+        _r = {k_: TW @ _rb[k_].head_local for k_ in ("left_shoulder", "right_shoulder", "left_hip", "right_hip")}
+        rig_torso = ((_r["left_shoulder"] + _r["right_shoulder"]) / 2 - (_r["left_hip"] + _r["right_hip"]) / 2).length
+        print(f"[retarget]   aiming the limbs along the video's fitted points ({len(FIT)} frames)", flush=True)
+        _fz = np.load(opts["fit_points"])
+        if "face" in _fz and FACE_LOCAL is not None:
+            FACE = _fz["face"].astype(np.float64)
+            if MIR:
+                FACE = FACE[:, FACE_MIRROR] * np.array([-1.0, 1.0, 1.0])
+            FACE = FACE @ np.array(R3).T
+            print("[retarget]   and the head to the video's face", flush=True)
+
     pelvis = tgt.pose.bones.get("pelvis")
     for i in range(n):
         t = f0 + i * step
@@ -731,6 +855,16 @@ for clip_name, spec_ in clips.items():
             pelvis.matrix = M
             bpy.context.view_layer.update()
 
+        if FIT is not None:
+            j = (t - f0) / max(f1 - f0, 1e-9) * (len(FIT) - 1)
+            j0 = min(int(math.floor(j)), len(FIT) - 1)
+            j1 = min(j0 + 1, len(FIT) - 1)
+            w_ = j - j0
+            fit_to_points(tgt, [Vector(tuple(v)) for v in (1 - w_) * FIT[j0] + w_ * FIT[j1]], TW,
+                          rig_torso, fit_torso, fit_stats,
+                          face=None if FACE is None else [Vector(tuple(v)) for v in (1 - w_) * FACE[j0] + w_ * FACE[j1]],
+                          face_local=FACE_LOCAL)
+
         for tname in order:
             if tname in tmap:
                 tgt.pose.bones[tname].keyframe_insert("rotation_euler", frame=i + 1)
@@ -751,6 +885,8 @@ for clip_name, spec_ in clips.items():
     st = {}
     if opts.get("ground", True) is False:
         print("[retarget]   airborne clip: captured height kept, no floor planting", flush=True)
+    elif os.environ.get("CF_NO_PLANT"):                  # measurement only: the fit's legs untouched
+        print("[retarget]   CF_NO_PLANT: feet left as fitted", flush=True)
     elif pelvis is not None and len(src_feet) == n:
         cap_src = d.length / dur if travelling else 0.0
         st = ground_and_plant(tgt, pelvis, n, float(a.fps), travelling, src_feet,
@@ -768,6 +904,10 @@ for clip_name, spec_ in clips.items():
               f"{st['locked']} leg-keys planted, slip "
               + (f"{fmt(st['slip_before'])} -> {fmt(st['slip'])}" if st.get('slip') is not None else "n/a"),
               flush=True)
+    if FIT is not None:
+        turned = {k_: round(float(np.mean(v_)), 2) for k_, v_ in fit_stats.items()}
+        print("[retarget]   aimed along the fit, mean turn per bone (deg): "
+              + ", ".join(f"{k_} {v_:.1f}" for k_, v_ in turned.items()), flush=True)
     report[clip_name] = {"frames": n, "fps": a.fps, "bones_mapped": len(pairs), "scale": round(scale, 5),
                          "curves": len(action_fcurves(act)), "source": os.path.basename(fbx),
                          "root_travel_m": round(travel, 3),
