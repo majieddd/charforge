@@ -2,12 +2,31 @@
  "title": "CharForge: rigged, animated game characters from a few words or one image, on a laptop",
  "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
  "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
- "acknowledgement": "Experiments were designed, run and written up with Claude (Anthropic) working in the repository; every number was measured by a script in it.",
- "version": "0.5",
- "date": "2026-09-26",
+ "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
+ "version": "0.10",
+ "date": "2026-09-30",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
- "changelog": [
+  "changelog": [
+  {"version": "0.10", "date": "2026-09-30", "changes": [
+    "The aberration audit runs and is validated (E102): 22 of 22 checks on a synthetic character with known-size aberrations pass under both skinnings, penetration to the millimetre; the checks exposed three measuring errors (quads re-split by pose, depth capped at 3 cm, false inside readings at open rims and between layers), now fixed. Blender's BVH overlap is a triangle-triangle test, so intersections are real; depth tells contact from penetration.",
+    "The roster measured on every frame of every clip: crushed 2.72%, stretched 1.52%, sheared 2.71% of faces; dual quaternion against linear skinning; frames with a body region more than 2 cm inside another 48.44%.",
+    "Joint limits measured on each character's own mesh, and every clip held inside them (E128): frames with deep penetration 48.44% -> 34.28%, surface measures and foot slip unchanged. New related work: contact-aware retargeting.",
+    "Time (E106 pilot): the multi-view second 3D pass fitted the reference's front worse on 12 of 12 characters and drifted from the picture where its repainted views invented detail; it is now off by default, saving a median 16 of 41 minutes. The end-to-end comparison is still to run."]},
+  {"version": "0.9", "date": "2026-09-26", "changes": [
+    "Audited legacy citations against primary sources: separated the pinned Mixamo mirror count from Adobe's product page, corrected hand-deformation and skinning citations, distinguished Qwen-Image 2.1's checkpoint/license from earlier papers, and narrowed vendor claims.",
+    "Recorded TRELLIS.2 research-only materials, the unresolved H3 fine-tune/base-license conflict, and Mixamo mirror access/redistribution uncertainty; added primary license sources and corrected method, limitations, README, and E115 provenance language.",
+    "Reconciled E102 prose with current code safeguards (topology/order assertion, centered pop metric, default no-clobber); no Blender runtime validation or new experiment result was performed."]},
+  {"version": "0.8", "date": "2026-09-26", "changes": [
+    "Added primary-source references for stylized AU controls, segmentation reliability, and footskate perception; explicitly limit transfer claims and thresholds.",
+    "Tightened planned metric definitions and acceptance protocols for motion truth, dense aberration sampling, scan/retopo distance, part-label calibration, hand pose, runtime delivery, foot-contact parity, provenance/cache validity, and Studio workflows.",
+    "Recorded that the browser footAudit still uses a 1 m/s denominator floor and differs in contact sampling from the corrected Blender v2 path; historical results remain unchanged and E122 remains required."]},
+  {"version": "0.7", "date": "2026-09-26", "changes": [
+    "Added the user-requested fast-classifier investigation as E127 at the end of the queue. Model identity, architecture and license remain unverified; discovery and benchmarking are explicitly gated behind earlier queued work."]},
+  {"version": "0.6", "date": "2026-09-26", "changes": [
+    "Research-gap audit across prompt fidelity, geometry repair, part labels, retopology, UVs, runtime texture sampling, deformation, motion truth, engine delivery, provenance and evaluation; added primary-source references and planned experiments E116-E126.",
+    "Reopened E029 after finding its legacy max(speed, 1 m/s) denominator understated sub-1 m/s ratios; preserved historical measurements and specified a corrected rerun. E102's candidate-only BVH and cadence-specific pop measures are documented; code changes remain pending Blender runtime validation.",
+    "Clarified that the paper build validates references and structure but does not yet link every manually maintained empirical claim to an artifact; E121 tracks that work."]},
   {"version": "0.5", "date": "2026-09-26", "changes": [
     "The lab book became this paper: method, evaluation with every number collected from the measurement files (paper/collect.py), related work with verified references, limitations and a roadmap; the chronological lab notebook kept beside it.",
     "Experiment tracker (research/experiments.json, rendered as research/TRACKER.md and Appendix A).",

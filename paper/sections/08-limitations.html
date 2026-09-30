@@ -15,12 +15,39 @@
   <li><b>Depth in moves from video</b> is borrowed from the nearest capture, so a move unlike anything in the library is
     right in the image and approximate in depth [E108]; the pose model loses poses it rarely saw, on video and on render
     [E011].</li>
-  <li><b>Measurement.</b> No 3D ground truth for motion yet; faults a person sees (a crease, a stretch, cloth through
-    cloth) are still found by eye in renders before they are counted [E101] [E102].</li>
+  <li><b>Measurement.</b> No independent 3D ground truth for recovered motion yet; current end-to-end motion evidence is four
+    generated clips. The aberration audit finds defects of known size on a synthetic character, but its scores are not yet
+    calibrated against blinded reviewers, so none is used as a gate [E101] [E102]. Its penetration depth assumes each body
+    region is a closed-ish surface: a limb buried whole inside another, with no triangle crossing, is not seen, and a face
+    ray escaping along its normal is a geometric proxy for being in view, not a camera's. The archived foot-slip table also needs a
+    corrected rerun: its old denominator was <code>max(speed, 1 m/s)</code>, so ratios are understated below 1 m/s and undefined for
+    stationary clips [E029] [E122]. Real-video motion and scan-anchored synthetic-view evaluation remain planned [E111] [E113].</li>
+  <li><b>Generated geometry and texture.</b> Solidification has no source-to-output shape-preservation benchmark [E116]; retopology has no
+    sampled surface-error score [E118]; UV checks can miss local stretch despite a good median density [E119]; and texture gutters have not been
+    checked through the mip levels and samplers used by target engines [E120]. Part-parser confidence is discarded
+    before label fusion, so its errors cannot yet be calibrated or abstained on [E117].</li>
+  <li><b>Prompt-to-asset fidelity.</b> Prompt expansion has rule checks and the model has a front silhouette gate, but the evaluation
+    does not track requested attributes through the reference image into the final character [E112]. In particular, held props,
+    action/pose requests and numeric height are currently unsupported or omitted by the structured description; short prompts also
+    need a separate passthrough check.</li>
+  <li><b>Independent evaluation.</b> “Held-out” is not yet backed by a frozen subject/sequence/prompt manifest or duplicate-group rule,
+    and repeated frames/views/seeds must not be counted as independent samples. Human quality ratings need blinded, score-boundary
+    examples and reported inter-rater reliability before any proxy is used as a gate [E101] [E102] [E111] [E112] [E121].</li>
+  <li><b>Engine delivery.</b> The README documents Unity, Unreal and Godot setup, and the paper lists glTF/FBX outputs; version-pinned
+    importer/runtime smoke results are not yet in the experiment record. FBX named LODs and glTF LOD0 have different export shapes,
+    and clip grouping may vary by importer; the manifest does not prove that the optimized web assets or release ZIPs carry every
+    advertised feature. glTF conformance alone will not establish engine behavior [E114].</li>
   <li><b>Speed.</b> A character takes about {{stage.total.min}} minutes of stage time, a move 35-50 minutes of video
     generation; most of the former is two 3D passes and two image-model calls [E106].</li>
-  <li><b>Licences.</b> The reference-to-video model's licence has territorial limits and requires attribution in a
-    commercial product; Qwen-Image 2.x is research-only. CharForge is a research project; Krea 2 remains available for
-    references where that matters.</li>
+  <li><b>Licences and data rights.</b> Qwen-Image 2.1 is licensed for non-commercial research/evaluation, with a separate commercial
+    license required [@qwenimage21license]. TRELLIS.2's official project page says its materials are for academic/research purposes
+    and not commercial exploitation; this is distinct from any code license [@trellis2license]. MiniMax H3's Community License
+    excludes the US, EU, UK and Republic of Korea and its use policy restricts outputs outside the applicable territory [@h3license].
+    The community Ref2VA fine-tune used here is separately labeled Apache-2.0 [@h3], so compatibility with the upstream H3 terms
+    remains unresolved; neither label alone settles the conflict. This paper is not legal advice. The Mixamo mirror requires
+    acceptance of access conditions, while Adobe's FAQ describes royalty-free use in personal, commercial and non-profit projects;
+    neither source by itself resolves redistribution rights for this mirror [@mixamomirror; @mixamo]. The package can also include
+    original reference images, whose redistribution rights must be checked per character. A complete per-run model/data/version and
+    rights record is still future work; unknown or contradictory terms must remain explicit, not be converted into permission [E115].</li>
 </ul>
 </section>

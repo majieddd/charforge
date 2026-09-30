@@ -1,0 +1,138 @@
+{
+ "_about": "tools/aberration_controls.py: the aberration audit on a synthetic character with known aberrations (blender/aberration_controls.py)",
+ "triangles": 5496,
+ "checks": [
+  {
+   "skin": "dqs",
+   "check": "still: every measure zero",
+   "pass": true,
+   "measured": "{\"crushed_pct\": 0.0, \"stretched_pct\": 0.0, \"sheared_pct\": 0.0, \"intersecting_pairs_mean\": 0.0, \"penetration_max_cm\": 0.0, \"floor_frames_pct\": 0.0, \"popping_event_windows\": 0}"
+  },
+  {
+   "skin": "dqs",
+   "check": "squash: torso top+bottom crushed",
+   "pass": true,
+   "measured": "12.30% vs 12.30%"
+  },
+  {
+   "skin": "dqs",
+   "check": "stretch: torso top+bottom stretched",
+   "pass": true,
+   "measured": "12.30% vs 12.30%"
+  },
+  {
+   "skin": "dqs",
+   "check": "sink: floor every frame, lowest -3 cm",
+   "pass": true,
+   "measured": "100.0% of frames, -3.0 cm"
+  },
+  {
+   "skin": "dqs",
+   "check": "pop: popping at the popped frame only",
+   "pass": true,
+   "measured": "frames [10]"
+  },
+  {
+   "skin": "dqs",
+   "check": "bend: a fast smooth bend is not popping",
+   "pass": true,
+   "measured": "frames []"
+  },
+  {
+   "skin": "dqs",
+   "check": "push: penetration 0.5 cm",
+   "pass": true,
+   "measured": "0.50-0.50 cm"
+  },
+  {
+   "skin": "dqs",
+   "check": "push: penetration 1 cm",
+   "pass": true,
+   "measured": "1.00-1.00 cm"
+  },
+  {
+   "skin": "dqs",
+   "check": "push: penetration 2 cm",
+   "pass": true,
+   "measured": "2.00-2.00 cm"
+  },
+  {
+   "skin": "dqs",
+   "check": "push: penetration 5 cm",
+   "pass": true,
+   "measured": "5.00-5.00 cm"
+  },
+  {
+   "skin": "dqs",
+   "check": "push: rigid, so nothing crushed/stretched/sheared/popping",
+   "pass": true,
+   "measured": ""
+  },
+  {
+   "skin": "lbs",
+   "check": "still: every measure zero",
+   "pass": true,
+   "measured": "{\"crushed_pct\": 0.0, \"stretched_pct\": 0.0, \"sheared_pct\": 0.0, \"intersecting_pairs_mean\": 0.0, \"penetration_max_cm\": 0.0, \"floor_frames_pct\": 0.0, \"popping_event_windows\": 0}"
+  },
+  {
+   "skin": "lbs",
+   "check": "squash: torso top+bottom crushed",
+   "pass": true,
+   "measured": "12.30% vs 12.30%"
+  },
+  {
+   "skin": "lbs",
+   "check": "stretch: torso top+bottom stretched",
+   "pass": true,
+   "measured": "12.30% vs 12.30%"
+  },
+  {
+   "skin": "lbs",
+   "check": "sink: floor every frame, lowest -3 cm",
+   "pass": true,
+   "measured": "100.0% of frames, -3.0 cm"
+  },
+  {
+   "skin": "lbs",
+   "check": "pop: popping at the popped frame only",
+   "pass": true,
+   "measured": "frames [10]"
+  },
+  {
+   "skin": "lbs",
+   "check": "bend: a fast smooth bend is not popping",
+   "pass": true,
+   "measured": "frames []"
+  },
+  {
+   "skin": "lbs",
+   "check": "push: penetration 0.5 cm",
+   "pass": true,
+   "measured": "0.50-0.50 cm"
+  },
+  {
+   "skin": "lbs",
+   "check": "push: penetration 1 cm",
+   "pass": true,
+   "measured": "1.00-1.00 cm"
+  },
+  {
+   "skin": "lbs",
+   "check": "push: penetration 2 cm",
+   "pass": true,
+   "measured": "2.00-2.00 cm"
+  },
+  {
+   "skin": "lbs",
+   "check": "push: penetration 5 cm",
+   "pass": true,
+   "measured": "5.00-5.00 cm"
+  },
+  {
+   "skin": "lbs",
+   "check": "push: rigid, so nothing crushed/stretched/sheared/popping",
+   "pass": true,
+   "measured": ""
+  }
+ ]
+}

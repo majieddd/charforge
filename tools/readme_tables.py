@@ -47,7 +47,7 @@ def feet(cfg):
         if f.exists():
             names.append(c["name"])
             data.append(json.load(open(f)))
-    rows = ["| contact slip, share of ground speed (worse foot) | " + " | ".join(names) + " |",
+    rows = ["| contact slip, share of ground speed (worse foot; corrected audits only below 1 m/s) | " + " | ".join(names) + " |",
             "|---|" + "---|" * len(names)]
     for g in GAITS:
         cells = []
@@ -56,7 +56,10 @@ def feet(cfg):
             if not r:
                 cells.append("-")
                 continue
-            s = [r[k]["slip"] for k in ("left", "right") if r[k]["slip"] is not None]
+            speed = r.get("ground_speed_mps")
+            valid = r.get("metric_version", 1) >= 2 or (speed is not None and speed >= 1.0)
+            s = [r[k]["slip"] for k in ("left", "right")
+                 if r[k].get("slip") is not None and valid]
             cells.append(f"{max(s) * 100:.1f}%" if s else "-")
         rows.append(f"| {g.replace('_', ' ')} | " + " | ".join(cells) + " |")
     deep = [min(min(r[k]["deepest_cm"] for k in ("left", "right")) for g, r in d.items() if g in GAITS) for d in data]

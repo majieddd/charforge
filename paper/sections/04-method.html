@@ -27,9 +27,10 @@
 <p>Everything is generated from one picture of the character standing in an A-pose on a plain background. We compared
   two local image models on six characters with the same prompt and seed [E013]: Krea 2 drew one broken figure in six (a
   jacket with no head or legs, which the automatic checks passed, since it still has "arms"), Qwen-Image 2.1
-  [@qwenimage; @qwenimage2] none, with a real alpha cut-out every time. Qwen read "arms slightly away from the body"
+  [@qwenimage21] produced no broken figures and returned a usable alpha cut-out in each case. Qwen read "arms slightly away from the body"
   literally - wrists 0.28-0.37 torso lengths from the hips, close enough to fuse in 3D - until the angle was spelled
-  out (0.58-0.70). It is the default; Krea stays a flag away because Qwen-Image's licence is research-only.</p>
+  out (0.58-0.70). It is the default; Krea stays a flag away. Qwen-Image 2.1's license is limited to non-commercial research
+  and evaluation; commercial use requires a separate license [@qwenimage21license].</p>
 <p>A reference in the wrong pose costs half an hour before it shows. Bo, a cartoon chef, was drawn with his fists on his
   hips despite the prompt; the 3D model fused them and his hands came out in shreds at his belt. The pose model now reads
   every reference's arms: our references put the wrists 0.60-0.79 torso lengths from the hips, Bo's 0.33, and below
@@ -54,11 +55,28 @@
   to {{b.turntable.repainted}}, and three turntable frames as extra views to {{b.turntable.turntable_frames}}: more
   views barely change the shape, and where views disagree the model averages them (Mara's braid, over her shoulder in
   the reference and down her back in the video, was lost at the back). The second pass is also the slowest stage
-  ([#tab-times]); whether it earns its place is part of [E106].</p>
+  ([#tab-times]). Every character built with it keeps both models, so the two were held against each other on
+  {{mv.n}} characters [E106] ([#fig-e106]). The second model fits the reference's front worse on {{mv.worse_n}} of
+  {{mv.n}} (silhouette IoU {{mv.front_pass1}} on average for the first pass, {{mv.front_mesh}} for the second), and its
+  side silhouettes overlap the first's by only {{mv.side_cross_min}}-{{mv.side_cross_max}}: it is a different model, not
+  a refinement. Where the difference shows it follows the repaint, not the picture. The image model repainting the
+  side and back views invents what the reference does not show, and the second pass builds it: the boy scout grew knee
+  socks and lost his grin, Vex's trainers became boots and a grey hood appeared under her jacket, Mara's braid moved
+  from her shoulder to her back. What it adds is a more plausible back (the scout's neckerchief is tied behind him). The
+  second pass is therefore off by default since this version (<code>--quality best</code> keeps it), which saves a
+  median {{stage.multiview.min}} of {{stage.total.min}} minutes. This is a pilot on finished models: the end-to-end
+  comparison, with the characters rigged and audited both ways and rated blind, is still to run.</p>
+<figure id="fig-e106">
+  <img src="media/e106_boyscout.webp" width="1800" height="694" alt="The boy scout's reference beside his two 3D models from the front, left, back and right: the first pass keeps his toothy grin, dark tousled hair and bare shins; the second pass has a closed smile, a lighter quiff and knee socks, with the neckerchief tied at the back">
+  <figcaption>The boy scout's reference (left); the first 3D pass (top) and the model after the multi-view pass (bottom),
+    from the front, left, back and right. The second pass follows the repainted views, not the picture: knee socks, a
+    closed smile, another haircut.</figcaption>
+</figure>
 
 <h3 id="sec-m-geometry">Solid, joints, arms and hands</h3>
 <p>The generated mesh is closed into one solid (OpenVDB level sets [@openvdb]), its flakes, inner shells and shards
-  removed. Orbit renders give per-vertex part labels from a human parser [@segformer] and 3D joints from the pose model;
+  removed. Orbit renders give per-vertex part labels from a SegFormer architecture [@segformer] using the FASHN human-parsing
+  checkpoint [@fashnparser] and 3D joints from the pose model;
   each joint is then moved onto the centre line of its limb, traced through the solid. A traced line can double back:
   on knight2 the arm's trace reached his gauntlet and turned 36 cm back up the vambrace, and the hand was placed a
   forearm's length behind the wrist; the trace now ends at its farthest point [E018].</p>
@@ -113,9 +131,9 @@
   so it does not walk onto the vest; a vest's armhole moves with the collarbone where colour tells the torso garment
   from the sleeve; and an upper garment near the hips follows the pelvis rather than the thighs, so a jump does not pull
   a hem into a W. Loose pieces the generator left (Kaito came as 40: hair spikes, the inner toes of his sandals) each
-  ride rigidly with the body part nearest them. The skeleton uses Mixamo's bone names [@mixamo] - 64 bones with fingers
-  and a jaw - so any Mixamo animation applies; bone chains are hung on what should swing (braids, ponytails, bags).
-  Engines skin linearly [@lbs]; the playground patches three.js [@threejs] to dual quaternion skinning [@dqs], which
+  ride rigidly with the body part nearest them. The project rig maps the 64-bone Mixamo-style vocabulary in its clip
+  library, including fingers and a jaw [@mixamomirror]; bone chains are hung on what should swing (braids, ponytails, bags).
+  The glTF standard's skinning path is linear blend [@gltf]; the playground patches three.js [@threejs] to dual quaternion skinning [@dqs], which
   cuts jacket faces collapsed below half their area during the walk from {{b.dqs.walk.0}}% to {{b.dqs.walk.1}}% and
   during the run from {{b.dqs.run.0}}% to {{b.dqs.run.1}}% with the same weights [E024].</p>
 <figure id="fig-wings">
@@ -141,12 +159,40 @@
   floor under the pelvis, glTF [@gltf] and FBX with three levels of detail, and a manifest with the collision capsule,
   each clip's ground speed, direction and contact phase, the jump's take-off and landing, and the face's morph targets.</p>
 
+<h3 id="sec-m-clearance">Room for each limb</h3>
+<p>A motion capture was performed by one person of one build. Played on a thicker character, the same joint angles fold a
+  forearm into a puffy sleeve, a heel into a thigh, and hang the arms inside a wide torso. Game rigs carry joint limits for
+  this; we measure them for each character from its own mesh [E128]. From the rest pose each elbow and knee is bent in
+  5° steps about its hinge axis, read from the character's own clips as the mean axis of each frame's bend, and the upper
+  arm is lowered from the T-pose at five swings, from 60° forward to 60° back. At every step the mesh is posed and the
+  depth of one body region inside another measured as in [#sec-eval-aberr]. A joint's limit is the last angle before that
+  depth passes 2 cm, the audit's own threshold for a deep penetration: flesh squashes where a rigid mesh can only
+  overlap, and at a 1 cm tolerance Mara's boxing guard was opened by 25°. The arms' limits leave out the head, whose
+  region includes the hair; hair should swing aside, not stop an arm.</p>
+<p>Every clip is then held inside the limits. An arm past its limit moves to the nearest allowed direction, measured
+  against the chest so a lean does not count, and those turns are smoothed over ±2 keys so the nearest choice cannot hop
+  between two near-equal ones (on Bo's first limits, raising the arm instead cost up to 44° where moving it out to the
+  side cost 17°), and faded out as the arm swings past 60° forward or back, where the limits were not measured.
+  An elbow or knee past its limit is opened about its own bend axis, a knee only while its foot is off the floor (faded
+  in between 8 and 16 cm of lift), so the feet stay where retargeting planted them. The limits are soft: the last 10° are approached along a tanh, so a
+  correction has no corner in time. The sweeps take about a minute per character and the clearance seconds; both run at
+  the end of the animate stage. Contact-aware retargeting treats the same interpenetration with a learned,
+  geometry-conditioned model [@contactretarget]; measured limits need no training data and cannot invent a pose, but
+  they only see each joint alone (see [#sec-eval-aberr] for what that leaves).</p>
+<figure id="fig-clearance">
+  <img src="media/clearance_bo.webp" width="1560" height="1096" alt="Bo in idle, strafe and sprint before and after clearance: before, his forearms sink into the sides of his chef's jacket and his raised heel folds into the back of his thigh; after, his arms hang just clear of the jacket and the raised leg bends less">
+  <figcaption>Bo before (top) and after (bottom) clearance, at 1.0 s of idle, 0.5 s of strafe left and 0.45 s of sprint.
+    His arms no longer hang inside his jacket, and his heel no longer folds into the back of his thigh. Foot slip is
+    unchanged.</figcaption>
+</figure>
+
 <h3 id="sec-m-motion">Moves from generated video</h3>
 <p><b>The video.</b> The character's reference image and a written move - timed beats: ready, the move, recovery - go to
-  a reference-to-video model [@h3], which returns 5.2 s at 24 fps of the character performing it (32-48 minutes on
-  the laptop, [E030]). Because the performer is the character, its proportions are close to the rig's.</p>
+  the community Ref2VA fine-tune [@h3] based on MiniMax H3 [@h3base], which returns 5.2 s at 24 fps of the character
+  performing it (32-48 minutes on the laptop, [E030]); its text encoder and VAEs are supplied by a separate Comfy-Org
+  package [@h3comfy]. Because the performer is the character, its proportions are close to the rig's.</p>
 <p><b>Retrieval.</b> ViTPose [@vitpose] reads 17 points in every frame. The sequence is matched against a library of
-  2,453 captures [@mixamo] by dynamic time warping [@dtw] of each clip's 2D projection from 16 camera angles, mirrored or
+  2,453 captures from the pinned mirror [@mixamomirror] by dynamic time warping [@dtw] of each clip's 2D projection from 16 camera angles, mirrored or
   not. In a self-test on 40 library clips shown from random angles with pose noise, a stretch and a speed change, the
   right clip or an exact duplicate ranked first every time, and the angle was off by {{st.left_out.angle_error_deg_median}}°
   (median) [E001].</p>

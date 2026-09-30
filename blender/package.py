@@ -413,10 +413,11 @@ bpy.ops.export_scene.gltf(
 print(f"[pkg] glTF -> {glb} ({os.path.getsize(glb)/1e6:.1f} MB)", flush=True)
 
 # ---- levels of detail, for the FBX ---------------------------------------------------------------
-# Godot and Unreal build LODs on import; Unity does not, but it builds an LOD Group by itself from
-# sibling meshes named _LOD0, _LOD1, ... So the FBX carries decimated copies - collapse decimation,
-# which keeps UVs and interpolates the skin weights - and the glTF stays single-LOD. At 58k
-# triangles the full mesh is hero-sized; a crowd or a distant character wants a few thousand.
+# The FBX carries decimated sibling meshes named _LOD0, _LOD1, ...; glTF carries the base mesh
+# only. Whether an importer discovers/groups these meshes, and which LODs survive import, is
+# engine- and version-specific and is tested in E114. Do not infer runtime LOD support from export.
+# Collapse decimation keeps UVs and interpolates skin weights. At 58k triangles the full mesh is
+# hero-sized; a crowd or a distant character wants a few thousand.
 lod_objs, lod_info = [], []
 ratios = [float(x) for x in a.lods.split(",") if x.strip()] if not a.no_fbx else []
 if ratios:
@@ -503,9 +504,9 @@ manifest = {
     "files": {"gltf": os.path.basename(glb), "fbx": os.path.basename(fbx) if fbx else None,
               "textures": written},
     "lods": {"fbx": lod_info,
-             "note": "the FBX meshes are named _LOD0/_LOD1/_LOD2, which Unity turns into an LOD "
-                     "Group on import; the glTF carries LOD0 only - Godot and Unreal generate "
-                     "their own LODs on import"} if lod_info else None,
+             "note": "FBX contains named decimated meshes _LOD0/_LOD1/_LOD2; glTF carries LOD0 only. "
+                     "Runtime LOD grouping and recognition depend on engine import settings and are "
+                     "not guaranteed by this manifest (see E114)."} if lod_info else None,
     "materials": {
         "workflow": "metallic-roughness",
         "maps": {"albedo": "sRGB", "normal": "tangent space, OpenGL (+Y)",

@@ -3,14 +3,20 @@
 
 <h3 id="sec-rw-gen">Characters from an image or a prompt</h3>
 <p><b>Image-to-3D generators.</b> TRELLIS [@trellis] and its successor TRELLIS.2 [@trellis2] generate meshes with
-  physically based materials from structured sparse-voxel latents (a 1024<sup>3</sup> asset in about 9.6K tokens);
+  physically based materials from structured sparse-voxel latents (a 1024<sup>3</sup> asset in about 9.6K tokens).
+  TRELLIS.2 conditions on DINOv3 image features [@dinov3].
   Hunyuan3D 2.0 and 2.1 [@hunyuan3d2; @hunyuan3d21] pair a shape diffusion transformer with a texture painter and
   produce PBR materials. Both families are general-purpose: they model a character as one surface, which is the root of
   most of what CharForge repairs. A practitioner's survey of hosted and open generators [@cinevvaguide] recommends the
   same two-step workflow we use - draw a clean reference with an image model, then lift it to 3D - and notes the same
-  weakness: generated topology lacks deformation loops at the joints. Hosted services built on these models
-  [@cinevvatool; @ai3dgen] add rigging and preset clips; their free tiers can be as limited as an untextured OBJ at a
-  fixed face count [@ai3dgen].</p>
+  weakness: generated topology lacks deformation loops at the joints. The Cinevva workbench advertises text or up to four
+  views, rigging, animation and GLB export, but does not identify the underlying model [@cinevvatool]. AI3DGen advertises
+  selectable-face-count OBJ exports and personal-use terms; its cited page does not document rigging or animation
+  [@ai3dgen].</p>
+<p>The Qwen-Image and Qwen-Image-2.0 papers describe earlier generations in the image-model family [@qwenimage; @qwenimage2];
+  the separate Qwen-Image 2.1 repository documents the checkpoint actually used by CharForge [@qwenimage21]. Its license
+  permits non-commercial research and evaluation only; it requires a separate license for commercial use
+  [@qwenimage21license].</p>
 <p><b>Character-specific systems.</b> CharacterGen [@charactergen] canonicalises a character in any pose to four A-pose
   views with an image-conditioned multi-view diffusion model, reconstructs it with a transformer sparse-view model, and
   back-projects the views into a texture with a depth test and Poisson blending [@poisson]; it rigs with AccuRIG
@@ -21,10 +27,16 @@
   animation. Template methods get rigging and faces for free but not the look of an arbitrary character; generation
   methods get the look but inherit the generator's topology. CharForge generates the character (like CharacterGen) and
   then builds the rig from the generated solid itself.</p>
+<p><b>Repair and representation quality.</b> ManifoldPlus [@manifoldplus] turns triangle soups into watertight manifolds while
+  optimizing the result back toward the input; Metro [@metro] measures simplified-surface error by sampling the source and output
+  surfaces. These works motivate two separate checks in [E116] and [E118]: topology repair success and geometric fidelity. They do
+  not supply a CharForge-specific tolerance. Semantic-segmentation confidence is also not automatically correctness: Wang et al.
+  [@segcal] and de Jorge et al. [@segrel] study calibration, reliability, and shift-related failure, motivating a manually labeled,
+  held-out calibration set before multi-view part probabilities are trusted [E117]. Neither gives CharForge-specific thresholds.</p>
 <p><b>Characters from drawings.</b> Animated Drawings [@animateddrawings] rigs a child's drawing in 2D. DrawingSpinUp
   [@drawingspinup] lifts a drawing to 3D, removes and later restores its view-dependent contour lines, thins
   single-line limbs with a skeleton-guided deformation, rigs with Mixamo's auto-rigger from eight front-view keypoints
-  and assigns each vertex to its nearest bone [@mixamo]; its authors report surface adhesion where the drawing has
+  and assigns each vertex to its nearest bone; its authors report surface adhesion where the drawing has
   self-occlusion, the same failure our arm cut addresses. Akman et al. [@akman2020] go from stick figures to 3D bodies
   with a variational autoencoder and animate by interpolating in its latent space.</p>
 
@@ -33,10 +45,24 @@
   learns joints, connectivity and weights; UniRig [@unirig] predicts skeletons autoregressively with a skeleton-tree
   tokenisation and was trained on over 14,000 rigged models. Commercial auto-riggers place a humanoid skeleton from
   guide markers - AccuRIG [@accurig] with correctable markers and finger counts, PINOC [@pinoc] with mirrored markers
-  from chin to ankles, Rig Lab [@riglab] fully automatically, but with each hand a single joint. Linear blend skinning
-  [@lbs] is what engines apply; it collapses bent joints, which dual quaternion skinning [@dqs] avoids by blending
-  rotations as rotations. Our weights follow the idea of geodesic voxel binding [@geodesicvoxel] - distance measured
+  from chin to ankles, Rig Lab [@riglab] fully automatically, but with each hand a single joint, and Mixamo [@mixamo].
+  Magnenat-Thalmann et al. describe earlier joint-dependent local deformations for hand animation and grasping [@lbs].
+  The glTF standard's linear-blend skinning path uses weighted joint transforms [@gltf]; this can collapse bent joints,
+  which dual quaternion skinning [@dqs] can reduce, but not eliminate, by blending rotations as rotations. Our weights follow the idea of geodesic voxel binding
+  [@geodesicvoxel] - distance measured
   through the voxelised body rather than through the air - so a vest glued to an arm is not near the arm's bone.</p>
+<p>Expressive hands and faces are often modelled together with the body: SMPL-X [@smplx] extends a body model with articulated hands
+  and an expressive face, while MANO [@mano] learns pose-dependent hand shape corrections from scans. These works motivate testing
+  hand and face deformation as well as landmark placement; their research models are not drop-in templates for arbitrary generated
+  characters. InterHand2.6M [@interhand26m] provides real-captured 3D hand-pose labels, while D3DFACS [@d3dfacs] and the FaMoS
+  sequences released with TEMPEH [@tempeh] provide dynamic human-face/action evidence. Their different topology, style and access
+  terms mean they are calibration references, not direct acceptance tests for stylized meshes [E123] [E124]. AU-Blendshape
+  [@aublendshape] specifically studies stylized action-unit controls and provides a relevant challenge-design reference, but not a
+  CharForge benchmark or a licensed drop-in asset set. Pose-space deformation [@psd] provides a classical basis for the elbow and
+  shoulder correctives planned in [E107].</p>
+<p><b>Layers and motion.</b> CAPE [@cape] learns pose-conditioned clothing shape, and CLOTH3D++ [@cloth3dpp] pairs animated
+  dressed-human sequences with dense cloth geometry and texture. They provide useful challenge cases for layered motion, but neither
+  demonstrates CharForge's runtime spring chains or guarantees stylized garment behavior [E110] [E125].</p>
 
 <h3 id="sec-rw-motion">Motion from video</h3>
 <p>Human pose models read 2D joints from images: ViTPose [@vitpose] for the body, DWPose [@dwpose] for the whole body
@@ -44,8 +70,43 @@
   [@smpl] - by optimisation, as in SMPLify [@smplify], or by regression, as in HMR, 4D Humans and WHAM
   [@hmr; @4dhumans; @wham], the last grounded in the world with foot contact. We do not fit a parametric body: the
   target is the character's own skeleton and mesh, whose proportions (a cartoon's head, an anime character's legs) no
-  human body model shares. Instead we retrieve the nearest clip from a motion-capture library [@mixamo] by dynamic time
+  human body model shares. Instead we retrieve the nearest clip from the 2,453-animation Mixamo mirror
+  [@mixamomirror] by dynamic time
   warping [@dtw] of its 2D projections, bend it toward the video, and refine the character's own skinned mesh against
-  the video in the spirit of SMPLify. The videos themselves come from a reference-to-video model [@h3] conditioned on the
-  character's picture, so the performer already looks like the character.</p>
+  the video in the spirit of SMPLify. The videos themselves come from the community Ref2VA fine-tune [@h3] based on
+  MiniMax H3 [@h3base], conditioned on the character's picture; Comfy-Org supplies separately packaged encoder and VAE
+  components [@h3comfy].</p>
+
+<p><b>Motion ground truth.</b> AMASS [@amass] unifies optical mocap datasets as rigged 3D motion, making it useful for controlled renders
+  with exact motion truth but not paired RGB. TotalCapture [@totalcapture] provides synchronized calibrated video, IMU and Vicon labels;
+  3DPW [@3dpw] adds in-the-wild footage from a moving phone camera with IMU/video-derived poses. AIST++ [@aistpp] broadens action coverage
+  with multi-view dance footage and reconstructed 3D motion, but its annotations are not Vicon measurements. These sources test different
+  failure modes and label quality, so we keep them as separate conditions rather than pooling them [E111].</p>
+<p><b>Contact labels.</b> UnderPressure [@underpressure] records pressure insoles with motion capture and derives foot-contact labels.
+  It supports evaluating contact classification against an independent signal; the geometric sole-depth threshold and foot-slip ratio
+  in CharForge remain separate proxies and need their own calibration [E122]. Pražák et al. [@footskateperception] found small
+  footsliding perceptible in most tested conditions, but their controlled mannequin study does not establish a universal acceptance
+  threshold for generated characters.</p>
+
+<h3 id="sec-rw-evaluation">Measuring generated assets and delivery</h3>
+<p>TIFA [@tifa] and GenEval [@geneval] use fine-grained question or object checks to expose prompt attributes, counts and relations that a
+  holistic image-text score can miss; neither is validated for stylized character renders. MATE-3D [@mate3d] instead collects human ratings
+  for semantic alignment, geometry, texture and overall quality separately. THUman 2.0 [@thuman2] supplies scan meshes and textures for a
+  permission-checked scan-anchored study; rendered orbit views are synthetic views, not captured calibrated camera observations, and
+  redistribution of derived data requires written permission under the posted terms. We use these works to design and calibrate
+  character-specific measurements, not to assume a published image or 3D evaluator transfers unchanged [E102] [E112] [E113].</p>
+<p>Metro-style surface distance [@metro] complements the existing nonmanifold checks with source-to-retopo shape error [E118].
+  Texture Mapping Progressive Meshes [@texmap] motivates checking local UV stretch and anisotropy beyond median texel density [E119].
+  Unity's mip documentation [@unitymips] describes runtime selection and
+  trilinear blending across downsampled levels; therefore a base-resolution gutter alone does not establish that exported color, normal
+  and ORM maps are seam-free at runtime [E120].</p>
+<p>For animated humans, DDH-QA [@ddhqa] includes human-rated binding errors and motion unnaturalness, while DHQA-4D [@dhqa4d] studies
+  geometry, texture and temporal-discontinuity distortions in scanned 4D humans. These taxonomies are useful for designing CharForge's
+  deformation audit, but their learned quality predictors are not assumed to generalize to generated, stylized characters [E102].</p>
+<p>The Khronos glTF Validator [@gltfvalidator] checks conformance to glTF 2.0, while Unity, Unreal and Godot document importer-specific
+  behavior for rigs, clips, morphs, materials and skin influences [@unityimport; @unrealimport; @godotimport]. A standards-valid file is
+  therefore necessary but not sufficient evidence of engine-ready behavior; the importer/runtime smoke matrix is [E114].</p>
+<p>For traceability, W3C PROV-DM [@provdm] models entities, activities, agents and derivations; CycloneDX's ML-BOM [@cyclonedxmlbom]
+  gives an inventory pattern for models and data, and Sandve et al. [@sandve] emphasize archiving exact computational procedures.
+  They motivate a claim ledger and output-lineage manifest, not a claim of formal provenance compliance [E115] [E121].</p>
 </section>

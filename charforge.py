@@ -194,7 +194,7 @@ def blender_bin() -> str:
 STAGES = [
     ("reference", "reference.png", "the image everything is generated from"),
     ("generate",  "pass1.glb",     "TRELLIS.2: geometry and PBR texture from the reference"),
-    ("multiview", "mesh.glb",      "second pass conditioned on enhanced side and back views"),
+    ("multiview", "mesh.glb",      "the 3D model (--quality best: a second pass on repainted side and back views)"),
     ("views",     "views/projection.json", "orbit renders for segmentation and pose"),
     ("parts",     "parts.json",    "per-vertex body / clothing / hair / accessory labels"),
     ("skeleton",  "joints.json",   "3D joint positions from the orbit renders"),
@@ -476,11 +476,13 @@ def s_generate(r: Run):
 
 def s_multiview(r: Run):
     """Stochastic multi-view: the second pass sees side and back views that a diffusion prior has
-    repainted from renders of the first. Needs ComfyUI; without it the first pass is used."""
+    repainted from renders of the first. Needs ComfyUI; without it the first pass is used. Off by
+    default since E106: the repaint invents what the reference does not show and the second model
+    follows it (front fit worse on 12 of 12 characters), for a median 16 minutes."""
     out = r.path("mesh.glb")
     if r.a.quality == "fast":
         shutil.copy(r.path("pass1.glb"), out)
-        print("      --quality fast: single-view mesh kept", flush=True)
+        print("      one pass (the default): the first model is the mesh", flush=True)
         return
     try:
         sys.path.insert(0, str(ROOT / "pipeline"))
@@ -751,6 +753,14 @@ def s_animate(r: Run):
          "--out", r.work / "animated.glb", "--blend-out", r.path("final.blend"),
          "--json", r.work / "retarget.json", *calib,
          keep=("heading", "feet:", "leg-lengths/s", "WARNING", "clips ->", "aimed along", "the head"))
+    # a capture was performed by someone of one build: on a thicker character the same motion folds a forearm
+    # into a sleeve or hangs the arms inside the torso. Measure how far this character's elbows, knees and
+    # arms can go before one limb sinks into another (its own mesh), and hold the clips inside that
+    # (experiment E128: Bo's frames with >2 cm penetration 62% -> 31%, foot slip unchanged)
+    r.bl("limits", "joint_limits.py", "--blend", r.path("final.blend"), "--out", r.work / "joint_limits.json",
+         keep=("limit",))
+    r.bl("clearance", "clearance.py", "--blend", r.path("final.blend"), "--limits", r.work / "joint_limits.json",
+         "--json", r.work / "clearance.json", keep=("[clearance]",))
 
 
 def ensure_hand_calib(r: Run):
@@ -1008,8 +1018,12 @@ def main():
                    help="what makes the reference image from --prompt (default: qwen21, or whatever the "
                         "character was made with). Qwen-Image 2.1 draws its own transparent cut-out but is "
                         "under a research-only licence; use krea2 for commercial work")
-    m.add_argument("--quality", choices=("best", "fast"), default="best",
-                   help="best adds the multi-view second pass (needs ComfyUI)")
+    m.add_argument("--quality", choices=("best", "fast"), default="fast",
+                   help="fast (default): one TRELLIS pass on the reference. best: a second pass on the reference plus "
+                        "side and back views the image model repaints (needs ComfyUI; a median 16 more minutes). On 12 "
+                        "characters the second pass fitted the reference's front worse every time and drifted from it "
+                        "(Boyscout grew knee socks, Vex's trainers became boots, Mara's braid moved behind), though "
+                        "a back can come out more plausible (experiment E106)")
     m.add_argument("--seed", type=int, default=7)
     m.add_argument("--keep-comfy-loaded", action="store_true",
                    help="do not ask ComfyUI to unload its cached models before a TRELLIS pass "

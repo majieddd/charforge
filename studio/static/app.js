@@ -345,7 +345,7 @@ async function newChar() {
         <span class="hint">Left alone, the height follows the description: a child 1.2-1.5 m, an adult about 1.75.</span></div>
       <details class="adv"><summary>More options</summary>
         <div class="field"><label for="imodel">Image model (for a description)</label><select id="imodel"><option value="qwen21">Qwen-Image 2.1 - best cut-outs; research-only licence</option><option value="krea2">Krea 2 - commercial use</option></select></div>
-        <div class="field"><label for="quality">Quality</label><select id="quality"><option value="best">Best - a second 3D pass from repainted side and back views</option><option value="fast">Fast - one pass</option></select></div>
+        <div class="field"><label for="quality">Quality</label><select id="quality"><option value="fast">One 3D pass - follows the picture (recommended)</option><option value="best">Two passes - repaints the sides and back first; more plausible backs, drifts from the picture, about 16 min longer</option></select></div>
         <div class="field"><label for="seed">Seed</label><input type="number" id="seed" value="7"></div>
       </details>
     </div>

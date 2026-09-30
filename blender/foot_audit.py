@@ -7,8 +7,9 @@ with the heel while the sole stays planted). Each in-place clip is played with t
 carried forward at the ground speed its manifest states, the way a controller moves it:
 
   slip       horizontal speed of the lowest shoe vertex while it touches the floor (< 4 mm), as a
-             share of ground speed - the same vertex tracked from one key to the next, so a foot
-             rolling heel to toe does not count as sliding
+             share of the clip's true ground speed - the same vertex tracked from one key to the
+             next, so a foot rolling heel to toe does not count as sliding; undefined at zero speed
+  slip_mps   absolute horizontal speed of that vertex while touching the floor
   on floor   share of keys with that foot down: about 60% for a walk, 35% for a jog or run
   through    how far the shoe goes below the floor at worst, and how often by more than 1 cm
 
@@ -17,7 +18,9 @@ Run: blender -b -noaudio --python foot_audit.py -- --blend final.blend --report 
 """
 import argparse
 import json
+import os
 import sys
+import tempfile
 
 import bpy
 import numpy as np
@@ -28,7 +31,10 @@ ap.add_argument("--blend", required=True)
 ap.add_argument("--report", required=True, help="retarget.py's JSON report (ground speeds)")
 ap.add_argument("--clips", nargs="*", default=None)
 ap.add_argument("--json", default=None)
+ap.add_argument("--force", action="store_true", help="allow replacing an existing JSON output")
 a = ap.parse_args(argv)
+if a.json and os.path.exists(a.json) and not a.force:
+    raise SystemExit(f"[feet] refusing to overwrite existing output: {a.json} (pass --force to replace it)")
 
 rep = json.load(open(a.report))
 bpy.ops.wm.open_mainfile(filepath=a.blend)
@@ -92,8 +98,7 @@ for name in (a.clips or list(rep)):
     for f in range(f0, f1 + 1):
         sc.frame_set(f)
         F.append({s: p + carry * (f - f0) / fps for s, p in feet_now().items()})
-    ref = v if v >= 1.0 else 1.0                     # stationary clips: m/s per 1 m/s
-    row = {"ground_speed_mps": v}
+    row = {"metric_version": 2, "ground_speed_mps": v}
     for side in ("left", "right"):
         slip, down, depth = [], 0, []
         for i in range(1, len(F) - 1):
@@ -105,7 +110,10 @@ for name in (a.clips or list(rep)):
                 d = (F[i + 1][side][k, :2] - F[i - 1][side][k, :2]) * fps / 2
                 slip.append(float(np.linalg.norm(d)))
         depth = np.array(depth)
-        row[side] = {"slip": round(float(np.mean(slip)) / ref, 4) if slip else None,
+        slip_mps = float(np.mean(slip)) if slip else None
+        slip_share = slip_mps / v if slip_mps is not None and v > 0 else None
+        row[side] = {"slip": round(slip_share, 4) if slip_share is not None else None,
+                     "slip_mps": round(slip_mps, 5) if slip_mps is not None else None,
                      "on_floor": round(down / max(len(F) - 2, 1), 3),
                      "deepest_cm": round(float(depth.min()) * 100, 2),
                      "keys_over_1cm_through": round(float(np.mean(depth < -0.01)), 3)}
@@ -116,4 +124,19 @@ for name in (a.clips or list(rep)):
           f"L {L['on_floor']*100:3.0f}% R {R['on_floor']*100:3.0f}% | deepest "
           f"{min(L['deepest_cm'], R['deepest_cm']):+.1f} cm", flush=True)
 if a.json:
-    json.dump(results, open(a.json, "w"), indent=2)
+    out_dir = os.path.dirname(os.path.abspath(a.json))
+    os.makedirs(out_dir, exist_ok=True)
+    fd, temp_out = tempfile.mkstemp(prefix=f".{os.path.basename(a.json)}.", suffix=".tmp", dir=out_dir)
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(results, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        if a.force:
+            os.replace(temp_out, a.json)
+        else:
+            os.link(temp_out, a.json)
+            os.unlink(temp_out)
+    finally:
+        if os.path.exists(temp_out):
+            os.unlink(temp_out)
