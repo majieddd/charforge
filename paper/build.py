@@ -89,6 +89,32 @@ def values():
     for m, s in M["prompt_models"].items():
         v[f"pm.{m}.score"] = s["score"]
         v[f"pm.{m}.secs"] = s["secs"]
+    AB = M.get("aberrations") or {}
+    for cid, row in AB.items():
+        for f, x in row.items():
+            if isinstance(x, (int, float)) and not isinstance(x, bool):
+                v[f"aberr.{cid}.{f}"] = x
+    num = [f for f, x in next(iter(AB.values()), {}).items() if isinstance(x, (int, float)) and not isinstance(x, bool)]
+    for f in num:
+        xs = [row[f] for row in AB.values() if row.get(f) is not None]
+        if xs:
+            v[f"aberr.mean.{f}"] = round(sum(xs) / len(xs), 2)
+            v[f"aberr.max.{f}"] = max(xs)
+            v[f"aberr.min.{f}"] = min(xs)
+    v["aberr.n"] = len(AB)
+    MV = {k: x for k, x in (M.get("multiview") or {}).items() if not x.get("same")}
+    if MV:
+        f1 = [x["front_iou_pass1"] for x in MV.values()]
+        f2 = [x["front_iou_mesh"] for x in MV.values()]
+        side = [x["sides"][s_]["cross_iou"] for x in MV.values() for s_ in ("left", "right")]
+        v["mv.n"] = len(MV)
+        v["mv.worse_n"] = sum(b < a for a, b in zip(f1, f2))
+        v["mv.front_pass1"] = round(sum(f1) / len(f1), 3)
+        v["mv.front_mesh"] = round(sum(f2) / len(f2), 3)
+        v["mv.side_cross_min"], v["mv.side_cross_max"] = round(min(side), 2), round(max(side), 2)
+    ctl = M.get("aberration_controls") or []
+    v["controls.n"] = len(ctl)
+    v["controls.passed"] = sum(c["pass"] for c in ctl)
 
     def flat(prefix, d):
         for k, x in d.items():
@@ -292,9 +318,52 @@ def t_cite():
             f"  url    = {{{META['url']}}}\n}}</pre>")
 
 
+def t_aberrations():
+    """Every character before and after clearance (E128), measured by the aberration audit (E102)."""
+    before = B["aberrations_before_clearance"]["characters"]
+    names = {c["id"]: c["name"] for c in M["roster"]}
+    rows = []
+
+    def pair(b, a, nd, unit=""):
+        better = a < b - 10 ** -nd
+        return (f"<td class='num'>{fmt(float(b), nd)}{unit} → <span class='{'good' if better else ''}'>{fmt(float(a), nd)}{unit}</span></td>")
+    for cid in sorted(M["aberrations"], key=lambda c: names.get(c, c)):
+        a, b = M["aberrations"][cid], before.get(cid)
+        if not b:
+            continue
+        rows.append(f"<tr><td>{esc(names.get(cid, cid))}</td>{pair(b['deep_body_frames_pct'], a['deep_body_frames_pct'], 0, '%')}"
+                    f"{pair(b['deep_frames_pct'], a['deep_frames_pct'], 0, '%')}"
+                    f"{pair(b['body_penetration_cm'], a['body_penetration_cm'], 1)}{pair(b['crushed_pct'], a['crushed_pct'], 2, '%')}"
+                    f"{pair(b['stretched_pct'], a['stretched_pct'], 2, '%')}{pair(b['sheared_pct'], a['sheared_pct'], 2, '%')}"
+                    f"<td class='num'>{fmt(float(a.get('clearance_max_deg', 0)), 0)}°</td>"
+                    f"<td class='muted small'>{esc(', '.join(c.replace('_', ' ') for c in a['worst_clips']))}</td></tr>")
+    return ("<table><thead><tr><th>character</th><th class='num'>frames with &gt;2 cm penetration</th>"
+            "<th class='num'>… counting hair</th>"
+            "<th class='num'>deepest body penetration, cm (clip mean)</th><th class='num'>crushed</th><th class='num'>stretched</th>"
+            "<th class='num'>sheared</th><th class='num'>largest turn</th><th>worst clips (surface)</th></tr></thead><tbody>"
+            + "".join(rows) + "</tbody></table>")
+
+
+def t_controls():
+    """The aberration audit on a synthetic character with known aberrations (E102), both skinnings."""
+    by = {}
+    for c in M["aberration_controls"]:
+        by.setdefault(c["check"], []).append(c)
+    rows = []
+    for check, cs in by.items():
+        ok = all(c["pass"] for c in cs)
+        m = next((c["measured"] for c in cs if c["skin"] == "dqs"), cs[0]["measured"])
+        if m.startswith("{"):
+            m = "all zero" if all(x == 0 for x in json.loads(m).values()) else m
+        rows.append(f"<tr><td>{esc(check)}</td><td class='num'>{esc(m)}</td>"
+                    f"<td class='{'good' if ok else 'bad'}'>{'pass' if ok else 'FAIL'} ({', '.join(c['skin'].upper() for c in cs)})</td></tr>")
+    return ("<table><thead><tr><th>built in</th><th class='num'>measured (DQS)</th><th>result</th></tr></thead><tbody>"
+            + "".join(rows) + "</tbody></table>")
+
+
 TABLES = {"moves": t_moves, "stages": t_stages, "roster": t_roster, "feet": t_feet, "prompts": t_prompts,
           "selftest": t_selftest, "times": t_times, "comparison": t_comparison, "tracker": t_tracker,
-          "changelog": t_changelog, "cite": t_cite}
+          "changelog": t_changelog, "cite": t_cite, "aberrations": t_aberrations, "controls": t_controls}
 
 
 # ---- assembly -------------------------------------------------------------------------------------
@@ -623,8 +692,9 @@ TEMPLATE = """<!doctype html>
 {body}
 <footer>
   <div>{ack}</div>
-  <div>Built by <code>paper/build.py</code> from the repository; every table is regenerated from the measurement files
-  (<code>paper/collect.py</code>). Version {version}, {date}. {nrefs} references.</div>
+  <div>Built by <code>paper/build.py</code> from repository sources. Metric snapshots are refreshed by
+  <code>paper/collect.py</code>; the tracker is rendered from the experiment log. Not every manually maintained claim is
+  yet linked to an artifact (E121). Version {version}, {date}. {nrefs} cited references.</div>
 </footer>
 </main>
 </div>

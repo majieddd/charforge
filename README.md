@@ -21,7 +21,8 @@ from a few words or one image, on a laptop*, a living research paper: the method
 (regenerated from the pipeline's own files), related work with sources, negative results and the roadmap. Beside it:
 the [lab notebook](https://majieddd.github.io/charforge/paper/notebook.html) (the day-by-day record) and the
 [experiment tracker](research/TRACKER.md) (what is planned, running, done and dropped - start there to pick the work
-up). Rebuild the paper with `python paper/collect.py && python paper/build.py`.
+up), plus the [research gap review](research/GAPS.md) (evidence and next measurements for each pipeline stage).
+Rebuild the paper with `python paper/collect.py && python paper/build.py`.
 
 <!--ROSTER-->
 | | style | made from | height | triangles (LOD0 / 1 / 2) | face | package |
@@ -156,7 +157,7 @@ in this repository.
 | stage | what happens | script |
 |---|---|---|
 | reference | a short prompt written out (age, build, skin, hair, each garment's colour), then a full-body reference image, or your image as is; drawn again (up to three times) when a pose model finds the hands against the body - they would fuse to it | `pipeline/describe.py`, `pipeline/comfy.py`, `pipeline/pose_gate.py` |
-| generate, multiview | TRELLIS.2 via MLX; side and back views repainted and fed back as stochastic multi-view conditioning; each pass checked from the front against the picture, and made again - through TRELLIS's background remover, then on a new seed - when it is not a match (the picture's backdrop built in as a board); retried in smaller GPU pieces if macOS stops a long one | `vendor/trellis2mlx`, [patch](patches/) |
+| generate, multiview | TRELLIS.2 via MLX, one pass on the reference (with `--quality best`, side and back views repainted and fed back as stochastic multi-view conditioning - off by default since E106: it drifted from the picture on 12 of 12 characters and costs ~16 min); each pass checked from the front against the picture, and made again - through TRELLIS's background remover, then on a new seed - when it is not a match (the picture's backdrop built in as a board); retried in smaller GPU pieces if macOS stops a long one | `vendor/trellis2mlx`, [patch](patches/) |
 | views, parts | eight orbit renders; a human parser per view, back-projected to body / clothing / hair / accessory labels; hair the parser calls "hat" or "bag" relabelled by colour | `pipeline/parts.py` |
 | skeleton | joints from a pose model on the front and side views | `pipeline/skeleton.py` |
 | solidify | the generated shell becomes one solid: inside is what cannot see out along 3 of 26 directions; hair flakes closed where hair is nearest | `pipeline/solidify.py` |
@@ -168,7 +169,7 @@ in this repository.
 | springs | bone chains for what hangs free | `blender/springs.py` |
 | frame, tpose | metres, soles on the floor, origin under the pelvis; T rest pose, hands squared | `blender/normalize_frame.py`, `blender/tpose.py` |
 | face | landmarks (chin, nose, mouth, eyes, checked), mouth cut open, jaw, five shapes | `pipeline/face_landmarks.py`, `blender/face_rig.py` |
-| animate | 18 clips retargeted: heading and travel direction, feet planted with leg IK | `blender/retarget.py` |
+| animate | 18 clips retargeted: heading and travel direction, feet planted with leg IK; then held inside the character's own joint limits (how far each elbow, knee and arm can turn before one limb sinks more than 2 cm into another, measured on its mesh) | `blender/retarget.py`, `blender/joint_limits.py`, `blender/clearance.py` |
 | package, web | Mixamo names, glTF + FBX with LODs, engine texture variants, manifest; 2K WebP build | `blender/package.py`, `tools/optimize_glb.py` |
 
 ## Moves from a video
@@ -310,7 +311,7 @@ the models was built from:
 | Mara, built from | IoU over the turn | front | sides | back |
 |---|---|---|---|---|
 | the reference alone | 0.778 | 0.805 | 0.711 / 0.776 | 0.780 |
-| + side and back views repainted from the first pass (the pipeline now) | 0.781 | 0.802 | 0.731 / 0.778 | 0.771 |
+| + side and back views repainted from the first pass (the default until E106; now `--quality best`) | 0.781 | 0.802 | 0.731 / 0.778 | 0.771 |
 | + three frames of the turntable (three-quarter, back, three-quarter) | 0.786 | 0.818 | 0.724 / 0.768 | 0.773 |
 
 More views barely move the shape - the limit is the pose (she steps through the turn; the models
@@ -320,11 +321,17 @@ them - Mara's braid hangs over her shoulder in the reference and down her back i
 and the model built from both lost it at the back. Not worth 30 minutes of H3 per character in the
 standard build; worth it as a check from every side.
 
-**Licence.** MiniMax H3 is under the MiniMax H3 Community License, whose territory excludes the
-United States, the EU, the UK and South Korea; a commercial product using it must show "MiniMax
-H3", and one earning over $20M a year needs MiniMax's authorisation. The fine-tune used here
-(`WarmBloodAban/Minimax-h3_Singularity`) is a derivative and carries the same licence, whatever its
-model card says. Nothing from H3 ships in this repository. ComfyUI 0.37 or later is needed, and on a
+**Licence.** MiniMax H3's [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)
+defines an applicable territory that excludes the
+United States, the EU, the UK and South Korea, and its use policy restricts using or distributing
+H3 outputs outside that territory. Commercial products/services using H3 Works must display
+"MiniMax H3"; products/services above $20M yearly revenue need prior written authorisation. The
+community fine-tune used here ([`WarmBloodAban/Minimax-h3_Singularity`](https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity))
+is separately labeled Apache-2.0, while the upstream agreement defines H3 Works to include model derivatives. How those
+terms interact is unresolved; do not infer permission from the fine-tune's label. The H3 weights
+are not bundled, but H3-generated demonstration videos are present under `paper/media/` and
+`docs/paper/media/`; their use and public distribution need a separate rights review. Preserve the
+historical files pending that review. This note is not legal advice. ComfyUI 0.37 or later is needed, and on a
 Mac the model file is prepared once, in two steps: `tools/f8_scales_to_f32.py` rewrites its float8
 scales as float32 (PyTorch on Apple GPUs has no float8), and `tools/merge_lora_quantized.py` bakes
 in the 4-step turbo LoRA without requantizing. ComfyUI patching the LoRA in at load kept a second
@@ -334,9 +341,12 @@ the codes the LoRA pushes past a level (0.1% of them) - 0.5% noise, the LoRA's c
 
 ## Measured, not asserted
 
-Every number here comes from a script in this repository. The adversarial reviews that drove
-each rebuild are in [REVIEW.md](REVIEW.md); the running task list, including what was tried and
-rejected, is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Many summary values are generated by scripts in this repository, but this README and the paper
+also retain manually maintained historical results. The build does not yet prove that every
+hand-entered number resolves to a measurement artifact; that gap is tracked as E121 in
+[research/GAPS.md](research/GAPS.md). The adversarial reviews that drove each rebuild are in
+[REVIEW.md](REVIEW.md); the running task list, including what was tried and rejected, is in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Feet stay where they are put.** Measured on the deformed shoe - its lowest vertex while it
 touches the floor - with every in-place clip carried along its own direction at the speed its
@@ -345,7 +355,7 @@ work/<name>/retarget.json`; in the playground, `await __cf.footAudit()` measures
 its own controller and agrees within a percent or two):
 
 <!--FEET-->
-| contact slip, share of ground speed (worse foot) | Aoi | Mara | Pip | Juno | Rowan | Wren | Vex | Knight | Kaito |
+| historical contact slip, share of ground speed (worse foot; legacy audit) | Aoi | Mara | Pip | Juno | Rowan | Wren | Vex | Knight | Kaito |
 |---|---|---|---|---|---|---|---|---|---|
 | walk | 1.0% | 2.5% | 4.5% | 2.7% | 3.6% | 7.5% | 4.6% | 1.5% | 1.3% |
 | jog | 1.7% | 2.7% | 3.3% | 3.8% | 2.0% | 2.6% | 2.5% | 1.3% | 1.6% |
@@ -358,6 +368,13 @@ its own controller and agrees within a percent or two):
 | crouch walk | 3.5% | 2.6% | 3.9% | 2.5% | 3.3% | 11.5% | 18.2% | 1.4% | 1.5% |
 | soles through the floor, worst | 0.2 cm | 0.5 cm | 0.5 cm | 0.3 cm | 0.3 cm | 0.5 cm | 0.7 cm | 0.0 cm | 0.5 cm |
 <!--/FEET-->
+
+These are retained results from the earlier audit, which divided slip speed by `max(ground speed,
+1 m/s)`. Ratios for clips below 1 m/s were understated, and a percentage is undefined at zero
+ground speed. The corrected implementation reports absolute slip in m/s and uses the actual
+nonzero speed; no replacement measurements have been collected yet. See E029/E122 in
+[`research/experiments.json`](research/experiments.json). Do not compare the legacy percentages
+with a future corrected rerun as if they used the same denominator.
 
 Two cells are open problems, not noise: Vex's right shoe rides ~1.4 cm high while planted in the
 crouch-walk, so the audit mostly sees its heel-to-toe roll; and Pip's short cartoon legs take the
@@ -387,6 +404,15 @@ detailed by image-to-image at low strength and read through the front view's own
 <p align="center">
   <img src="results/v3/face_detail.png" width="720" alt="Juno's face before and after the face detail pass">
 </p>
+
+**Limbs stay out of each other.** `python tools/aberrations.py` measures every frame of every clip on the
+deformed mesh: faces crushed, stretched and sheared, how deep one body region goes inside another, the
+floor, one-frame pops (`work/<name>/qa/aberrations.json`; `--render` colours the worst frames). It was
+checked on a synthetic character with aberrations of known size first - `python tools/aberration_controls.py`
+passes all 22 checks, penetration to the millimetre. On the 13 characters, a body region was more than 2 cm
+inside another in 48% of frames; holding each clip inside joint limits measured on the character's own
+mesh brought that to 34%, with nothing crushed, stretched or sheared more and the feet unmoved
+(E102, E128 in the [paper](https://majieddd.github.io/charforge/paper/#sec-eval-aberr)).
 
 **Dual quaternion skinning beats any weighting scheme we tried** - same mesh, same weights, in
 the playground's shader (Rowan's earlier build): jacket faces collapsing under half their rest area
@@ -453,17 +479,21 @@ The site and release packages are generated: `python tools/build_site.py` rebuil
 ## Assets and licensing
 
 The **code** is MIT (see [LICENSE](LICENSE)). The **character meshes and textures** are generated
-output and carry no third-party rights beyond the generating models' own terms (TRELLIS.2, MIT;
-the reference image's model - **Qwen-Image 2.1 is under the Qwen Research License, research and
-evaluation only; commercial use needs a licence from Qwen**, so build commercial characters with
-`--image-model krea2` - and Krea 2 for the face detail).
+output, but this does not establish a blanket rights grant. TRELLIS.2's [official project page](https://microsoft.github.io/TRELLIS.2/)
+says its materials are solely for academic/research purposes and not intended for commercial
+exploitation; its code license is a separate question. Qwen-Image 2.1 is under the Qwen Research
+License for non-commercial research/evaluation only; commercial use needs a separate license from
+[Qwen](https://github.com/QwenLM/Qwen-Image-2.1/blob/main/LICENSE). Check the exact generating model, inputs and output terms before redistribution or commercial
+use; unknown permissions remain unknown.
 
-The **animation clips are derived from Mixamo captures** (via the `jasongzy/Mixamo` mirror) and
-retargeted onto each skeleton. Mixamo content is Adobe's; its licence permits use in projects
-but not redistribution as stock animation. The clips here ship as part of a demo - for anything
-commercial, download your own clips from [mixamo.com](https://www.mixamo.com) and point
-`animations/default_clips.json` at them. Open an issue if you are the rights holder and want this
-removed.
+The **animation clips are derived from Mixamo captures** (via the pinned
+[`jasongzy/Mixamo` mirror](https://huggingface.co/datasets/jasongzy/Mixamo/tree/b1c7f4975ea3261d3d0aa2379f6e24754ccde9d8))
+and retargeted onto each skeleton. [Adobe's FAQ](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) says Mixamo characters and animations may be used
+royalty-free in personal, commercial and non-profit projects, including video games; the local
+mirror separately requires accepting access conditions that include sharing contact information.
+Those sources do not by themselves settle redistribution of this mirror or the raw clips. Review
+the applicable Adobe and mirror terms before distributing packages containing them; do not infer
+redistribution permission from the project's code license or the dataset count.
 
 ## Repository layout
 

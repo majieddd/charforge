@@ -11,14 +11,22 @@
   <code>tools/motion_stages.py</code>, <code>tools/make_angles.py</code> and <code>blender/foot_audit.py</code>. Built
   characters are in the <a href="../">playground</a> and as release packages.</p>
 <p><b>How this paper is kept.</b> The paper is built from the repository by <code>paper/build.py</code>. Its prose is in
-  <code>paper/sections/</code>; every number in it is named, not typed, and comes from <code>paper/data/metrics.json</code>,
-  which <code>paper/collect.py</code> regenerates from the pipeline's measurement files, or from
-  <code>paper/data/baselines.json</code> for numbers measured before a change. References are in
-  <code>paper/references.json</code>, each checked against its source. The build refuses to write a page with an unknown
-  number, citation, cross-reference or missing figure. Experiments are recorded in <code>research/experiments.json</code>
-  before they run - question, method, metric - and completed with their result and decision; the build renders them as
-  <a href="#appendix-tracker">Appendix A</a> and <code>research/TRACKER.md</code>. A change to the pipeline that moves a
-  number is committed with the data and the paper together, with a line in the changelog
-  (<a href="#appendix-changelog">Appendix B</a>). The <a href="notebook.html">lab notebook</a> keeps the day-by-day
-  record the paper is distilled from.</p>
+  <code>paper/sections/</code>; metric placeholders are expanded from <code>paper/data/metrics.json</code>, which
+  <code>paper/collect.py</code> regenerates from pipeline measurement files, or from <code>paper/data/baselines.json</code>
+  for earlier comparisons. The build checks unresolved placeholders, experiment/citation/cross-reference IDs and missing media.
+  It does <em>not</em> currently detect every manually typed empirical number or prove that prose is linked to a source artifact;
+  some quantitative claims remain hand-entered. Reference metadata and check dates live in <code>paper/references.json</code>,
+  but the build does not fetch and re-verify those source pages. E121 will add a claim-to-artifact ledger and a negative build test;
+  until then, reproducibility is partial, not automated end to end. Experiments are recorded in
+  <code>research/experiments.json</code> before they run - question, method, metric - and completed with their result and decision;
+  the build renders them as <a href="#appendix-tracker">Appendix A</a> and <code>research/TRACKER.md</code>. A pipeline change
+  that moves a number should be committed with its data and paper and a line in the changelog
+  (<a href="#appendix-changelog">Appendix B</a>). The <a href="notebook.html">lab notebook</a> is the day-by-day record the
+  paper is distilled from.</p>
+<p><b>Dependency and data provenance.</b> Model Cards recommend documenting intended uses, evaluation conditions and limitations
+  for released models [@modelcards]; Datasheets for Datasets document motivation, composition, collection and recommended uses
+  [@datasheets]. W3C PROV-DM [@provdm] and the CycloneDX ML-BOM [@cyclonedxmlbom] offer complementary concepts for representing
+  derivations and ML dependencies. CharForge's next step is to carry exact model/checkpoint, input, code/configuration and output
+  lineage into each release, alongside terms and unresolved restrictions; these standards are design references, not a compliance
+  claim. Unknown permissions stay unknown [E115].</p>
 </section>

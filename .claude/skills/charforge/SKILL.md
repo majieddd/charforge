@@ -195,7 +195,19 @@ Open each image; read each log line. Each check says what good looks like and wh
    The Studio's Poses button renders the same set into `work/<name>/qa/poses/`, and
    `python tools/make_reel.py --name <name>` (the Reel button) films the clips back to back.
 
-9. **The playground** (`python tools/build_site.py`, then open `docs/index.html` through a local
+9. **`work/<name>/qa/aberrations.json`** (`python tools/aberrations.py --name <name> --force`,
+   add `--render` for each clip's worst frames with the flagged faces coloured, in
+   `work/<name>/qa/aberrations/`) - every frame of every clip: faces crushed, stretched and sheared,
+   penetration between body regions in cm (`deep_body_frames_pct`: frames with more than 2 cm; the
+   `_body` figures leave out the head region, which carries the hair), the floor, pops. Crouch walk and
+   sprint are always among the worst; compare a character with the roster rather than with zero.
+   The animate stage already holds the clips inside the character's own joint limits
+   (`work/<name>/joint_limits.json`, what was changed in `clearance.json`); deep penetration left
+   after that is hands into moving thighs, legs past each other, arms through hair or a coat hem.
+   After changing the audit or `blender/mesh_contact.py`, `python tools/aberration_controls.py` must
+   still pass every check.
+
+10. **The playground** (`python tools/build_site.py`, then open `docs/index.html` through a local
    server, or the Studio's `/play/`) - walk, run, strafe, crouch, jump, turn, wave; hold T to talk; watch the head turn
    with the face, the blink, the feet. In the browser console, `await __cf.footAudit()` measures
    foot slip per gait (around 2-5% is the current standard).

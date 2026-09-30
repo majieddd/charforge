@@ -69,8 +69,13 @@ def feet(ids):
         row = {}
         for g in GAITS:
             if g in a:
-                sides = [a[g][s] for s in ("left", "right") if s in a[g]]
-                row[g] = {"slip_pct": r(100 * max(s["slip"] for s in sides), 1),
+                audit = a[g]
+                speed = audit.get("ground_speed_mps")
+                v2_or_newer = audit.get("metric_version", 1) >= 2
+                sides = [audit[s] for s in ("left", "right") if s in audit]
+                valid_slips = [s["slip"] for s in sides if s.get("slip") is not None
+                               and (v2_or_newer or (speed is not None and speed >= 1.0))]
+                row[g] = {"slip_pct": r(100 * max(valid_slips), 1) if valid_slips else None,
                           "deepest_cm": r(min(s["deepest_cm"] for s in sides), 2)}
         out[cid] = row
     return out
@@ -106,6 +111,48 @@ def moves():
             "worst_elbow_deg": r(ang.get("worst_elbow_deg"), 1), "worst_knee_deg": r(ang.get("worst_knee_deg"), 1),
         })
     return out
+
+
+def aberrations(ids):
+    """Each character's aberration audit (blender/aberration_audit.py via tools/aberrations.py: DQS, every
+    frame), what clearance changed (blender/clearance.py) and the joint limits it held to (joint_limits.py)."""
+    out = {}
+    for cid in ids:
+        a = load(ROOT / "work" / cid / "qa" / "aberrations.json")
+        if not a or "penetration_max_cm" not in a.get("summary", {}):
+            continue
+        s, clips = a["summary"], a["clips"]
+        body = [max([v for k, v in e["penetration_regions_cm"].items() if "head" not in k], default=0.0) for e in clips.values()]
+        total = lambda e: e["crushed_pct"] + e["stretched_pct"] + e["sheared_pct"]
+        worst = sorted(clips, key=lambda c: -total(clips[c]))[:2]
+        row = {"skin": a.get("skin"), "clips": len(clips), "crushed_pct": s["crushed_pct"], "stretched_pct": s["stretched_pct"],
+               "sheared_pct": s["sheared_pct"], "penetration_max_cm": s["penetration_max_cm"],
+               "body_penetration_cm": r(statistics.mean(body), 2), "deep_frames_pct": s["deep_frames_pct"],
+               "deep_body_frames_pct": s.get("deep_body_frames_pct"), "penetration_body_max_cm": s.get("penetration_body_max_cm"),
+               "popping_windows": s["popping_event_windows"],
+               "exposed_crushed_pct": (s.get("normal_ray_exposed_pct_of_flagged_equal_clip_mean") or {}).get("crushed"),
+               "worst_clips": worst}
+        cl = load(ROOT / "work" / cid / "clearance.json")
+        if cl:
+            turns = [v["max_deg"] for c in cl["clips"].values() for v in c.values()]
+            row["clearance_max_deg"] = max(turns, default=0.0)
+            row["clearance_clips"] = sum(1 for c in cl["clips"].values() if c)
+        lim = load(ROOT / "work" / cid / "joint_limits.json")
+        if lim:
+            j = lim["joints"]
+            row["limits"] = {k: (v["limit_deg"] if v["kind"] == "hinge" else min(v["below_limit_deg"])) for k, v in j.items()}
+        out[cid] = row
+    return out
+
+
+def multiview():
+    d = load(ROOT / "research" / "data" / "e106_multiview.json")
+    return d["characters"] if d else {}
+
+
+def controls():
+    c = load(ROOT / "research" / "data" / "e102_controls.json")
+    return c["checks"] if c else []
 
 
 def selftest():
@@ -199,6 +246,8 @@ def main():
                          "max_slip_pct": max(slips) if slips else None, "n": len(slips)},
         "moves": moves(), "fit_selftest": selftest(), "image_models": image_models(),
         "prompt_models": prompt_models(), "turntable": turntable(), "stage_times": stage_times(),
+        "aberrations": aberrations([c["id"] for c in ros if c["id"] not in SUPERSEDED]), "aberration_controls": controls(),
+        "multiview": multiview(),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     s = json.dumps(data, indent=1, ensure_ascii=False)

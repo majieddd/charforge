@@ -17,8 +17,19 @@
   <li><b>Four views</b>: the clip rendered orthographically from the video's camera, the side and above, at one scale on
     a 10 cm grid, with each elbow's and knee's bend and each shoe's height above the floor read out per frame.</li>
   <li><b>Foot slip</b>: while a foot is on the floor, how far its lowest vertex slides between frames, as a share of the
-    gait's ground speed, driven by the playground's own controller; and the deepest a sole goes through the floor.</li>
+    gait's actual nonzero ground speed, driven by the playground's own controller; absolute slip in m/s is also retained.
+    A percentage is undefined for a stationary gait. The historical table used a 1 m/s denominator floor and is provisional
+    below that speed; Blender's corrected v2 path and the still-legacy browser audit also need contact-mask parity before the
+    same-schedule rerun [E029] [E122]. Sole depth remains a separate fixed-floor measure, not contact-conditioned penetration.
+    Human perception thresholds from mannequin studies are rating-design evidence, not a universal pass value [@footskateperception].</li>
   <li><b>Front silhouette IoU</b> of a 3D model against its reference picture, rendered from the front.</li>
+  <li><b>Aberrations</b> [E102]: every frame of every clip of every character, on the mesh as the viewers deform it
+    (dual quaternion skinning), against its rest pose. Faces <i>crushed</i> below half their rest area or
+    <i>stretched</i> past twice it; faces <i>sheared</i>, turned more than 60° beyond their own bone; triangles that
+    <i>intersect</i> although they were more than 3 cm apart at rest [@blenderbvhtree]; <i>penetration</i>, how deep
+    one body region has gone inside another, counted as deep past 2 cm; vertices under the floor; and <i>popping</i>, a
+    vertex whose offset from its neighbours spikes out and back within three frames. Each is assigned to the body region
+    of the bone that dominates the surface there. Shares are of all faces, so characters compare directly.</li>
 </ul>
 
 <h3 id="sec-eval-chars">Characters</h3>
@@ -88,15 +99,66 @@
 </div>
 
 <h3 id="sec-eval-feet">Feet</h3>
-<p>[#tab-feet] gives foot slip for every gait of the characters in the playground: a median of {{feet.median}}% of
-  ground speed over {{feet.n}} gait-character pairs, and at most {{feet.max}}%, against {{b.feet_before_pct.range.0}}-{{b.feet_before_pct.range.1}}%
-  before clip selection, grounding and foot IK [E029]. The worst are strafes and crouch-walks on characters whose
-  proportions differ most from the capture actor's.</p>
+<p>The archived E029 table below reports the historical post-change foot-slip audit. A review found that its normalization divides by
+  <code>max(manifest speed, 1 m/s)</code>: values at or above 1 m/s are normalized to the stated speed, values below 1 m/s are
+  understated, and stationary percentages are undefined. The historical measurements are preserved, but the cross-gait aggregate
+  is provisional until E122 recomputes absolute slip speed and the true-speed ratio at the same 60 fps schedule. The current browser
+  helper also retains that denominator floor; its contact-transition rule differs from the Blender v2 path, so the two implementations
+  must be reconciled or reported as different estimands. The earlier
+  pre-change range is not directly comparable until both sides are rerun under the corrected metric. The worst visual cases previously
+  noted were strafes and crouch-walks on characters whose proportions differ most from the capture actor's.</p>
 <figure id="tab-feet">
   <div class="tscroll"><!--TABLE:feet--></div>
-  <figcaption>Contact slip of the worse foot, as a share of ground speed, driven by the playground's controller
-    (work/&lt;name&gt;/foot_audit.json); above 10% in red. Knight, Kaito and Bo are not yet audited.</figcaption>
+  <figcaption>Archived contact-slip percentages of the worse foot, driven by the playground's controller
+    (work/&lt;name&gt;/foot_audit.json). Below-1 m/s entries use the old 1 m/s floor and are provisional until E122 reruns them.
+    Above 10% was highlighted in red. Knight, Kaito and Bo are not yet audited.</figcaption>
 </figure>
+
+<h3 id="sec-eval-aberr">Aberrations</h3>
+<p>The aberration audit was checked before it was believed. A synthetic character (a box torso and an arm on two bones
+  with a blended elbow) was built with aberrations of known size, and {{controls.passed}} of {{controls.n}} checks pass
+  under both skinnings ([#tab-controls]): nothing where nothing moves; exactly the share of faces built to be crushed or
+  stretched; the floor at −3 cm; a one-frame pop found on its own frame and a fast smooth bend not called one; and
+  penetrations of 0.5, 1, 2 and 5 cm measured to the millimetre. Three of these checks failed first, and each failure
+  was an error that would have misled the measurements of real characters ([#sec-eval-validity]). One-frame pops are
+  only seen on the frames sampled, so the audit samples every frame; that costs a fifth more time than every second one.</p>
+<figure id="tab-controls">
+  <div class="tscroll"><!--TABLE:controls--></div>
+  <figcaption>The aberration audit on a synthetic character with known aberrations (tools/aberration_controls.py;
+    blender/aberration_controls.py builds it). Each check passes under dual quaternion and linear skinning.</figcaption>
+</figure>
+<p>On the {{aberr.n}} characters, before clearance, {{b.aberrations_before_clearance.mean.crushed_pct}}% of faces were
+  crushed, {{b.aberrations_before_clearance.mean.stretched_pct}}% stretched and
+  {{b.aberrations_before_clearance.mean.sheared_pct}}% sheared, averaged over clips and characters. Crouch walk, the
+  clip furthest from a standing pose, is among the two worst for every character; the other is the sprint or a strafe. Most crushed faces
+  are out of sight: of the flagged faces, a ray along the normal escapes the character for only
+  {{aberr.min.exposed_crushed_pct|int}}-{{aberr.max.exposed_crushed_pct|int}}% (an armpit collapses under the arm).
+  Dual quaternion skinning, the playground's, crushes fewer faces than linear skinning, the glTF default
+  ({{b.skinning_roster.dqs.crushed_pct}}% against {{b.skinning_roster.lbs.crushed_pct}}%), and stretches more
+  ({{b.skinning_roster.dqs.stretched_pct}}% against {{b.skinning_roster.lbs.stretched_pct}}%): it keeps the volume that
+  linear blending loses, and a joint bulges instead [@dqs]. Penetration was the most common aberration: in
+  {{b.aberrations_before_clearance.mean.deep_body_frames_pct|int}}% of frames, on average, one body region was more than
+  2 cm inside another ({{b.aberrations_before_clearance.mean.deep_frames_pct|int}}% counting arms through hair, which
+  the head's region includes).</p>
+<p>Holding the clips inside each character's joint limits ([#sec-m-clearance]) brings that to
+  {{aberr.mean.deep_body_frames_pct|int}}% ({{aberr.mean.deep_frames_pct|int}}% with hair), and the deepest penetration
+  between body regions, averaged over clips, from
+  {{b.aberrations_before_clearance.mean.body_penetration_cm}} to {{aberr.mean.body_penetration_cm}} cm
+  ([#tab-aberrations]). No character's crushed, stretched or sheared share rises, and no pop is added (one hand pop
+  already in Wren's sprint now straddles two frames). The planted feet do not move: Bo's foot slip on walk, jog, run
+  and sprint is identical to the fourth decimal before and after. The largest single turn clearance makes is
+  {{aberr.min.clearance_max_deg|int}}-{{aberr.max.clearance_max_deg|int}}° per character; the armoured Knights, whose
+  plates meet early, take the most.</p>
+<figure id="tab-aberrations">
+  <div class="tscroll"><!--TABLE:aberrations--></div>
+  <figcaption>Every character before → after clearance (E128), measured by the aberration audit (E102) with dual
+    quaternion skinning on every frame of every clip. Penetration: the deepest between body regions in each clip (hair
+    and head left out), averaged over clips. Largest turn: the most clearance moved any joint in any key.</figcaption>
+</figure>
+<p>What clearance leaves is what a single joint's limit cannot see: hands swinging into thighs that are themselves
+  moving (the limits are measured with the legs at rest), legs brushing past each other in strafes, arms through long
+  hair, which is a job for the hair's own spring chains [E125], and knees through a long coat's hem, which needs the hem
+  to follow the thighs.</p>
 
 <h3 id="sec-eval-validity">Validity of the measurements</h3>
 <p>Several of the largest errors we found were in the measuring, not the pipeline. We list them because each would
@@ -113,6 +175,20 @@
   <li><b>Face positions in stairs</b> [E019]: {{b.face_quantisation.before_mm}} mm quantisation from a half-float
     render target, found while tracing an unrelated seam.</li>
   <li><b>Stale caches</b>: the per-stage tool kept its skeleton dumps forever and was scoring a rig two rebuilds old.</li>
+  <li><b>Triangles that change under the audit</b> [E102]: Blender splits a quad along its shorter diagonal in its
+    current shape, so the synthetic elbow's quads re-split at 55° of bend and a comparison with rest compared different
+    triangles. The audit now splits once, at rest.</li>
+  <li><b>Depth that stopped at 3 cm</b>: the first penetration search looked a fixed six vertex rings from the
+    intersection and measured a 5 cm push as 3.1 cm. It now floods through every vertex that is still inside.</li>
+  <li><b>Inside an open tube</b>: a body region is an open patch (the upper arm is a tube open at both ends), and past
+    its open end the nearest face's normal says nothing about inside. Aoi's bent forearm read 15.9 cm inside her upper
+    arm; Vex's elbow read 15.7 cm at 105° of bend and 0 at 115°. A vertex now counts as inside only if it projects
+    straight onto the face and a ray from it, deeper, leaves the region through its far wall; Vex's elbow then rises
+    smoothly from 0 to 5 cm.</li>
+  <li><b>Intersections are intersections</b>: a review of the audit had renamed its intersecting pairs "broad-phase
+    candidates". A two-triangle test shows Blender's overlap query is a triangle-triangle test after the box test
+    (boxes that overlap without touching are not returned); what it cannot tell apart is contact from penetration,
+    which is why depth is measured.</li>
 </ul>
 <p>Threats that remain: the joint and hand scores compare two readings by the same pose model, so its blind spots
   cancel as often as they show; everything is 2D against one camera, with depth checked only by eye in the four views;

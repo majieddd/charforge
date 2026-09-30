@@ -1,19 +1,42 @@
 <section>
 <h2 id="sec-roadmap">Roadmap</h2>
 <p>The next phase aims at three things at once: more precise measurement, fewer visible aberrations, and less time per
-  character. Each item is an experiment in the tracker with its metric fixed before it runs.</p>
+  character. The new checks separate known truth, model-based proxies, human acceptance, and engine behavior. Each item is an
+  experiment in the tracker with its metric fixed before it runs.</p>
 <ol>
   <li><b>A 3D ground truth for motion</b> [E101]: render a character performing a known clip as a video, run the move
     lane on it with that clip held out of the library, and measure the recovered clip in joint angles, positions,
-    contacts and jitter.</li>
-  <li><b>An aberration score</b> [E102]: stretch, collapse, normal flips, self-intersection and floor penetration per
-    frame, for every clip of every character, with the worst frames rendered - so the faults a person spots are counted
-    and ranked.</li>
+    contacts and jitter. Then test independent real footage and subjects [E111]: TotalCapture and 3DPW supply different
+    video/pose evidence; AMASS supplies varied motion for exact-GT renders, while AIST++ is a reconstructed-motion stress set.</li>
+  <li><b>An aberration score, calibrated against people</b> [E102]: the audit now measures every frame of every clip and
+    finds known-size defects to the millimetre ([#sec-eval-aberr]); what it lacks is agreement with human judgement.
+    Blinded, randomised ratings of clips near each score's boundary, by at least two raters, before any score becomes a
+    gate; dynamic-human quality studies seed the taxonomy, not a transferable scorer [@mate3d; @ddhqa; @dhqa4d]. Texture
+    drift and face-morph deformation need their own measures.</li>
+  <li><b>What clearance cannot see</b> [E128]: limits that follow a moving limb, so a hand stays out of a thigh that is
+    itself swinging and legs pass each other in a strafe; colliders for the hair's spring chains, so arms push long hair
+    aside instead of through it [E125]; long coat hems that follow the thighs; and corrective shapes at elbows and
+    shoulders, scored by the same audit [E107].</li>
+  <li><b>Prompt-to-asset fidelity</b> [E112]: use per-attribute questions, informed by TIFA and GenEval [@tifa; @geneval],
+    to find where a held-out prompt's attributes are lost or changed between its structured text, reference, and final character.</li>
+  <li><b>3D and held-out-view fidelity</b> [E113]: compare a permission-checked scan set against generated geometry and reserved
+    synthetic orbit renders. Do not call these captured calibrated views; obtain written permission for external sharing of derived
+    THUman data or keep the measurements internal [@thuman2; @lpips].</li>
   <li><b>Rigging against the field</b> [E103]: our joints and weights against UniRig and the hosted auto-riggers on the
     same meshes, scored by [E102]; corrective shapes at elbows and shoulders [E107].</li>
+  <li><b>Engine acceptance and provenance</b> [E114] [E115]: run the glTF Validator [@gltfvalidator], then smoke-import representative
+    release artifacts in version-pinned Unity, Unreal and Godot projects [@unityimport; @unrealimport; @godotimport]; report clip coverage,
+    manifest-driven controller error, morph/spring/LOD behavior, runtime costs, exact model/data versions and terms without guessing at permissions.</li>
   <li><b>Time</b> [E106]: each stage timed alone, and the costly ones - the second 3D pass, the detailed face -
     ablated against their measured benefit; Hunyuan3D 2.1 against TRELLIS.2 on our references [E104].</li>
   <li><b>Texture seams</b> by Poisson blending [E105]; <b>depth</b> for moves the library lacks from a world-grounded
     video model [E108]; <b>faces</b> the rig will not guess [E109]; <b>hair and garments</b> as their own layers [E110].</li>
 </ol>
+<p>The newly identified asset-stage gaps are tracked separately so their measurements can proceed in parallel after the shared data
+  contracts are frozen: solidification topology versus shape fidelity and segmentation confidence [E116] [E117]; retopology distance,
+  local UV distortion and runtime mip bleed [E118] [E119] [E120]; 3D hand, expressive-face and independent-layer quality [E123] [E124]
+  [E125]. The evidence ledger, corrected foot metric and Studio state-machine acceptance are cross-cutting work [E121] [E122] [E126].
+  The detailed split manifest, artifact paths, formulas and run dependencies remain in the tracker and the development-facing
+  <code>research/GAPS.md</code>. The fast classifier proposed in a user-supplied video is queued as [E127] at the very end; its
+  identity and license remain unverified, and it is gated on completion or explicit deferral of the earlier queue.</p>
 </section>
