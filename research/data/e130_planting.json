@@ -1,0 +1,411 @@
+{
+ "_about": "E130: which surface of the shoe is planted. Roster: 13 characters x 9 gaits, blender/foot_audit.py metric v2 (slip of the worse foot as a share of the true ground speed), each build complete from the animate stage. before = a rigid copy of the sole (vertices within 3 cm of the floor, at most 160) carried on the ankle bone (2026-10-01 backups); thinned = the whole shoe below the ankle, posed by its own skin weights (DQS), thinned to 400 points (2026-10-01); after = every vertex of it (2026-10-02). Cadet (built after the first run) is reported on his own. variants = retargeting alone on the cases that regressed, the rest of the pipeline not run.",
+ "roster": {
+  "characters": 13,
+  "before": {
+   "median": 4.01,
+   "mean": 4.73,
+   "max": 18.2,
+   "p90": 8.9,
+   "pairs": 117,
+   "mps_median": 0.067,
+   "through_pairs": 0,
+   "through_keys_pct": 0.0,
+   "deepest_cm": -0.79
+  },
+  "thinned": {
+   "median": 3.64,
+   "mean": 4.54,
+   "max": 20.5,
+   "p90": 8.5,
+   "pairs": 117,
+   "mps_median": 0.067,
+   "through_pairs": 0,
+   "through_keys_pct": 0.0,
+   "deepest_cm": -0.97,
+   "vs_before_worse_n": 12,
+   "vs_before_better_n": 17,
+   "vs_before_pairs": 117,
+   "vs_before_median_delta": 0.0
+  },
+  "after": {
+   "median": 2.89,
+   "mean": 3.59,
+   "max": 10.4,
+   "p90": 6.9,
+   "pairs": 117,
+   "mps_median": 0.053,
+   "through_pairs": 0,
+   "through_keys_pct": 0.0,
+   "deepest_cm": -0.29,
+   "vs_before_worse_n": 2,
+   "vs_before_better_n": 39,
+   "vs_before_pairs": 117,
+   "vs_before_median_delta": -0.3,
+   "vs_thinned_worse_n": 0,
+   "vs_thinned_better_n": 34,
+   "vs_thinned_pairs": 117,
+   "vs_thinned_median_delta": -0.27
+  },
+  "all14": {
+   "median": 3.26,
+   "mean": 4.3,
+   "max": 28.4,
+   "p90": 8.2,
+   "pairs": 126,
+   "mps_median": 0.061,
+   "through_pairs": 0,
+   "through_keys_pct": 0.0,
+   "deepest_cm": -0.63
+  }
+ },
+ "examples": {
+  "juno3_walk_back": {
+   "before": 6.0,
+   "thinned": 11.4,
+   "after": 6.0
+  },
+  "knight2_walk_back": {
+   "before": 9.1,
+   "thinned": 14.7,
+   "after": 6.9
+  },
+  "pip_strafe_left": {
+   "before": 15.3,
+   "thinned": 20.5,
+   "after": 7.8
+  },
+  "gray_walk_back": {
+   "before": 8.6,
+   "thinned": 11.4,
+   "after": 8.8
+  },
+  "vex_crouch_walk": {
+   "before": 18.2,
+   "thinned": 6.1,
+   "after": 3.2
+  },
+  "wren_crouch_walk": {
+   "before": 11.5,
+   "thinned": 3.6,
+   "after": 2.1
+  },
+  "wren_walk": {
+   "before": 7.5,
+   "thinned": 2.5,
+   "after": 2.1
+  }
+ },
+ "worst_now": [
+  {
+   "character": "cadet",
+   "gait": "sprint",
+   "slip_pct": 28.4
+  },
+  {
+   "character": "cadet",
+   "gait": "strafe_left",
+   "slip_pct": 19.1
+  },
+  {
+   "character": "cadet",
+   "gait": "strafe_right",
+   "slip_pct": 15.9
+  },
+  {
+   "character": "cadet",
+   "gait": "jog_back",
+   "slip_pct": 12.9
+  },
+  {
+   "character": "cadet",
+   "gait": "run",
+   "slip_pct": 11.5
+  }
+ ],
+ "worst_now_others": [
+  {
+   "character": "pip",
+   "gait": "walk_back",
+   "slip_pct": 10.4
+  },
+  {
+   "character": "bo",
+   "gait": "walk_back",
+   "slip_pct": 10.0
+  },
+  {
+   "character": "boyscout",
+   "gait": "walk_back",
+   "slip_pct": 9.9
+  },
+  {
+   "character": "bo",
+   "gait": "strafe_right",
+   "slip_pct": 8.9
+  },
+  {
+   "character": "gray",
+   "gait": "walk_back",
+   "slip_pct": 8.8
+  }
+ ],
+ "cadet": {
+  "gaits": {
+   "walk": {
+    "thinned": 7.5,
+    "after": 9.4,
+    "thinned_deepest_cm": -0.05,
+    "after_deepest_cm": 0.0
+   },
+   "jog": {
+    "thinned": 6.2,
+    "after": 6.2,
+    "thinned_deepest_cm": -0.16,
+    "after_deepest_cm": -0.16
+   },
+   "run": {
+    "thinned": 11.5,
+    "after": 11.5,
+    "thinned_deepest_cm": -0.44,
+    "after_deepest_cm": -0.44
+   },
+   "sprint": {
+    "thinned": 28.4,
+    "after": 28.4,
+    "thinned_deepest_cm": -0.63,
+    "after_deepest_cm": -0.63
+   },
+   "walk_back": {
+    "thinned": 10.7,
+    "after": 11.4,
+    "thinned_deepest_cm": -0.3,
+    "after_deepest_cm": 0.0
+   },
+   "jog_back": {
+    "thinned": 38.2,
+    "after": 12.9,
+    "thinned_deepest_cm": -0.34,
+    "after_deepest_cm": -0.01
+   },
+   "strafe_left": {
+    "thinned": 22.7,
+    "after": 19.1,
+    "thinned_deepest_cm": -0.49,
+    "after_deepest_cm": 0.0
+   },
+   "strafe_right": {
+    "thinned": 15.9,
+    "after": 15.9,
+    "thinned_deepest_cm": -0.27,
+    "after_deepest_cm": -0.16
+   },
+   "crouch_walk": {
+    "thinned": 17.1,
+    "after": 7.6,
+    "thinned_deepest_cm": -0.29,
+    "after_deepest_cm": 0.0
+   }
+  },
+  "thinned": {
+   "median": 15.9,
+   "mean": 17.59,
+   "max": 38.2,
+   "p90": 28.4,
+   "pairs": 9,
+   "mps_median": 0.27,
+   "through_pairs": 0,
+   "through_keys_pct": 0.0,
+   "deepest_cm": -0.63
+  },
+  "after": {
+   "median": 11.51,
+   "mean": 13.6,
+   "max": 28.4,
+   "p90": 19.1,
+   "pairs": 9,
+   "mps_median": 0.191,
+   "through_pairs": 0,
+   "through_keys_pct": 0.0,
+   "deepest_cm": -0.63
+  },
+  "floor_frames_pct": {
+   "rigid": 48.3,
+   "thinned": 1.88,
+   "after": 1.28
+  },
+  "clips": 24,
+  "on_floor": {
+   "run": 0.13,
+   "sprint": 0.08,
+   "jog_back": 0.16,
+   "strafe_left": 0.3
+  },
+  "on_floor_roster_median": {
+   "run": 0.26,
+   "sprint": 0.24,
+   "jog_back": 0.4,
+   "strafe_left": 0.54
+  }
+ },
+ "variants": {
+  "cadet_walk": {
+   "rigid": {
+    "slip_pct": 12.0,
+    "deepest_cm": -4.46
+   },
+   "thinned": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.05
+   },
+   "every_vertex": {
+    "slip_pct": 9.4,
+    "deepest_cm": 0.0
+   }
+  },
+  "cadet_crouch_walk": {
+   "rigid": {
+    "slip_pct": 17.5,
+    "deepest_cm": -8.24
+   },
+   "thinned": {
+    "slip_pct": 17.1,
+    "deepest_cm": -0.29
+   },
+   "every_vertex": {
+    "slip_pct": 7.6,
+    "deepest_cm": 0.0
+   }
+  },
+  "cadet_strafe_left": {
+   "rigid": {
+    "slip_pct": 15.6,
+    "deepest_cm": -6.46
+   },
+   "thinned": {
+    "slip_pct": 22.7,
+    "deepest_cm": -0.49
+   },
+   "every_vertex": {
+    "slip_pct": 19.1,
+    "deepest_cm": 0.0
+   }
+  },
+  "juno3_walk_back": {
+   "rigid": {
+    "slip_pct": 6.0,
+    "deepest_cm": -0.19
+   },
+   "thinned": {
+    "slip_pct": 11.4,
+    "deepest_cm": -0.24
+   },
+   "every_vertex": {
+    "slip_pct": 6.0,
+    "deepest_cm": -0.0
+   }
+  },
+  "juno3_jog_back": {
+   "rigid": {
+    "slip_pct": 2.4,
+    "deepest_cm": -0.22
+   },
+   "thinned": {
+    "slip_pct": 3.8,
+    "deepest_cm": -0.38
+   },
+   "every_vertex": {
+    "slip_pct": 2.1,
+    "deepest_cm": 0.0
+   }
+  },
+  "knight2_walk_back": {
+   "rigid": {
+    "slip_pct": 9.1,
+    "deepest_cm": -0.35
+   },
+   "thinned": {
+    "slip_pct": 14.7,
+    "deepest_cm": -0.96
+   },
+   "every_vertex": {
+    "slip_pct": 6.9,
+    "deepest_cm": -0.0
+   }
+  },
+  "knight2_jog_back": {
+   "rigid": {
+    "slip_pct": 2.4,
+    "deepest_cm": -0.5
+   },
+   "thinned": {
+    "slip_pct": 5.1,
+    "deepest_cm": -0.97
+   },
+   "every_vertex": {
+    "slip_pct": 3.7,
+    "deepest_cm": -0.0
+   }
+  },
+  "pip_strafe_left": {
+   "rigid": {
+    "slip_pct": 15.3,
+    "deepest_cm": -0.17
+   },
+   "thinned": {
+    "slip_pct": 20.5,
+    "deepest_cm": -0.21
+   },
+   "every_vertex": {
+    "slip_pct": 7.8,
+    "deepest_cm": 0.0
+   }
+  },
+  "pip_strafe_right": {
+   "rigid": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.52
+   },
+   "thinned": {
+    "slip_pct": 9.5,
+    "deepest_cm": -0.78
+   },
+   "every_vertex": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.0
+   }
+  },
+  "wren_walk": {
+   "rigid": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.47
+   },
+   "thinned": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.16
+   },
+   "every_vertex": {
+    "slip_pct": 2.1,
+    "deepest_cm": 0.0
+   }
+  },
+  "wren_crouch_walk": {
+   "rigid": {
+    "slip_pct": 11.5,
+    "deepest_cm": -0.46
+   },
+   "thinned": {
+    "slip_pct": 3.6,
+    "deepest_cm": -0.19
+   },
+   "every_vertex": {
+    "slip_pct": 2.1,
+    "deepest_cm": -0.0
+   }
+  }
+ },
+ "points_per_foot": [
+  1016,
+  3266
+ ]
+}

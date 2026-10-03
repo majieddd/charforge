@@ -106,6 +106,8 @@ def detail(name):
     extra = read_json(w / "extra_clips.json", {}) or {}
     mv = []
     for m, spec in extra.items():
+        if spec.get("engine") == "unimate":                 # moves from words have their own panel
+            continue
         src = Path(spec.get("from_video") or "")
         performer = src.parent.parent.name if src.suffix == ".mp4" else name
         vids = ROOT / "work" / performer / "motion_videos"
@@ -120,6 +122,21 @@ def detail(name):
                 if fid else None}
         mv.append(item)
     c["move_details"] = mv
+    # moves from words (tools/unimate_moves.py): each generated move's samples, its preview sheet, the one in use
+    rec = read_json(w / "unimate" / "moves.json", {}) or {}
+    words = []
+    for m, r in (rec.get("moves") or {}).items():
+        if not isinstance(r, dict):
+            continue
+        sheet = w / "qa" / "words" / f"{m}.png"
+        used = extra.get(m) if (extra.get(m) or {}).get("engine") == "unimate" else None
+        words.append({"name": m, "text": r.get("text"), "samples": len(r.get("fbx") or []),
+                      "sheet": url(sheet) if sheet.exists() else None,
+                      "sheet_at": sheet.stat().st_mtime if sheet.exists() else None,
+                      "in_use": used.get("sample") if used and used.get("file") in (r.get("fbx") or []) else None})
+    c["words"] = words
+    c["unimate_ready"] = ((ROOT / "vendor" / "unimate" / ".venv" / "bin" / "python").exists() and any(
+        (ROOT / "vendor" / "unimate" / "weights").glob("*/checkpoints/*.pt")))
     pz = w / "qa" / "poses"
     c["poses"] = [url(p) for p in sorted(pz.glob("*.png"), key=lambda p: (p.name.rsplit("_", 1)[0], p.name))] \
         if pz.exists() else []
@@ -758,6 +775,32 @@ def make_job(b):
         if b.get("performer") and NAME_RE.match(b["performer"]):
             cmd += ["--performer", b["performer"]]
         title = f"{name}: moves {', '.join(moves)}"
+    elif kind == "words":
+        # moves from words: UniMate on the character's own skeleton, three samples each, previews to choose from
+        if not (ROOT / "out" / name / f"{name}.glb").exists():
+            raise ValueError("the character needs to be finished (packaged) first")
+        moves = b.get("moves") or []
+        if not 1 <= len(moves) <= 3:
+            raise ValueError("one to three moves at a time")
+        cmd = [py, "-u", ROOT / "tools" / "unimate_moves.py", "--name", name, "--reps", "3"]
+        for m in moves:
+            mn, mt = (m.get("name") or "").strip(), " ".join((m.get("text") or "").split())
+            if not re.match(r"^[a-z][a-z0-9_]{0,31}$", mn):
+                raise ValueError(f"a move name is lowercase letters, digits and _: {mn!r}")
+            if not 3 <= len(mt) <= 200:
+                raise ValueError(f"say what {mn} does, in a sentence of up to 200 characters")
+            cmd += ["--move", f"{mn}={mt}"]
+        title = f"{name}: moves from words - {', '.join(m['name'] for m in moves)}"
+    elif kind == "words_pick":
+        picks = b.get("picks") or {}
+        if not picks:
+            raise ValueError("choose a sample of at least one move")
+        cmd = [py, "-u", ROOT / "tools" / "unimate_moves.py", "--name", name, "--rebuild"]
+        for mn, rep in picks.items():
+            if not re.match(r"^[a-z][a-z0-9_]{0,31}$", mn) or not str(rep).isdigit():
+                raise ValueError("a pick is a move name and a sample number")
+            cmd += ["--pick", f"{mn}={int(rep)}"]
+        title = f"{name}: use moves {', '.join(f'{m} (sample {r})' for m, r in picks.items())}"
     else:
         raise ValueError("unknown job")
     return JOBS.add(kind, name, cmd, title)

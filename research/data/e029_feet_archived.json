@@ -1,0 +1,352 @@
+{
+ "_about": "E029's foot-slip table as the paper showed it up to v0.10, frozen here (paper/collect.py read it from work/<name>/foot_audit.json, blender/foot_audit.py before metric v2, run 2026-09-25). Slip is the worse foot's contact speed divided by max(manifest speed, 1 m/s): understated below 1 m/s, so entries below 1 m/s were left out. Superseded by the v2 audit (true ground speed) in research/data/e130_planting.json.",
+ "feet": {
+  "aoi": {
+   "walk": {
+    "slip_pct": 1.0,
+    "deepest_cm": -0.07
+   },
+   "jog": {
+    "slip_pct": 1.7,
+    "deepest_cm": -0.04
+   },
+   "run": {
+    "slip_pct": 0.7,
+    "deepest_cm": -0.05
+   },
+   "sprint": {
+    "slip_pct": 1.1,
+    "deepest_cm": -0.04
+   },
+   "walk_back": {
+    "slip_pct": 4.2,
+    "deepest_cm": -0.07
+   },
+   "jog_back": {
+    "slip_pct": 1.0,
+    "deepest_cm": -0.15
+   },
+   "strafe_left": {
+    "slip_pct": 2.0,
+    "deepest_cm": -0.21
+   },
+   "strafe_right": {
+    "slip_pct": 3.8,
+    "deepest_cm": -0.06
+   },
+   "crouch_walk": {
+    "slip_pct": 3.5,
+    "deepest_cm": -0.06
+   }
+  },
+  "juno3": {
+   "walk": {
+    "slip_pct": 2.7,
+    "deepest_cm": -0.22
+   },
+   "jog": {
+    "slip_pct": 3.8,
+    "deepest_cm": -0.23
+   },
+   "run": {
+    "slip_pct": 2.3,
+    "deepest_cm": -0.23
+   },
+   "sprint": {
+    "slip_pct": 2.9,
+    "deepest_cm": -0.24
+   },
+   "walk_back": {
+    "slip_pct": 6.0,
+    "deepest_cm": -0.19
+   },
+   "jog_back": {
+    "slip_pct": 2.4,
+    "deepest_cm": -0.22
+   },
+   "strafe_left": {
+    "slip_pct": 6.9,
+    "deepest_cm": -0.1
+   },
+   "strafe_right": {
+    "slip_pct": 3.4,
+    "deepest_cm": -0.12
+   },
+   "crouch_walk": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.29
+   }
+  },
+  "kaito": {
+   "walk": {
+    "slip_pct": 1.3,
+    "deepest_cm": -0.43
+   },
+   "jog": {
+    "slip_pct": 1.6,
+    "deepest_cm": -0.36
+   },
+   "run": {
+    "slip_pct": 1.2,
+    "deepest_cm": -0.44
+   },
+   "sprint": {
+    "slip_pct": 4.3,
+    "deepest_cm": -0.06
+   },
+   "walk_back": {
+    "slip_pct": 2.6,
+    "deepest_cm": -0.04
+   },
+   "jog_back": {
+    "slip_pct": 2.0,
+    "deepest_cm": -0.24
+   },
+   "strafe_left": {
+    "slip_pct": 8.8,
+    "deepest_cm": -0.13
+   },
+   "strafe_right": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.16
+   },
+   "crouch_walk": {
+    "slip_pct": 1.5,
+    "deepest_cm": -0.47
+   }
+  },
+  "knight": {
+   "walk": {
+    "slip_pct": 1.5,
+    "deepest_cm": -0.0
+   },
+   "jog": {
+    "slip_pct": 1.3,
+    "deepest_cm": 0.0
+   },
+   "run": {
+    "slip_pct": 1.0,
+    "deepest_cm": 0.0
+   },
+   "sprint": {
+    "slip_pct": 1.1,
+    "deepest_cm": 0.0
+   },
+   "walk_back": {
+    "slip_pct": 1.2,
+    "deepest_cm": 0.0
+   },
+   "jog_back": {
+    "slip_pct": 1.4,
+    "deepest_cm": 0.0
+   },
+   "strafe_left": {
+    "slip_pct": 4.5,
+    "deepest_cm": 0.0
+   },
+   "strafe_right": {
+    "slip_pct": 4.8,
+    "deepest_cm": 0.0
+   },
+   "crouch_walk": {
+    "slip_pct": 1.4,
+    "deepest_cm": 0.0
+   }
+  },
+  "mara": {
+   "walk": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.26
+   },
+   "jog": {
+    "slip_pct": 2.7,
+    "deepest_cm": -0.39
+   },
+   "run": {
+    "slip_pct": 2.7,
+    "deepest_cm": -0.31
+   },
+   "sprint": {
+    "slip_pct": 5.4,
+    "deepest_cm": -0.31
+   },
+   "walk_back": {
+    "slip_pct": 7.4,
+    "deepest_cm": -0.33
+   },
+   "jog_back": {
+    "slip_pct": 5.3,
+    "deepest_cm": -0.36
+   },
+   "strafe_left": {
+    "slip_pct": 5.0,
+    "deepest_cm": -0.24
+   },
+   "strafe_right": {
+    "slip_pct": 5.9,
+    "deepest_cm": -0.26
+   },
+   "crouch_walk": {
+    "slip_pct": 2.6,
+    "deepest_cm": -0.47
+   }
+  },
+  "pip": {
+   "walk": {
+    "slip_pct": 4.5,
+    "deepest_cm": -0.23
+   },
+   "jog": {
+    "slip_pct": 3.3,
+    "deepest_cm": -0.42
+   },
+   "run": {
+    "slip_pct": 2.9,
+    "deepest_cm": -0.25
+   },
+   "sprint": {
+    "slip_pct": 8.8,
+    "deepest_cm": -0.11
+   },
+   "walk_back": {
+    "slip_pct": null,
+    "deepest_cm": -0.11
+   },
+   "jog_back": {
+    "slip_pct": 5.6,
+    "deepest_cm": -0.1
+   },
+   "strafe_left": {
+    "slip_pct": null,
+    "deepest_cm": -0.16
+   },
+   "strafe_right": {
+    "slip_pct": null,
+    "deepest_cm": -0.51
+   },
+   "crouch_walk": {
+    "slip_pct": 3.9,
+    "deepest_cm": -0.16
+   }
+  },
+  "rowan": {
+   "walk": {
+    "slip_pct": 3.6,
+    "deepest_cm": -0.28
+   },
+   "jog": {
+    "slip_pct": 2.0,
+    "deepest_cm": -0.05
+   },
+   "run": {
+    "slip_pct": 3.3,
+    "deepest_cm": -0.14
+   },
+   "sprint": {
+    "slip_pct": 5.1,
+    "deepest_cm": -0.12
+   },
+   "walk_back": {
+    "slip_pct": 10.3,
+    "deepest_cm": -0.12
+   },
+   "jog_back": {
+    "slip_pct": 5.1,
+    "deepest_cm": -0.15
+   },
+   "strafe_left": {
+    "slip_pct": 6.2,
+    "deepest_cm": -0.18
+   },
+   "strafe_right": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.19
+   },
+   "crouch_walk": {
+    "slip_pct": 3.3,
+    "deepest_cm": -0.35
+   }
+  },
+  "vex": {
+   "walk": {
+    "slip_pct": 4.6,
+    "deepest_cm": -0.71
+   },
+   "jog": {
+    "slip_pct": 2.5,
+    "deepest_cm": -0.47
+   },
+   "run": {
+    "slip_pct": 2.2,
+    "deepest_cm": -0.21
+   },
+   "sprint": {
+    "slip_pct": 9.4,
+    "deepest_cm": -0.36
+   },
+   "walk_back": {
+    "slip_pct": 5.3,
+    "deepest_cm": -0.17
+   },
+   "jog_back": {
+    "slip_pct": 6.9,
+    "deepest_cm": -0.12
+   },
+   "strafe_left": {
+    "slip_pct": 4.3,
+    "deepest_cm": -0.18
+   },
+   "strafe_right": {
+    "slip_pct": 4.2,
+    "deepest_cm": -0.08
+   },
+   "crouch_walk": {
+    "slip_pct": 18.2,
+    "deepest_cm": -0.59
+   }
+  },
+  "wren": {
+   "walk": {
+    "slip_pct": 7.5,
+    "deepest_cm": -0.47
+   },
+   "jog": {
+    "slip_pct": 2.6,
+    "deepest_cm": -0.28
+   },
+   "run": {
+    "slip_pct": 2.2,
+    "deepest_cm": -0.42
+   },
+   "sprint": {
+    "slip_pct": 4.6,
+    "deepest_cm": -0.11
+   },
+   "walk_back": {
+    "slip_pct": 6.6,
+    "deepest_cm": -0.1
+   },
+   "jog_back": {
+    "slip_pct": 2.8,
+    "deepest_cm": -0.17
+   },
+   "strafe_left": {
+    "slip_pct": 4.6,
+    "deepest_cm": -0.16
+   },
+   "strafe_right": {
+    "slip_pct": 5.3,
+    "deepest_cm": -0.12
+   },
+   "crouch_walk": {
+    "slip_pct": 11.5,
+    "deepest_cm": -0.46
+   }
+  }
+ },
+ "summary": {
+  "median_slip_pct": 3.5,
+  "max_slip_pct": 18.2,
+  "n": 78
+ }
+}

@@ -55,6 +55,12 @@
    "name": "Bo",
    "blurb": "stylised · cartoon chef",
    "released": false
+  },
+  {
+   "id": "cadet",
+   "name": "Cadet",
+   "blurb": "stylised · space marine, moves from words",
+   "released": false
   }
  ]
 }

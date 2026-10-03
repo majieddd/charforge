@@ -7,7 +7,12 @@
     video, the nearest motion capture is retrieved and bent toward it, and the character's own skinned mesh is optimised
     until it lies on the video. Across four moves in three art styles the rig's silhouette overlaps the video's figure at
     IoU {{moves.iou.min}}-{{moves.iou.max}} (from {{moves.iou0.min}}-{{moves.iou0.max}}), with joints
-    {{moves.joints.min}}-{{moves.joints.max}} torso lengths from the video's. The work is organised as a record of
+    {{moves.joints.min}}-{{moves.joints.max}} torso lengths from the video's. A third lane makes a move from a sentence,
+    generated on the character's own skeleton in about half a minute. Every frame of every clip is audited for
+    aberrations - faces crushed, stretched or sheared, one body part inside another, a shoe through the floor - and holding
+    each clip inside joint limits measured on the character's own mesh takes the frames with a part more than 2 cm inside
+    another from {{b.aberrations_before_clearance.mean.deep_body_frames_pct|int}}% to
+    {{aberr.same.mean.deep_body_frames_pct|int}}%. The work is organised as a record of
     measured decisions: {{n.experiments_done}} experiments, each with its question, metric and result, and what was
     dropped kept beside what was kept. Several of the largest errors we found were in our own measurements - a comparison
     video running 25% fast, a score dip that was the pose model misreading our render, face positions read in 3.9 mm

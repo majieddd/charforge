@@ -17,6 +17,18 @@ OUT = ROOT / "docs" / "paper" / "notebook.html"
 old = (HERE / "index.before_polish.html").read_text()
 N = json.load(open(HERE / "numbers.json"))
 
+# the paper's own names ({{aberr.mean.crushed_pct}} and the rest), so the notebook and the paper quote one number
+import importlib.util
+_spec = importlib.util.spec_from_file_location("paper_build", HERE.parent / "build.py")
+_paper = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_paper)
+V = _paper.values()
+
+
+def v(name, nd=None):
+    """A paper name, formatted as the paper formats it."""
+    return _paper.fmt(V[name], nd)
+
 
 def block(tag_id, kind="section"):
     """The whole <section id=...>...</section> (or header) block."""
@@ -96,7 +108,9 @@ nav = """<nav class="top" aria-label="Sections">
     <a href="#prompts">Few-word prompts</a>
     <a href="#pipeline">How it is made</a>
     <a href="#polish">Polish</a>
+    <a href="#aberr">Aberrations</a>
     <a href="#cast">New characters</a>
+    <a href="#words">Moves from words</a>
     <a href="#moves">Moves from video</a>
     <a href="#angles">Four sides</a>
     <a href="#fidelity">How close</a>
@@ -108,8 +122,16 @@ nav = """<nav class="top" aria-label="Sections">
 </nav>"""
 
 u = N["uv"]
+DATA = ROOT / "research" / "data"
+PL = json.load(open(DATA / "e130_planting.json"))       # the shoe that is planted (E130)
+UM = json.load(open(DATA / "e129_unimate.json"))         # moves from words (E129)
+PR13 = PL["roster"]
+ab0 = "b.aberrations_before_clearance.mean"
 facts = f"""
     <div class="facts">
+      <div class="fact"><div class="v">{v(ab0 + '.deep_body_frames_pct', 0)}% → {v('aberr.same.mean.deep_body_frames_pct', 0)}%</div><div class="k">of frames with one body part more than 2 cm inside another, on {v('aberr.same.n')} characters: every clip now held inside joint limits measured on each character's own mesh</div></div>
+      <div class="fact"><div class="v">{PL['cadet']['floor_frames_pct']['rigid']:.0f}% → {PL['cadet']['floor_frames_pct']['after']:.0f}%</div><div class="k">of Cadet's frames with a boot under the floor - the shoe the viewer sees is the one planted now, every vertex of it</div></div>
+      <div class="fact"><div class="v">{len(UM['moves'])} moves <small>from {len(UM['moves'])} sentences</small></div><div class="k">the motion library lacks, made for Cadet on his own skeleton by UniMate - about {UM['seconds']['sample_gpu_per_move']} s each on the GPU</div></div>
       <div class="fact"><div class="v">{u['pip'][0]:,} → {u['pip'][1]} <small>faces</small></div><div class="k">of Pip's texture sharing texels with another surface - his vest's paint on his sleeves. Every character had {u['min_before']}–{u['max_before']:,}; now {u['min_after']}–{u['max_after']}</div></div>
       <div class="fact"><div class="v">wings → none</div><div class="k">Pip's vest stays on his torso with his arms overhead; the rig's rule for it had never acted - its flood walked onto the vest</div></div>
       <div class="fact"><div class="v">Studio <small>:8830</small></div><div class="k">make, watch, turn round and walk your own characters in a local app - <span class="mono">python charforge.py studio</span></div></div>
@@ -119,20 +141,23 @@ facts = f"""
     </div>"""
 
 opener = f"""<header class="opener" id="top">
-    <div class="eyebrow">24-26 September 2026 · M5 MacBook, 24 GB shared memory</div>
+    <div class="eyebrow">24 September - 2 October 2026 · M5 MacBook, 24 GB shared memory</div>
     <h1>What CharForge makes now, and what fixing it took</h1>
-    <p class="sub">A prompt or a picture becomes a rigged, animated game character on this laptop, and a video becomes a
-      move on it. This round went through every character in the poses that break things and traced each fault to
-      its cause before touching it: Pip's vest no longer lifts into wings when he raises his arms, no texture carries
-      another garment's paint, a hem stays with the hips instead of the thighs, and a reference drawn in the wrong pose
-      is drawn again before half an hour goes into it. Then the characters made from a few words in the Studio came out
-      poor, and that was traced too: <a href="#prompts">a short prompt is written out</a> before anything is drawn, and a
-      model with the picture's backdrop built into it as a board is made again. Every move can now be watched from
-      <a href="#angles">four sides at once</a>, which found an elbow folded through an arm and feet standing off the
-      floor. CharForge Studio does all of it without a terminal. The page leads with how things work now; what they
-      replaced is in the <a href="#archive">archive</a> at the end.</p>
+    <p class="sub">A prompt or a picture becomes a rigged, animated game character on this laptop; a video becomes a
+      move on it, and now so does a sentence. The first round went through every character in the poses that break
+      things and traced each fault to its cause before touching it: Pip's vest no longer lifts into wings when he raises
+      his arms, no texture carries another garment's paint, a hem stays with the hips instead of the thighs, a reference
+      drawn in the wrong pose is drawn again, and <a href="#prompts">a short prompt is written out</a> before anything is
+      drawn. The second round measured instead of looking: every frame of every clip is now audited for
+      <a href="#aberr">aberrations</a> - faces crushed, stretched or sheared, one body part inside another, a shoe through
+      the floor - and what the audit found was fixed. Limbs keep out of each other within joint limits measured on each
+      character's own mesh; the shoe that is planted is the shoe the viewer sees; the second 3D pass, which made models
+      less like their pictures, is off. A new character, <a href="#cast">Cadet</a>, was made with the pipeline as it
+      stands and given moves the motion library lacks <a href="#words">from a sentence each</a>. CharForge Studio does
+      all of it without a terminal. The page leads with how things work now; what they replaced is in the
+      <a href="#archive">archive</a> at the end.</p>
 {facts}
-    <div class="licence"><span aria-hidden="true">⚠</span><div><b>Licences.</b> The videos of moves on this page come from MiniMax H3 (the Singularity community fine-tune). Its licence excludes the US, EU, UK and South Korea and covers what it generates - this page is private; check before sharing it. Qwen-Image 2.1, which draws the references, is under a research-only licence: commercial use needs a licence from Qwen.</div></div>
+    <div class="licence"><span aria-hidden="true">⚠</span><div><b>Licences.</b> The videos of moves on this page come from MiniMax H3 (the Singularity community fine-tune). Its licence excludes the US, EU, UK and South Korea and covers what it generates; they are shown here as research. Qwen-Image 2.1, which draws the references, is under a research-only licence: commercial use needs a licence from Qwen. UniMate, which makes moves from words, is MIT-licensed, and its text encoder Flan-T5 Apache-2.0.</div></div>
   </header>"""
 
 studio = """<section id="studio">
@@ -147,7 +172,8 @@ studio = """<section id="studio">
         left - learned from the stages' own logs on this Mac. Each character gets a page: turn it round in 3D, play its
         clips, compare its moves with the videos they came from, watch any clip from the front, the side and above at once
         (<b>Angles</b>), download the <span class="mono">.glb</span> and
-        <span class="mono">.fbx</span>, add moves from video, rerun from any stage. <b>Walk around</b> opens the
+        <span class="mono">.fbx</span>, add moves from video or <b>from words</b> (a sentence each, three samples to
+        choose from - <a href="#words">below</a>), rerun from any stage. <b>Walk around</b> opens the
         playground with every character on this Mac, not only the published ones. The Studio can be closed and opened
         again while a job runs; it finds the job and waits for it.</p>
     </div>
@@ -166,6 +192,9 @@ python charforge.py studio            # opens http://localhost:8830
       <figure class="shot" style="grid-column:1/-1"><img src="media/studio_angles.webp" alt="The Angles panel on Mara's page, paused at the top of her roundhouse kick: the video, its camera, the left side and above, with the joint readout under them and play, frame-step and scrub controls below" width="1440" height="900" loading="lazy">
         <figcaption><b>Angles</b> - any clip from four sides at once, the joint readout under it, and a frame at a time
         (<span class="mono">,</span> and <span class="mono">.</span>) to find the worst one. Paused here at the top of Mara's kick.</figcaption></figure>
+      """ + ("""<figure class="shot" style="grid-column:1/-1"><img src="media/studio_words.webp" alt="Cadet's page in the Studio: his model on a grid, his prompt and numbers, and the Moves from words panel with the salute's sentence, the sample in use and a contact sheet of its three samples" width="1440" height="900" loading="lazy">
+        <figcaption><b>Moves from words</b> - a name and a sentence for each new move (<b>New move</b>), three samples of
+        each shown as contact sheets to choose from, and <b>Use the chosen samples</b> to add them to the character's clips.</figcaption></figure>""" if (MEDIA / "studio_words.webp").exists() else "") + """
     </div>
   </section>"""
 
@@ -203,7 +232,7 @@ prompts_sec = f"""<section id="prompts">
     {'<figure class="wide" style="margin-top:18px"><img src="media/prompts_before_after.webp" alt="The boy scout and the grey alien: the picture and the model as they first came out, and as they come out now" loading="lazy"><figcaption><b>Two characters from a user’s few-word prompts, before and now.</b> ' + PR.get('after_note', 'Made again with the prompt written out - the new pictures and models replace these as they finish.') + '</figcaption></figure>' if (MEDIA / 'prompts_before_after.webp').exists() else ''}
   </section>"""
 
-pipeline = """<section id="pipeline">
+pipeline = f"""<section id="pipeline">
     <div class="sechead">
       <div class="eyebrow">How a character is made now · steps marked new changed this round</div>
       <h2>Two lanes, one skeleton</h2>
@@ -212,16 +241,18 @@ pipeline = """<section id="pipeline">
     </div>
     <div class="lanes">
       <div class="lane">
-        <h3>Making a character <span class="eyebrow">charforge.py make · ~35 min</span></h3>
+        <h3>Making a character <span class="eyebrow">charforge.py make · ~{V['stage.total.min'] - V['stage.multiview.min']:.0f} min</span></h3>
         <ol class="steps">
           <li class="new"><b>The prompt, written out</b><span>a local model completes a few words into a character - age and build, skin and hair, each garment in its own colour, nothing held in the hands - and the height follows from it</span><code>describe.py</code></li>
           <li class="new"><b>Reference image, checked</b><span>Qwen-Image 2.1 draws it in an A-pose with its own alpha; a pose model reads the arms and it is drawn again, up to three times, while the hands touch the body</span><code>reference · pose_gate.py</code></li>
-          <li class="new"><b>3D model, checked from the front</b><span>TRELLIS.2, a second pass seeing repainted side and back views; a model whose front silhouette does not lie on the picture's (a board built in with the figure) is made again on a new seed</span><code>generate · multiview</code></li>
+          <li class="new"><b>3D model, checked from the front</b><span>TRELLIS.2, one pass; a model whose front silhouette does not lie on the picture's (a board built in with the figure) is made again on a new seed. The second pass on repainted side and back views is off: it made the model less like the picture on {V['mv.worse_n']} of {V['mv.n']} characters (<a href="#archive">archive</a>)</span><code>generate</code></li>
           <li><b>Solid, joints, hands</b><span>closed into a solid, limbs traced to their tips, modelled hands with 15 finger bones each</span><code>solidify · joints · hands</code></li>
           <li class="new"><b>Arms cut free</b><span>of whatever they were generated against below the armpit, then checked slab by slab and cut again - wider and further out - where an arm still reaches the body</span><code>free_arms.py</code></li>
           <li class="new"><b>Mesh, UVs, texture</b><span>game topology; UV islands folded onto themselves unwrapped again; the source images projected back on - not beside a nearer surface's outline - the hands in the face's skin tone</span><code>retopo · texture</code></li>
           <li class="new"><b>Rig</b><span>weights measured through the body; the arm's weight on the arm alone below the armpit; a vest's armhole with the collarbone and a jacket's hem with the pelvis, told apart by colour</span><code>weights · rig</code></li>
-          <li><b>Face, clips, package</b><span>jaw and five shapes; 18 Mixamo clips with planted feet; glTF + FBX with LODs and a manifest</span><code>face · animate · package</code></li>
+          <li><b>Face</b><span>jaw and five shapes, where eyes and a mouth can be found</span><code>face</code></li>
+          <li class="new"><b>Clips, planted and kept apart</b><span>18 Mixamo clips retargeted; the shoe the viewer sees planted, every vertex of it; each clip held inside joint limits measured on the character's own mesh</span><code>animate · limits · clearance</code></li>
+          <li><b>Package</b><span>glTF + FBX with LODs and a manifest; every clip can then be audited for aberrations</span><code>package · aberrations.py</code></li>
         </ol>
       </div>
       <div class="lane">
@@ -236,6 +267,17 @@ pipeline = """<section id="pipeline">
         </ol>
         <div class="cmd">python charforge.py move --name mara --move punch_combo,roundhouse_kick
 python charforge.py move --name juno3 --move punch_combo@mara,spell_cast@aoi   # other characters' videos</div>
+      </div>
+      <div class="lane">
+        <h3>Adding a move from words <span class="eyebrow">tools/unimate_moves.py · about a minute each</span></h3>
+        <ol class="steps">
+          <li class="new"><b>Write a sentence</b><span>the way UniMate's training captions are written - "An object marches in place."</span><code>--move name=text</code></li>
+          <li class="new"><b>Sample it on the character's own skeleton</b><span>UniMate reads the packaged rig's T-pose and topology; three samples, 50 Euler steps on the GPU, ~{UM['seconds']['sample_gpu_per_move']} s each</span><code>unimate_sample.py</code></li>
+          <li class="new"><b>Choose one</b><span>a contact sheet of each sample; the chosen one becomes an extra clip, like a move from video</span><code>--pick name=n</code></li>
+          <li class="new"><b>Onto the rig</b><span>retargeted, planted and held inside the joint limits like every clip</span><code>--rebuild</code></li>
+        </ol>
+        <div class="cmd">python tools/unimate_moves.py --name cadet --move "salute=An object stands at attention and salutes."
+python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or the Studio's Moves from words</div>
       </div>
     </div>
   </section>"""
@@ -371,6 +413,58 @@ polish = f"""<section id="polish">
          below 0.45 it is drawn again on a new seed. A picture you give is only warned about.</p>''', 1200, 600)}
   </section>"""
 
+CL = PL["cadet"]["floor_frames_pct"]
+EXJ, EXP = PL["examples"]["juno3_walk_back"], PL["examples"]["pip_strafe_left"]
+floor_img = "e130_cadet_floor.webp"
+aberr = f"""<section id="aberr">
+    <div class="sechead">
+      <div class="eyebrow">Aberrations · every frame of every clip, measured on the mesh the viewer sees</div>
+      <h2>Measured instead of looked for</h2>
+      <p>The polish pass found faults by rendering the poses that break things and looking, which finds what someone
+        thinks to render. The aberration audit (<span class="mono">tools/aberrations.py</span>) poses every frame of every
+        clip with dual quaternion skinning, as the playground does, and counts what a viewer would object to: faces
+        crushed to under half their area, stretched past double, or turned more than 60° from their bone; one body part
+        more than 2 cm inside another; a shoe through the floor; a surface that pops for one frame. Before any of it was
+        believed it was run on a synthetic character with aberrations of known size: {v('controls.passed')} of
+        {v('controls.n')} checks pass under both skinnings, and the three that failed at first were errors that would
+        have misled every number below - quads re-split by the pose, a depth search that stopped at 3.1 cm, and "inside"
+        read past the open end of a sleeve.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><div class="v">{v(ab0 + '.crushed_pct')} · {v(ab0 + '.stretched_pct')} · {v(ab0 + '.sheared_pct')} <small>%</small></div><div class="k">of faces crushed, stretched and sheared, averaged over every clip of {v('aberr.same.n')} characters - most of the crushed ones out of sight, under an arm</div></div>
+      <div class="fact"><div class="v">{v(ab0 + '.deep_body_frames_pct', 0)}% → {v('aberr.same.mean.deep_body_frames_pct', 0)}%</div><div class="k">of frames with one body part more than 2 cm inside another - the commonest fault - before and after the joint limits</div></div>
+      <div class="fact"><div class="v">{v(ab0 + '.body_penetration_cm')} → {v('aberr.same.mean.body_penetration_cm')} cm</div><div class="k">the deepest one part goes into another, averaged over clips; crushed, stretched and sheared shares unchanged</div></div>
+    </div>
+    {fix("the clips", "Limbs keep out of each other", "clearance_bo.webp",
+         "Bo in idle, strafe and sprint before and after: before, his forearms sink into the sides of his chef's jacket and his raised heel folds into the back of his thigh; after, his arms hang just clear of the jacket and the raised leg bends less",
+         f"{v('aberr.min.clearance_max_deg', 0)}–{v('aberr.max.clearance_max_deg', 0)}° <small>the largest single correction per character; armour takes the most - Cadet's sprint, his knee plates meeting at {v('aberr.cadet.knee_limit_deg', 0)}°</small>",
+         '''<p>A capture was performed by one person of one build. On a thicker character the same joint angles put a forearm
+         inside a puffy sleeve and a heel into a thigh, and hang the arms inside a wide torso. Each character's elbows, knees
+         and shoulders are now bent on its own mesh, 5° at a time, until one part goes 2 cm into another, and every clip
+         is held inside those limits: an arm past its limit moves to the nearest allowed direction, an elbow or knee opens
+         about its own hinge - a knee only while its foot is off the floor, so planted feet stay put. The last 10° of each
+         limit are soft, so no correction has a corner in time. At 1 cm Mara's boxing guard was forced open by 25°; at 2 cm
+         it is left alone.</p>
+         <p>What it cannot see is what one joint's limit cannot: hands swinging into thighs that are themselves moving, legs
+         brushing past each other in strafes, arms through long hair.</p>''', 1560, 1096)}
+    {fix("the feet", "The shoe the viewer sees is the one planted", floor_img,
+         "Cadet walking and crouch-walking, from the front and from behind, before and after, with every face more than 1 cm below the floor painted amber: before, a boot goes through the floor in each view; after, none",
+         f"{CL['rigid']:.0f}% → {CL['after']:.1f}% <small>of Cadet's frames with a boot more than 1 cm under the floor</small>",
+         f'''<p>Cadet's armoured boots went through the floor - in a walk, in a crouch walk - while the solve reported
+         his feet planted. It planted a copy of the sole carried rigidly on the ankle bone, which on an ordinary
+         shoe is the shoe. Cadet's ankle joint sits high inside a big boot, the upper boot blends with the shin, and the copy
+         stood level on the floor while the boot on screen went under it. The planted shoe is now posed the way the viewer
+         deforms it - each vertex by its own skin weights, with dual quaternions, matching Blender's own to 0.01 mm - and
+         the whole shoe below the ankle counts, toe cap included: a planted key pivots on the flat of the sole, a key in the
+         air keeps all of the shoe above the floor.</p>
+         <p>The first version thinned the shoe to 400 points. The median slip fell, but backpedals and strafes slid more -
+         Juno walking backwards {EXJ['before']}% → {EXJ['thinned']}% of ground speed, Pip strafing {EXP['before']}% →
+         {EXP['thinned']}% - at the same ground speed. Thinned, the shoe's lowest point jumped from one sample to the next as
+         the foot rolled, and the planted pivot jumped with it. With every vertex ({PL['points_per_foot'][0]:,}–{PL['points_per_foot'][1]:,}
+         a foot) Juno is at {EXJ['after']}% and Pip {EXP['after']}%; across {PR13['characters']} characters and nine gaits
+         the worse foot slides a median {PR13['before']['median']:.1f}% → {PR13['after']['median']:.1f}% of ground speed.</p>''', 1500, 1000)}
+  </section>"""
+
 cast_cards = []
 for c in N["cast"]:
     refs = "".join(f'<figure><img src="media/{r[0]}" alt="{r[1]}" width="400" height="400" loading="lazy"><figcaption>{r[2]}</figcaption></figure>' for r in c["refs"])
@@ -390,6 +484,50 @@ cast = f"""<section id="cast">
       <p>{N['cast_intro']}</p>
     </div>
     <div class="cast">{''.join(cast_cards)}</div>
+  </section>"""
+
+sl = UM["slip_mps"]
+words = f"""<section id="words">
+    <div class="sechead">
+      <div class="eyebrow">Moves from words · UniMate on the character's own skeleton</div>
+      <h2>A move from a sentence in half a minute</h2>
+      <p>The motion library has no salute, no boxing guard, no march. A move from video works (<a href="#moves">below</a>),
+        but each costs half an hour of video generation. UniMate generates a skeletal motion from a sentence for a skeleton
+        it has never seen: a flow-matching model conditioned on the skeleton's topology and T-pose as well as on the text,
+        which Flan-T5 encodes. So it runs on each character's own rig, and the move then goes through retargeting, foot
+        planting and the joint limits like any captured clip. Cadet got five: a salute, a ready stance, a fist pump, a
+        march and a look around.</p>
+    </div>
+    <figure class="wide"><img src="media/unimate_cadet.webp" alt="Cadet, a young space marine in teal armour, in five moves generated from text: a salute with his right hand at his brow, a wide combat-ready stance with fists raised, a raised fist, a high-knee marching step, and standing upright looking to one side" width="2000" height="400" loading="lazy">
+      <figcaption>Cadet's five moves from words, each the best of three samples: salute, ready stance, fist pump, march,
+      look around.</figcaption></figure>
+    <div class="fixlist" style="margin-top:16px">
+      <div class="note-card"><div class="eyebrow">How it runs on the Mac</div>
+        <p>UniMate's own preprocessing reads the packaged character - its canonical T-pose, its topology, its clips -
+        through Blender 4.0 as a Python module, the version it was written for. Its sampler integrates the flow with an
+        adaptive solver that needs double precision, which Apple's GPU does not have; a fixed grid of 50 Euler steps runs
+        on the GPU in about {UM['seconds']['sample_gpu_per_move']} s per two-second move (the adaptive solver on the CPU
+        took over {UM['seconds']['dopri5_cpu_three_moves_over'] // 60} minutes for three). Three samples of each sentence,
+        a contact sheet of each, one chosen, about {UM['seconds']['export_per_move']} s to export.
+        <span class="mono">tools/setup_unimate.sh</span> installs it - code, weights, the text encoder and two Python
+        environments, about 3.2 GB.</p></div>
+      <div class="note-card"><div class="eyebrow">Write it the way its captions are written</div>
+        <p>{UM['first_wording_ok']} of the five came out as asked on the first wording. "March in place" and "look
+        around" needed UniMate's own caption style: <i>"{UM['moves']['march']}"</i>, <i>"{UM['moves']['look_around']}"</i>.</p></div>
+      <div class="note-card"><div class="eyebrow">Two things broke, quietly</div>
+        <p>The face rig's shapes were not moved into UniMate's frame with the mesh, and tore even Cadet's own clips: they
+        are left out of UniMate's copy now. And UniMate's pruned skeleton ends at the toe, which the FBX importer drops as
+        a leaf - so foot planting, which needs it, switched itself off without a word, and the generated moves stood 3-19
+        cm into the floor, sliding. The toe is now recovered from the foot bone's tail, and retargeting says so when it
+        cannot plant.</p></div>
+    </div>
+    <p class="ink2" style="margin-top:14px">On the surface the generated moves fall inside the range of his captured clips:
+      {v('um.aberr.generated.crushed_pct.0')}–{v('um.aberr.generated.crushed_pct.1')}% of faces crushed against
+      {v('um.aberr.library.crushed_pct.0')}–{v('um.aberr.library.crushed_pct.1')}%, and no pops. Standing still, the
+      salute's feet slid at {sl['salute']['before']} m/s and the ready stance's at {sl['ready']['before']} m/s before the toe
+      was recovered and the shoe planted as the viewer sees it; now {sl['salute']['after']} and {sl['ready']['after']} m/s.
+      The march still scrapes its toe at every lift and landing ({sl['march']['after']} m/s): planting a contact does not
+      remove a stomp. Choosing among the three samples is still done by eye.</p>
   </section>"""
 
 # --- reused sections -----------------------------------------------------------------------------
@@ -485,6 +623,19 @@ left = f"""<section id="left">
       <h2>Open problems</h2>
     </div>
     <ul class="left">
+      <li><b>The audit has not met a person yet.</b> Its thresholds - half the area, double, 60°, 2 cm - are ours.
+        Whether a viewer objects where it flags, and only there, needs blinded ratings before any score is allowed to
+        stop a build.</li>
+      <li><b>What one joint's limit cannot see.</b> Hands swinging into thighs that are themselves moving (the limits are
+        measured with the legs at rest), legs brushing past each other in strafes, arms through long hair - a job for the
+        hair's own spring chains - and knees through a long coat's hem.</li>
+      <li><b>A hem that reaches the floor is planted as if it were the shoe.</b> Cadet's flared greaves come down to
+        within a few centimetres of the floor and move with the ankle, so their rims hold the floor while his soles float
+        millimetres above it: his sprint slides {PL['cadet']['gaits']['sprint']['after']}% of ground speed. Planting only
+        the shoe's contact patch is next. On everyone else the worst gait is now walking backwards, at most
+        {PL['worst_now_others'][0]['slip_pct']}%.</li>
+      <li><b>Moves from words are chosen by eye.</b> Ranking UniMate's three samples by the audits and by how well a render
+        reads as the sentence would let the best be picked without a person. A move that steps in place still slides.</li>
       <li><b>Layered garments and hair are one surface with what they lie on.</b> Pip's vest now moves with his torso, but
         with both arms overhead the surface between vest and sleeve stretches at the armpit; Aoi's hair and Mara's and Wren's
         braids stay rigid because a chain on a fused part tears it. The fix is upstream: generate them as their own layers.</li>
@@ -536,6 +687,41 @@ open_old = open_old.replace("        </tbody>", "          " + new_dead, 1)
 open_old = open_old.replace("<h3>Open: Pip's vest lifts into wings</h3>", "<h3>Was open: Pip's vest lifts into wings (fixed 25 September - see Polish)</h3>")
 open_old = open_old.replace('<h3 style="margin-top:6px">Also open</h3>', '<h3 style="margin-top:6px">Also open then</h3>')
 
+second_pass = f"""<section id="old-multiview">
+      <h2>A second 3D pass on repainted views</h2>
+      <p>Until 30 September TRELLIS was run twice. The first model's renders from the side and the back were repainted
+        by the image model, and a second pass took those as extra views. Against a generated 360° video of Mara it had
+        moved the mean silhouette IoU a little; timed, it was the slowest stage ({V['stage.multiview.min']} of
+        {V['stage.total.min']} minutes, median). Compared on {V['mv.n']} finished characters, the second model fitted the
+        reference's front worse on {V['mv.worse_n']} of {V['mv.n']} (mean IoU {V['mv.front_pass1']} → {V['mv.front_mesh']}),
+        and looked at against the pictures it follows the repainted views, not the reference: the boy scout grew knee socks
+        and lost his grin, Vex's trainers became boots. Repainting views the reference does not show invents them, and the
+        second pass builds what was invented. It is off by default; <span class="mono">--quality best</span> keeps it.</p>
+      <figure class="wide"><img src="media/e106_boyscout.webp" alt="The boy scout's reference beside his two 3D models from the front, left, back and right: the second pass gives him knee socks and loses his grin" width="1800" height="694" loading="lazy">
+        <figcaption>The boy scout's reference and his two models: the first pass, and the second on repainted views.</figcaption></figure>
+    </section>"""
+FE = _paper.M.get("feet_e029") or dict()
+old_feet = f"""<section id="old-feet">
+      <h2>Foot slip as first measured</h2>
+      <p>The first foot audit divided each gait's slip by <span class="mono">max(manifest speed, 1 m/s)</span>: below 1 m/s
+        the ratio was understated, and standing still it is undefined, so slow entries were left out. On {len(FE.get('feet', dict()))}
+        characters it put the worse foot's median slip at {FE.get('summary', dict()).get('median_slip_pct')}% of ground speed
+        (worst {FE.get('summary', dict()).get('max_slip_pct')}%, {FE.get('summary', dict()).get('n')} pairs). The audit now divides by
+        each gait's true ground speed and reports metres per second as well; on {PR13['characters'] + 1} characters, every
+        gait, see the table in the paper. The old table, as it was:</p>
+      <div class="tscroll">{_paper.t_feet_e029() if FE else ''}</div>
+    </section>"""
+rigid_sole = f"""<section id="old-sole">
+      <h2>A rigid sole on the ankle bone</h2>
+      <p>Until 2 October the foot planted was a copy of the sole - the shoe's vertices within 3 cm of the floor at rest, at
+        most 160 - carried rigidly on the ankle bone, its lowest point held on the floor while the foot was down. That is
+        the shoe, on an ordinary shoe. On Cadet's armoured boots, which blend with the shin above a high ankle joint, the
+        copy stood on the floor while the boot on screen was under it in {CL['rigid']:.0f}% of his frames. Across
+        {PR13['characters']} characters and nine gaits the worse foot slid a median {PR13['before']['median']:.1f}% of
+        ground speed with it, against {PR13['after']['median']:.1f}% with the shoe posed as the viewer sees it.</p>
+    </section>"""
+
+
 def demote(sec):
     """Archived sections keep their content; their ids change so the nav's anchors stay unique."""
     return re.sub(r'<section id="([a-z]+)"', r'<section id="old-\1"', sec, count=1)
@@ -547,6 +733,9 @@ archive = f"""<section id="archive">
       <p>Kept for the numbers and the reasoning: each of these was measured, and several obvious-looking ideas in them are
         worse than what ships. Open one to read it.</p>
     </div>
+    {arch("A second 3D pass on repainted views", "off since 30 September: it made the model less like its picture", second_pass)}
+    {arch("Planting a rigid copy of the sole", "replaced on 2 October by the shoe posed the way the viewer sees it", rigid_sole)}
+    {arch("Foot slip as first measured", "a 1 m/s floor under the speed - replaced by the true-speed audit", old_feet)}
     {arch("Dead ends, and the problems open before this round", "the table of what was tried and dropped, now with this round's", demote(open_old))}
     {arch("Where the error in moves from video came from", "the first measurement of the old pipeline, stage by stage - replaced by the fit on the video's own body and the refine stage",
           '<section id="old-errsrc">' + error_source + '</section>')}
@@ -556,7 +745,7 @@ archive = f"""<section id="archive">
   </section>"""
 
 footer = """<footer>
-    <div>Built from <code>charforge/</code> on 24-25 September 2026. Numbers from each character's logs in <code>work/&lt;name&gt;/logs/</code> (<code>arms</code>, <code>retopo</code>, <code>texture</code>, <code>rig</code>), <code>work/&lt;name&gt;/motion_videos/*_fidelity.json</code> and <code>refine.json</code>, <code>results/v3/</code>, and the renders from <code>blender/render_poses.py</code>; the review of this round is in <code>REVIEW.md</code>, "the polish pass".</div>
+    <div>Built from <code>charforge/</code>, 24 September - 2 October 2026. Numbers from each character's logs in <code>work/&lt;name&gt;/logs/</code> (<code>arms</code>, <code>retopo</code>, <code>texture</code>, <code>rig</code>), <code>work/&lt;name&gt;/motion_videos/*_fidelity.json</code> and <code>refine.json</code>, <code>results/v3/</code>, the renders from <code>blender/render_poses.py</code>, and - for the aberrations, the feet and moves from words - the paper's own data (<code>paper/data/metrics.json</code>, <code>research/data/e129_unimate.json</code>, <code>e130_planting.json</code>), so this page and the paper quote the same numbers.</div>
     <div>Every figure on this page was measured by a script in the repository; nothing is estimated except the time per clip, which varies with what else the Mac is doing.</div>
   </footer>"""
 
@@ -572,7 +761,7 @@ style = style.replace("</style>", """  .nbbanner{background:var(--panel2);border
   .nbbanner .in{max-width:1100px;margin:0 auto;padding:9px 20px}
 </style>""")
 page = (head + style + "\n</head>\n<body>\n" + nav + "\n" + banner + '\n\n<div class="wrap">\n  ' + opener + "\n\n  " + studio + "\n\n  " + prompts_sec + "\n\n  " + pipeline
-        + "\n\n  " + polish + "\n\n  " + cast + "\n\n  " + moves + "\n\n  " + angles_sec + "\n\n  " + fid + "\n\n  " + hands + "\n\n  " + mac
+        + "\n\n  " + polish + "\n\n  " + aberr + "\n\n  " + cast + "\n\n  " + words + "\n\n  " + moves + "\n\n  " + angles_sec + "\n\n  " + fid + "\n\n  " + hands + "\n\n  " + mac
         + "\n\n  " + left + "\n\n  " + archive + "\n\n  " + footer + "\n</div>\n</body>\n</html>\n")
 page = page.replace('<meta name="description" content="Workflow, measurements and side-by-side comparisons from the video-to-motion and image-model tests.">',
                     '<meta name="description" content="How CharForge makes characters now: the Studio, the polish pass, new characters, moves from video - with the replaced methods archived.">')

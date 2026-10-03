@@ -113,7 +113,9 @@ behind it (the code comment next to each rule has the numbers).
   modelled hands are only what stands outside the body, in the face's skin tone; surfaces the arm
   cut opened take the colour of the nearest old surface along the mesh.
 - **Clips**: heading from travel, feet planted with IK on contacts read from the sole, 60 fps,
-  in place with the ground speed in the manifest.
+  in place with the ground speed in the manifest. The shoe planted is the shoe the viewer sees: every
+  vertex below the ankle, posed by its own skin weights with dual quaternions (`blender/skin_points.py`);
+  thinning it to a few hundred points made the planted pivot jump and backpedals slide (E130).
 - **Moves from a video**: the nearest capture is bent to follow the video only where it misses
   by more than 1.2x the pose model's jitter (on the self-test, captures the library holds leave
   0.66-0.84 jitters unexplained, captures it lacks mostly 1.5-6). A bent bone takes its image
@@ -207,10 +209,18 @@ Open each image; read each log line. Each check says what good looks like and wh
    After changing the audit or `blender/mesh_contact.py`, `python tools/aberration_controls.py` must
    still pass every check.
 
-10. **The playground** (`python tools/build_site.py`, then open `docs/index.html` through a local
+10. **Moves from words** (`work/<name>/qa/words/<move>.png`, `tools/unimate_moves.py`; the Studio's
+   panel of the same name) - three samples per move from UniMate, chosen by eye. Pick the one whose
+   frames read as the sentence; hands on the head and lunges mean the wording was too long - rephrase
+   short, "An object <does something>.". After `--pick ... --rebuild`, audit the new clips like the
+   others (`tools/aberrations.py --name <name> --force`): a stepping-in-place move can still slide its
+   toe (Cadet's march, 0.9 m/s). Setup once: `tools/setup_unimate.sh`.
+
+11. **The playground** (`python tools/build_site.py`, then open `docs/index.html` through a local
    server, or the Studio's `/play/`) - walk, run, strafe, crouch, jump, turn, wave; hold T to talk; watch the head turn
-   with the face, the blink, the feet. In the browser console, `await __cf.footAudit()` measures
-   foot slip per gait (around 2-5% is the current standard).
+   with the face, the blink, the feet. For foot slip use `blender/foot_audit.py` (metric v2: share of
+   the true ground speed; median about 3-4% across the roster, strafes and crouch walks worst). The
+   browser's `await __cf.footAudit()` still divides by at least 1 m/s and is a different estimand (E122).
 
 ## A new move, from a video
 

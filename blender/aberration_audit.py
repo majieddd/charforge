@@ -58,6 +58,9 @@ ap.add_argument("--apart", type=float, default=0.03,
                 help="minimum rest separation (m) for an intersection or penetration to count")
 ap.add_argument("--deep", type=float, default=2.0, help="penetration (cm) that counts as deep")
 ap.add_argument("--render", default="", help="a folder: render each clip's worst frame of each kind, the flagged faces red")
+ap.add_argument("--render-at", default="",
+                help="with --render: render these frames instead of the worst ones, as clip:kind:frame,... "
+                     "(the same frames on two builds compare directly)")
 ap.add_argument("--res", type=int, default=520)
 ap.add_argument("--skin", default="dqs", choices=("dqs", "lbs"))
 ap.add_argument("--pop", type=float, default=0.5,
@@ -429,7 +432,17 @@ def render_flags(V, m, exposed, path, title):
     return outs
 
 
-if a.render:
+if a.render and a.render_at:
+    os.makedirs(a.render, exist_ok=True)
+    for item in a.render_at.split(","):
+        clip, kind, fr = item.split(":")
+        if clip not in report["clips"]:
+            raise SystemExit(f"[aberr] --render-at: no clip {clip!r} in {a.blend}")
+        set_action(clip)
+        V, m, exposed = flags_at(int(fr), kind)
+        render_flags(V, m, exposed, os.path.join(a.render, f"{clip}_{kind}_f{fr}"), f"{clip} {kind}")
+    print(f"[aberr] frames rendered -> {a.render}", flush=True)
+elif a.render:
     os.makedirs(a.render, exist_ok=True)
     for clip, e in report["clips"].items():
         set_action(clip)

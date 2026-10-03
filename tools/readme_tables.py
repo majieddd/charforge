@@ -4,7 +4,7 @@
     python tools/readme_tables.py --write    # replaces the tables between their markers in README.md
 
 Reads web/roster.json (who is shown, in order), out/<id>/<id>.json (height, triangles, LODs,
-style, face, springs) and work/<id>/foot_audit.json (blender/foot_audit.py --json).
+style, face, springs) and work/<id>/qa/feet_v2.json (blender/foot_audit.py --json, metric v2).
 """
 from __future__ import annotations
 
@@ -43,11 +43,11 @@ def roster(cfg):
 def feet(cfg):
     names, data = [], []
     for c in cfg["characters"]:
-        f = ROOT / "work" / c["id"] / "foot_audit.json"
+        f = ROOT / "work" / c["id"] / "qa" / "feet_v2.json"     # metric v2: true ground speed (E130's roster run)
         if f.exists():
             names.append(c["name"])
             data.append(json.load(open(f)))
-    rows = ["| contact slip, share of ground speed (worse foot; corrected audits only below 1 m/s) | " + " | ".join(names) + " |",
+    rows = ["| contact slip, share of the gait's true ground speed (worse foot) | " + " | ".join(names) + " |",
             "|---|" + "---|" * len(names)]
     for g in GAITS:
         cells = []
@@ -63,7 +63,7 @@ def feet(cfg):
             cells.append(f"{max(s) * 100:.1f}%" if s else "-")
         rows.append(f"| {g.replace('_', ' ')} | " + " | ".join(cells) + " |")
     deep = [min(min(r[k]["deepest_cm"] for k in ("left", "right")) for g, r in d.items() if g in GAITS) for d in data]
-    rows.append("| soles through the floor, worst | " + " | ".join(f"{-x:.1f} cm" for x in deep) + " |")
+    rows.append("| soles through the floor, worst | " + " | ".join(f"{max(0.0, -x):.1f} cm" for x in deep) + " |")
     return "\n".join(rows)
 
 

@@ -24,3 +24,26 @@
 <p>Cite the version you read; the version and date are at the top of the page and in the changelog.</p>
 <!--TABLE:cite-->
 </section>
+
+<section>
+<h2 id="appendix-archive" class="appendix">Appendix D · Archive</h2>
+<p>Measurements and methods this paper used to report, kept as they were with the reason each was replaced. The lab
+  notebook keeps the longer record, with its own archive at the end.</p>
+<h3 id="sec-arch-feet" class="plain">Foot slip with a 1 m/s floor under the speed [E029]</h3>
+<p>The first foot audit divided each gait's contact slip by <code>max(manifest speed, 1 m/s)</code>: values at or
+  above 1 m/s were normalised by the stated speed, values below 1 m/s were understated, and percentages for standing
+  still are undefined, so slow entries were left out. On it the worse foot slid a median {{feet_e029.median_slip_pct}}%
+  of ground speed, at worst {{feet_e029.max_slip_pct}}%, over {{feet_e029.n}} character-gait pairs. It was replaced by
+  the true-speed audit of [#sec-eval-feet], rerun on every character; the old table is frozen in
+  <code>research/data/e029_feet_archived.json</code>. Note that it also predates the rigid sole's replacement [E130].</p>
+<figure id="tab-feet-e029">
+  <div class="tscroll"><!--TABLE:feet_e029--></div>
+  <figcaption>Archived: contact slip of the worse foot as the paper reported it up to version 0.10, divided by at least
+    1 m/s (<code>work/&lt;name&gt;/foot_audit.json</code>, 25 September 2026). Above 10% in red.</figcaption>
+</figure>
+<h3 id="sec-arch-sole" class="plain">A rigid sole on the ankle bone</h3>
+<p>Until version 0.11 the planted foot was a copy of the sole - the shoe's vertices within 3 cm of the floor at rest,
+  at most 160 - carried rigidly on the ankle bone. It is right for a shoe that is rigid below the ankle and wrong for
+  one that blends with the shin, as [#sec-eval-feet] measures.</p>
+</section>
+

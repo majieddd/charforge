@@ -91,7 +91,10 @@ def main(a):
         entries.append({"id": cid, "name": c["name"], "blurb": c["blurb"],
                         "prompt": man["source"]["prompt"] or c.get("prompt", ""),
                         "thumb": thumb_uri(pkg / f"{cid}_thumb.png"),
-                        "download": f"{release}/{cid}.zip", "manifest": page_manifest(man)})
+                        # only characters whose zip is on the release ("released": false hides the button, which
+                        # otherwise led to a missing file)
+                        "download": f"{release}/{cid}.zip" if c.get("released", True) else "",
+                        "manifest": page_manifest(man)})
 
         # Pages: stream the compressed glb
         shutil.copy(web_glb, docs / f"{cid}.glb")
