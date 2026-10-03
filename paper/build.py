@@ -82,6 +82,10 @@ def values():
     v["feet.median"] = M["feet_summary"]["median_slip_pct"]
     v["feet.max"] = M["feet_summary"]["max_slip_pct"]
     v["feet.n"] = M["feet_summary"]["n"]
+    v["feet.mean"] = M["feet_summary"].get("mean_slip_pct")
+    v["feet.characters"] = M["feet_summary"].get("characters")
+    for k in ("median_slip_pct", "max_slip_pct", "n"):
+        v[f"feet_e029.{k}"] = (M.get("feet_e029") or {}).get("summary", {}).get(k)
     for k, s in M["fit_selftest"].items():
         for f, x in s.items():
             if isinstance(x, (int, float)):
@@ -102,6 +106,14 @@ def values():
             v[f"aberr.max.{f}"] = max(xs)
             v[f"aberr.min.{f}"] = min(xs)
     v["aberr.n"] = len(AB)
+    # the characters measured before clearance, alone: the before/after comparison is over the same ones
+    base = (B.get("aberrations_before_clearance") or {}).get("characters", {})
+    same = {cid: row for cid, row in AB.items() if cid in base}
+    for f in num:
+        xs = [row[f] for row in same.values() if row.get(f) is not None]
+        if xs:
+            v[f"aberr.same.mean.{f}"] = round(sum(xs) / len(xs), 2)
+    v["aberr.same.n"] = len(same)
     MV = {k: x for k, x in (M.get("multiview") or {}).items() if not x.get("same")}
     if MV:
         f1 = [x["front_iou_pass1"] for x in MV.values()]
@@ -124,10 +136,16 @@ def values():
                 flat(f"{prefix}.{k}", x)
             elif isinstance(x, list):
                 for i, y in enumerate(x):
-                    v[f"{prefix}.{k}.{i}"] = y
+                    if isinstance(y, dict):
+                        flat(f"{prefix}.{k}.{i}", y)
+                    else:
+                        v[f"{prefix}.{k}.{i}"] = y
             else:
                 v[f"{prefix}.{k}"] = x
     flat("b", B)
+    for key, prefix in (("unimate", "um"), ("planting", "pl")):
+        if M.get(key):
+            flat(prefix, M[key])
     moves = M["moves"]
     v["moves.iou.min"] = min(m["iou"] for m in moves)
     v["moves.iou.max"] = max(m["iou"] for m in moves)
@@ -193,7 +211,15 @@ def t_roster():
 
 
 def t_feet():
-    ids = [c["id"] for c in M["roster"] if c["id"] in M["feet"] and c["in_playground"]]
+    return feet_table(M["feet"])
+
+
+def t_feet_e029():
+    return feet_table(M["feet_e029"]["feet"])
+
+
+def feet_table(F):
+    ids = [c["id"] for c in M["roster"] if c["id"] in F and c["in_playground"]]
     names = {c["id"]: c["name"] for c in M["roster"]}
     gaits = ["walk", "jog", "run", "sprint", "walk_back", "jog_back", "strafe_left", "strafe_right", "crouch_walk"]
     head = "".join(f"<th class='num'>{esc(names[i])}</th>" for i in ids)
@@ -201,12 +227,13 @@ def t_feet():
     for g in gaits:
         cells = []
         for i in ids:
-            x = M["feet"][i].get(g, {}).get("slip_pct")
+            x = F[i].get(g, {}).get("slip_pct")
             cls = " bad" if x is not None and x > 10 else ""
             cells.append(f"<td class='num{cls}'>{'' if x is None else fmt(x, 1) + '%'}</td>")
         rows.append(f"<tr><td>{g.replace('_', ' ')}</td>{''.join(cells)}</tr>")
-    deep = "".join(f"<td class='num'>{fmt(min(v.get('deepest_cm', 0) for v in M['feet'][i].values()), 1)} cm</td>" for i in ids)
-    rows.append(f"<tr><td>deepest sole through the floor</td>{deep}</tr>")
+    # how far the deepest shoe goes through the floor, as a depth (0.0 when it never does)
+    deep = "".join(f"<td class='num'>{fmt(max(0.0, -min(v.get('deepest_cm', 0) for v in F[i].values())), 1)} cm</td>" for i in ids)
+    rows.append(f"<tr><td>deepest shoe through the floor</td>{deep}</tr>")
     return f"<table><thead><tr><th>gait</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
 
 
@@ -361,7 +388,7 @@ def t_controls():
             + "".join(rows) + "</tbody></table>")
 
 
-TABLES = {"moves": t_moves, "stages": t_stages, "roster": t_roster, "feet": t_feet, "prompts": t_prompts,
+TABLES = {"moves": t_moves, "stages": t_stages, "roster": t_roster, "feet": t_feet, "feet_e029": t_feet_e029, "prompts": t_prompts,
           "selftest": t_selftest, "times": t_times, "comparison": t_comparison, "tracker": t_tracker,
           "changelog": t_changelog, "cite": t_cite, "aberrations": t_aberrations, "controls": t_controls}
 
@@ -407,6 +434,7 @@ def main():
 
     # section numbers
     sec_num, n2, n3, toc = {}, 0, 0, []
+    appendix_ids = set()
     def number_heading(m):
         nonlocal n2, n3
         level, attrs, text = m.group(1), m.group(2), m.group(3)
@@ -414,7 +442,9 @@ def main():
         if "appendix" in attrs:
             label = text
             if idm:
-                sec_num[idm.group(1)] = text.split(" ")[0]
+                # "Appendix D · Archive" is cited as "Appendix D"
+                sec_num[idm.group(1)] = text.split(" ·")[0]
+                appendix_ids.add(idm.group(1))
             toc.append((level, idm.group(1) if idm else "", label, ""))
             return f"<h{level}{attrs}>{text}</h{level}>"
         if "plain" in attrs or not idm:
@@ -450,6 +480,8 @@ def main():
             return f"<a href='#{k}'>Figure {fig_num[k]}</a>"
         if k in tab_num:
             return f"<a href='#{k}'>Table {tab_num[k]}</a>"
+        if k in appendix_ids:
+            return f"<a href='#{k}'>{sec_num[k]}</a>"
         if k in sec_num:
             return f"<a href='#{k}'>Section {sec_num[k]}</a>"
         raise SystemExit(f"[paper] unknown cross-reference [#{k}]")

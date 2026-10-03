@@ -61,9 +61,12 @@ def roster():
 
 
 def feet(ids):
+    """The current foot audit (blender/foot_audit.py, metric v2: slip as a share of the true ground speed),
+    written to work/<name>/qa/feet_v2.json. E029's older table (work/<name>/foot_audit.json, a 1 m/s
+    floor under the speed) is frozen in research/data/e029_feet_archived.json and shown as archived."""
     out = {}
     for cid in ids:
-        a = load(ROOT / "work" / cid / "foot_audit.json")
+        a = load(ROOT / "work" / cid / "qa" / "feet_v2.json")
         if not a:
             continue
         row = {}
@@ -141,6 +144,11 @@ def aberrations(ids):
         if lim:
             j = lim["joints"]
             row["limits"] = {k: (v["limit_deg"] if v["kind"] == "hinge" else min(v["below_limit_deg"])) for k, v in j.items()}
+            knees = [v for k, v in j.items() if k.endswith("_knee") and v.get("limit_deg") is not None]
+            if knees:
+                # the tightest knee, and the deepest bend any of the character's clips asked of a knee
+                row["knee_limit_deg"] = min(v["limit_deg"] for v in knees)
+                row["knee_clips_max_deg"] = max(v.get("clips_max_deg") or 0.0 for v in knees)
         out[cid] = row
     return out
 
@@ -243,11 +251,16 @@ def main():
         "collected": datetime.date.today().isoformat(),
         "roster": ros, "feet": ft,
         "feet_summary": {"median_slip_pct": r(statistics.median(slips), 1) if slips else None,
-                         "max_slip_pct": max(slips) if slips else None, "n": len(slips)},
+                         "mean_slip_pct": r(statistics.mean(slips), 1) if slips else None,
+                         "max_slip_pct": max(slips) if slips else None, "n": len(slips),
+                         "characters": len(ft)},
+        "feet_e029": load(ROOT / "research" / "data" / "e029_feet_archived.json"),
         "moves": moves(), "fit_selftest": selftest(), "image_models": image_models(),
         "prompt_models": prompt_models(), "turntable": turntable(), "stage_times": stage_times(),
         "aberrations": aberrations([c["id"] for c in ros if c["id"] not in SUPERSEDED]), "aberration_controls": controls(),
         "multiview": multiview(),
+        "unimate": load(ROOT / "research" / "data" / "e129_unimate.json"),
+        "planting": load(ROOT / "research" / "data" / "e130_planting.json"),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     s = json.dumps(data, indent=1, ensure_ascii=False)

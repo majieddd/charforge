@@ -63,7 +63,7 @@ def studio():
     shots = S / "shots"
     for src, dst in (("studio_grid.png", "studio_grid.webp"), ("studio_char_final.png", "studio_char.webp"),
                      ("studio_new.png", "studio_new.webp"), ("studio_jobs.png", "studio_jobs.webp"),
-                     ("studio_angles.png", "studio_angles.webp")):
+                     ("studio_angles.png", "studio_angles.webp"), ("studio_words.png", "studio_words.webp")):
         p = shots / src
         if p.exists():
             save(Image.open(p), dst, 80)
@@ -301,9 +301,31 @@ def compares():
             print(f"{n}_{mv}.mp4", round(src.stat().st_size / 1e6, 2), "MB")
 
 
+def e130_floor():
+    """Cadet's boots against the floor, the same frames before and after E130: the aberration audit's renders, every
+    face more than 1 cm under the floor amber. Before: polish/cadet/floor_render (the rigid sole, 30 September);
+    after: polish/e130/floor_after (aberration_audit.py --render-at walk:floor:41,crouch_walk:floor:59)."""
+    B, A = S / "polish" / "cadet" / "floor_render", S / "polish" / "e130" / "floor_after"
+    shots = [("walk_floor_f41", 30), ("crouch_walk_floor_f59", 30), ("walk_floor_f41", 210), ("crouch_walk_floor_f59", 210)]
+    if not all((d / f"{n}_{az}.png").exists() for d in (B, A) for n, az in shots):
+        return
+    size, gap, head = 360, 6, 34
+    out = Image.new("RGB", (len(shots) * size + (len(shots) - 1) * gap, 2 * (size + head)), (255, 255, 255))
+    for row, (d, title) in enumerate(((B, "Before: a rigid sole on the ankle bone"), (A, "After: the shoe posed as the viewer sees it"))):
+        y = row * (size + head)
+        ImageDraw.Draw(out).text((4, y + 7), title, fill=(20, 25, 32), font=FONT)
+        for i, (n, az) in enumerate(shots):
+            im = Image.open(d / f"{n}_{az}.png").convert("RGB").resize((size, size), Image.LANCZOS)
+            if row == 0:
+                clip = n.split("_floor")[0].replace("_", " ")
+                label(im, f"{clip} · {'front' if az == 30 else 'back'}", font=SMALL)
+            out.paste(im, (i * (size + gap), y + head))
+    save(out, "e130_cadet_floor.webp", 85)
+
+
 def cast():
     C = S / "polish" / "cast"
-    for n in ("knight", "kaito", "bo"):
+    for n in ("knight", "kaito", "bo", "cadet"):
         for part in ("ref", "rest", "jump"):
             p = C / f"{n}_{part}.png"
             if p.exists():
@@ -312,5 +334,6 @@ def cast():
 
 if __name__ == "__main__":
     M.mkdir(exist_ok=True)
-    for f in (studio, wings, cheer, uv, aoi, hands, hem, bo, webs, loose, elbow, board, prompts, feet, angles, compares, cast):
+    for f in (studio, wings, cheer, uv, aoi, hands, hem, bo, webs, loose, elbow, board, prompts, feet, angles, compares, cast,
+              e130_floor):
         f()

@@ -137,6 +137,13 @@ async function charPage(name) {
           </div>
         </div>
         ${c.move_details.length ? `<div class="panel"><h2>Moves from video</h2>${c.move_details.map(moveCard).join('')}</div>` : ''}
+        <div class="panel"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2>Moves from words</h2>
+            <button class="btn" id="b-words" ${c.unimate_ready ? '' : 'disabled title="UniMate is not installed in vendor/unimate"'}>New move</button></div>
+          <p class="sub" style="margin:4px 0 10px">A move described in a sentence, made by UniMate on ${esc(c.name)}'s own skeleton in about half a minute - three tries each. Pick the one that reads right and it becomes one of the clips, its feet planted and held inside the character's joint limits. Short sentences in the style "An object marches in place." work best.${c.unimate_ready ? '' : ' UniMate is not installed here: run tools/setup_unimate.sh once (about 3 GB).'}</p>
+          ${c.words.length ? `${c.words.map(wordCard).join('')}
+            <div class="actions" style="margin-top:8px"><button class="btn primary" id="b-words-use">Use the chosen samples</button></div>
+            <p class="sub" style="margin-top:6px">Using them runs ${esc(c.name)} again from the animate stage (about two minutes); the new moves then play on keys 1-9 in the viewer.</p>` : ''}
+        </div>
         <div class="panel"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2>Reel</h2>
             <button class="btn" id="b-reel">${c.reel ? 'Record again' : 'Record a reel'}</button></div>
           <p class="sub" style="margin:4px 0 10px">A short video of the character: idle, a wave, walking, jogging, a jump, a turn and each of its moves from video, from one camera.</p>
@@ -169,6 +176,14 @@ async function charPage(name) {
             <p class="sub" id="a-note" style="margin-top:6px"></p>` : ''}
         </div>`;
   $('#b-moves').onclick = () => movesDialog(c);
+  if ($('#b-words') && c.unimate_ready) $('#b-words').onclick = () => wordsDialog(c);
+  if ($('#b-words-use')) $('#b-words-use').onclick = async () => {
+    const picks = {};
+    view.querySelectorAll('input[data-word]:checked').forEach((i) => { picks[i.dataset.word] = +i.value; });
+    if (!Object.keys(picks).length) { alert('Choose a sample of at least one move.'); return; }
+    try { await post('/api/jobs', { kind: 'words_pick', name: c.name, picks }); location.hash = '#/jobs'; }
+    catch (e) { alert(e.message); }
+  };
   $('#b-rerun').onclick = () => rerunDialog(c);
   $('#b-reel').onclick = async () => {
     try { await post('/api/jobs', { kind: 'reel', name: c.name }); location.hash = '#/jobs'; }
@@ -193,6 +208,31 @@ async function charPage(name) {
     modal(`<h2>${esc(a.dataset.log)}</h2><pre class="log">${esc(t) || '(empty)'}</pre><div class="actions" style="margin-top:12px"><button class="btn" data-close>Close</button></div>`, true);
   });
   if (c.web_glb) leave = viewer($('#viewer'), c.web_glb, man);
+}
+
+function wordCard(w) {
+  const opts = Array.from({ length: w.samples }, (_, i) => `<label class="check" style="display:inline-flex;gap:4px;align-items:center;margin-right:10px;font-size:13px"><input type="radio" name="w-${esc(w.name)}" data-word="${esc(w.name)}" value="${i}" ${w.in_use === i ? 'checked' : ''}> sample ${i}</label>`).join('');
+  return `<div class="move" style="margin-bottom:12px"><b>${esc(w.name.replace(/_/g, ' '))}</b>${w.in_use != null ? ` <span class="chip">using sample ${w.in_use}</span>` : ''}
+    <p class="sub" style="margin:2px 0 6px">“${esc(w.text || '')}”</p>
+    ${w.sheet ? `<a href="${w.sheet}" target="_blank" rel="noopener"><img src="${w.sheet}" alt="${esc(w.name)}: each sample at 0, 0.4, 0.8, 1.2 and 1.6 seconds" loading="lazy" style="width:100%;border-radius:6px;display:block"></a>` : ''}
+    <div style="margin-top:6px">${opts}</div></div>`;
+}
+
+function wordsDialog(c) {
+  const row = (i) => `<div style="display:grid;grid-template-columns:minmax(90px,1fr) 3fr;gap:8px;margin-bottom:8px">
+      <input id="wn${i}" placeholder="${['salute', 'stretch', 'bow'][i]}" aria-label="Move ${i + 1} name" pattern="[a-z][a-z0-9_]*">
+      <input id="wt${i}" placeholder="${['An object stands at attention and salutes.', 'An object stretches both arms above its head.', 'An object bows politely.'][i]}" aria-label="Move ${i + 1} sentence"></div>`;
+  const { box, close } = modal(`<h2>New moves from words</h2>
+    <p class="sub">Up to three at a time. A name (lowercase, like <span class="mono">victory_dance</span>) and what happens, in a short sentence. Each is generated three times, two seconds long, on ${esc(c.name)}'s own skeleton; the tries appear on this page to choose from.</p>
+    ${[0, 1, 2].map(row).join('')}
+    <div class="actions"><button class="btn primary" id="go">Generate</button><button class="btn" data-close>Cancel</button></div><div class="err" id="err"></div>`);
+  $('#go', box).onclick = async () => {
+    const moves = [0, 1, 2].map((i) => ({ name: $('#wn' + i, box).value.trim().toLowerCase().replace(/\s+/g, '_'), text: $('#wt' + i, box).value.trim() }))
+      .filter((m) => m.name || m.text);
+    if (!moves.length) { $('#err', box).textContent = 'Give at least one move.'; return; }
+    try { await post('/api/jobs', { kind: 'words', name: c.name, moves }); close(); location.hash = '#/jobs'; }
+    catch (e) { $('#err', box).textContent = e.message; }
+  };
 }
 
 function moveCard(m) {
@@ -466,12 +506,14 @@ async function jobs() {
       const b = el.querySelector('.badge'); b.className = 'badge ' + j.status; b.textContent = j.status;
       el.querySelector('.el').textContent = j.started ? mins(j.elapsed) : '';
       el.querySelector('[data-a=cancel]').hidden = !['running', 'queued'].includes(j.status);
-      const frac = j.status === 'done' ? 1 : j.stage_n ? (j.stage_i - (j.status === 'running' ? 0.5 : 0)) / j.stage_n : 0;
+      // a run of the pipeline reports its stage; other jobs (poses, reels, moves from words) only their time
+      const frac = j.status === 'done' ? 1 : j.stage ? (j.stage_i - (j.status === 'running' ? 0.5 : 0)) / j.stage_n
+        : j.est_total ? Math.min(0.95, (j.elapsed || 0) / j.est_total) : 0;
       el.querySelector('.bar i').style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
       el.querySelector('.bar').className = 'bar' + (j.status === 'done' ? ' good' : '');
       el.querySelector('.st').textContent = j.stage && j.status !== 'queued' ? `stage ${j.stage_i} of ${j.stage_n}: ${j.stage}`
         : (j.status === 'queued' ? `starts in ${about(j.starts_in || 0)} · takes ${about(j.est_total || 0)}` : '');
-      el.querySelector('.pc').textContent = j.stage_n && j.status === 'running' ? `${Math.round(frac * 100)}% · ${about(j.est_left || 0)} left` : '';
+      el.querySelector('.pc').textContent = j.status === 'running' ? `${Math.round(Math.max(0, frac) * 100)}% · ${about(j.est_left || 0)} left` : '';
       el.querySelector('.last').textContent = j.last || '';
       if (open.has(j.id)) {
         const r = await api(`/api/jobs/${j.id}/log?offset=${offs[j.id] || 0}`);

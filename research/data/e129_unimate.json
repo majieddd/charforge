@@ -1,0 +1,110 @@
+{
+ "_about": "E129: UniMate moves on Cadet's own skeleton (tools/unimate_moves.py; the bow from the Studio's Moves from words panel). Aberrations from work/cadet/qa/aberrations.json (DQS, every frame), the build of 2026-10-02; foot slip from blender/foot_audit.py (worse foot, m/s): before = the moves as first generated, planting switched off (2026-09-30), after = with the toe bone recovered and every vertex of the shoe planted (E130, 2026-10-02). Times measured 2026-09-30 on this Mac (M5, 24 GB).",
+ "moves": {
+  "salute": "An object stands at attention and salutes with its right hand raised to its forehead.",
+  "ready": "An object drops into a ready combat stance with both fists raised and looks left and right.",
+  "fist_pump": "An object pumps its right fist in the air in celebration.",
+  "march": "An object marches in place.",
+  "look_around": "An object looks to the left and then to the right."
+ },
+ "first_wording_ok": 3,
+ "reworded": 2,
+ "samples_per_move": 3,
+ "generated_n": 6,
+ "library_n": 18,
+ "studio": {
+  "move": "bow",
+  "text": "An object bows politely.",
+  "sample": 1
+ },
+ "seconds": {
+  "preprocess": 10,
+  "sample_gpu_per_move": 25,
+  "sample_cpu_euler_per_move": 64,
+  "export_per_move": 11,
+  "dopri5_cpu_three_moves_over": 600
+ },
+ "aberr": {
+  "generated": {
+   "crushed_pct": [
+    3.18,
+    4.09
+   ],
+   "stretched_pct": [
+    0.61,
+    2.76
+   ],
+   "sheared_pct": [
+    1.85,
+    3.74
+   ],
+   "floor_frames_pct": [
+    0.0,
+    2.5
+   ],
+   "popping_event_windows": [
+    0,
+    0
+   ]
+  },
+  "library": {
+   "crushed_pct": [
+    1.47,
+    4.96
+   ],
+   "stretched_pct": [
+    0.97,
+    4.7
+   ],
+   "sheared_pct": [
+    1.83,
+    5.01
+   ],
+   "floor_frames_pct": [
+    0.0,
+    8.7
+   ],
+   "popping_event_windows": [
+    0,
+    3
+   ]
+  }
+ },
+ "slip_mps": {
+  "salute": {
+   "before": 0.065,
+   "after": 0.002
+  },
+  "ready": {
+   "before": 0.579,
+   "after": 0.088
+  },
+  "fist_pump": {
+   "before": 0.252,
+   "after": 0.057
+  },
+  "march": {
+   "before": 1.683,
+   "after": 0.861
+  },
+  "look_around": {
+   "before": 0.162,
+   "after": 0.051
+  },
+  "idle": {
+   "before": 0.001,
+   "after": 0.001
+  },
+  "wave": {
+   "before": 0.17,
+   "after": 0.025
+  },
+  "walk": {
+   "before": 0.712,
+   "after": 0.151
+  },
+  "bow": {
+   "after": 0.008
+  }
+ }
+}

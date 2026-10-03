@@ -21,10 +21,10 @@
   "juno3": 1118,
   "pip": 816
  },
- "cast_count": 3,
- "cast_names": "Knight, Kaito and Bo",
- "cast_title": "Knight, Kaito and Bo",
- "cast_intro": "Three new characters in the three styles, each from one sentence, made by the pipeline as it stands after this round - the reference checked, the arms cut free and checked, the UVs repaired, the rig's rules for garments applied. Left to right: the video is the game rig walking, waving and turning; below it the reference, the model at rest and the model mid-jump.",
+ "cast_count": 4,
+ "cast_names": "Knight, Kaito, Bo and Cadet",
+ "cast_title": "Knight, Kaito, Bo and Cadet",
+ "cast_intro": "Four new characters in the three styles, each from one sentence, made by the pipeline as it stood - the reference checked, the arms cut free and checked, the UVs repaired, the rig's rules for garments applied; Cadet, the last, also with every clip audited, the joint limits and the shoe planted as the viewer sees it. Each card: the video is the game rig walking, waving and turning; below it the reference, the model at rest and the model mid-jump.",
  "joins_left": "The cut starts a quarter of the way down the upper arm and is checked slab by slab; a join still survives somewhere on Pip, Mara, Juno, Rowan, Wren, Vex, Knight, Kaito, Bo, and there the rig keeps that side of the garment with the arm as before.",
  "cast": [
   {
@@ -107,52 +107,79 @@
      "jump"
     ]
    ]
+  },
+  {
+   "name": "Cadet",
+   "style": "stylised",
+   "video": "cast_cadet.mp4",
+   "prompt": "a fresh-faced young space marine, about 19 years old, short messy brown hair, in chunky rounded sci-fi power armour: teal-blue armour plates with white trim, a dark grey flexible undersuit showing at the elbows, knees and waist, big rounded shoulder pads, sturdy armoured boots, plain smooth armour with no emblems, no insignia, no logos, no skulls and no markings",
+   "height": "1.75 m",
+   "tris": "78,006",
+   "time": "about an hour",
+   "notes": "A young space marine with the emblems left off, from a few words in the Studio, written out by the local model. Two faults on the way, each now fixed for every character: \"about 19 years old\" was read as an elder (the word \"old\"), and his armoured boots went through the floor while the solve reported them planted (<a href=\"#aberr\">Aberrations</a>). The texture stage took 20 of his minutes, slowed by memory swapping. The first character with moves from words (<a href=\"#words\">below</a>).",
+   "refs": [
+    [
+     "cast_cadet_ref.webp",
+     "Cadet's reference image",
+     "reference"
+    ],
+    [
+     "cast_cadet_rest.webp",
+     "Cadet at rest",
+     "model"
+    ],
+    [
+     "cast_cadet_jump.webp",
+     "Cadet mid-jump",
+     "jump"
+    ]
+   ]
   }
  ],
  "moves_now": {
   "mara/punch_combo": {
-   "joints": 0.0535,
-   "iou": 0.8435,
-   "face": 0.0118,
-   "hands": 0.1975,
+   "joints": 0.0543,
+   "iou": 0.8433,
+   "face": 0.012,
+   "hands": 0.2016,
    "facing": 0.9677,
-   "pointing": 7.9,
-   "hands_median": 0.176
+   "pointing": 8.0,
+   "hands_median": 0.1719
   },
   "mara/roundhouse_kick": {
-   "joints": 0.069,
-   "iou": 0.8297,
-   "face": 0.0132,
-   "hands": 0.1413,
+   "joints": 0.0707,
+   "iou": 0.8306,
+   "face": 0.0129,
+   "hands": 0.1437,
    "facing": 1.0,
-   "pointing": 5.2,
-   "hands_median": 0.1157
+   "pointing": 5.3,
+   "hands_median": 0.1201
   },
   "aoi/spell_cast": {
-   "joints": 0.1178,
-   "iou": 0.7715,
-   "face": 0.0318,
-   "hands": 0.3261,
-   "facing": 0.9451,
-   "pointing": 18.7,
-   "hands_median": 0.1706
+   "joints": 0.1192,
+   "iou": 0.7707,
+   "face": 0.0317,
+   "hands": 0.304,
+   "facing": 0.9667,
+   "pointing": 16.4,
+   "hands_median": 0.1522
   },
   "pip/victory_cheer": {
-   "joints": 0.0689,
-   "iou": 0.8166,
-   "face": 0.02,
-   "hands": 0.204,
-   "facing": 0.9929,
-   "pointing": 5.6,
-   "hands_median": 0.1919
+   "joints": 0.0682,
+   "iou": 0.8184,
+   "face": 0.0198,
+   "hands": 0.2044,
+   "facing": 0.9858,
+   "pointing": 5.5,
+   "hands_median": 0.1921
   }
  },
  "elbow": {
   "before": 176,
-  "fit": 162,
+  "fit": 150,
   "after": 150,
-  "frames_fit": 13,
-  "frames_after": 4
+  "frames_fit": 0,
+  "frames_after": 0
  },
  "feet": {
   "before_cm": "3.1",

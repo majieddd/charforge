@@ -38,6 +38,9 @@ import bpy
 import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import skin_points  # noqa: E402
+
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
 ap.add_argument("--rig", required=True)
@@ -250,41 +253,50 @@ def fit_to_points(tgt, F, TW, rig_torso, fit_torso, stats, face=None, face_local
 
 
 def sole_points(tgt, TW):
-    """The sole of each foot as a cloud of points fixed to the foot bone, at most 160 per foot.
+    """The shoe of each foot as a cloud of points, posed as the viewer deforms it.
 
     A generated skeleton's foot joints are estimated from renders of a shoe and sit inside it. On
     these rigs the 'ball' joint is at the instep, 9 cm above the floor (Mixamo's is on the floor),
     and pinning that joint pinned a point in mid-air: the solver dragged the pelvis down 6-11 cm to
-    reach it. The sole is read off the mesh instead - the rest-pose vertices the foot bones own,
-    within 3 cm of the floor - and carried in the foot bone's own frame, so that at any key the
-    point of the shoe actually touching the floor is simply the lowest of them."""
+    reach it. The shoe is read off the mesh instead - the vertices the foot bones own - so that at
+    any key the point of the shoe actually touching the floor is simply the lowest of them. Planted
+    keys pivot on the flat of the sole (within 3 cm of the floor at rest); keys in the air keep the
+    whole shoe above the floor.
+
+    The whole shoe below the ankle joint counts, not just what touches the floor at rest: Cadet's
+    armoured boots have toe caps that curve up above the old 3 cm cut, and when the foot pitched the
+    cap went 4-12 cm through the floor, unseen by a solve that only watched the flat of the sole.
+    Each point is posed by its own skin weights (skin_points.py, dual quaternion as the viewers
+    deform it), not carried rigidly on the ankle: Cadet's ankle joint sits high in a big boot, so the
+    upper boot blends with the shin, and a rigid copy stood level on the floor while the mesh's boot
+    went 4.4 cm under it.
+
+    Every vertex of the shoe is kept (1,000-3,300 per foot on the roster). Thinned to 400, the lowest
+    point jumped from one sample to the next as the foot rolled, the planted pivot jumped with it,
+    and backpedals slipped twice as much (Juno3 walking backwards 6.0% -> 11.4%) [E130]."""
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"
               and any(m.type == "ARMATURE" and m.object == tgt for m in o.modifiers)]
     out = {}
     for hip_b, knee_b, ank_b, ball_b, _, _ in LEGS:
-        pts = []
-        for o in meshes:
-            gi = {g.index for g in o.vertex_groups if g.name in (ank_b, ball_b)}
-            if not gi:
-                continue
-            mw = o.matrix_world
-            for vtx in o.data.vertices:
-                if sum(g.weight for g in vtx.groups if g.group in gi) > 0.5:
-                    q = mw @ vtx.co
-                    if q.z < 0.03:
-                        pts.append(q)
-        if len(pts) < 20:
-            # no sole found: stand in with points under the skeleton's own heel and ball
+        cut = max(0.03, float((TW @ tgt.data.bones[ank_b].head_local).z))
+        cloud = skin_points.build(meshes, tgt, lambda q, w: q.z < cut and w.get(ank_b, 0) + w.get(ball_b, 0) > 0.5)
+        if cloud is None or cloud["n"] < 20:
+            # no sole found: stand in with two rigid points under the skeleton's own heel and ball
             ank = TW @ tgt.data.bones[ank_b].head_local
             bl = TW @ tgt.data.bones[ball_b].head_local
-            pts = [Vector((ank.x, ank.y, 0.0)), Vector((bl.x, bl.y, 0.0))]
+            rest = np.array([(ank.x, ank.y, 0.0, 1.0), (bl.x, bl.y, 0.0, 1.0)])
+            cloud = {"rest": rest, "bones": [ank_b], "idx": np.zeros((2, 4), int),
+                     "w": np.array([[1.0, 0, 0, 0]] * 2), "n": 2,
+                     "rest_inv": np.array([np.linalg.inv(np.array(TW @ tgt.data.bones[ank_b].matrix_local))])}
             how = "no sole vertices found - two points under the skeleton's own joints"
         else:
-            ys = [q.y for q in pts]
-            how = f"sole from {len(pts)} vertices, {(max(ys) - min(ys))*100:.1f} cm long"
-            pts = pts[::max(1, len(pts) // 160)]
-        Minv = (TW @ tgt.data.bones[ank_b].matrix_local).inverted()
-        out[ank_b] = np.array([tuple(Minv @ q) + (1.0,) for q in pts])
+            ys = cloud["rest"][:, 1]
+            how = (f"shoe below the ankle, {cloud['n']} points, {(ys.max() - ys.min())*100:.1f} cm long, "
+                   f"{int((cloud['w'][:, 0] < 0.99).sum())} blended with another bone")
+        cloud["sole"] = cloud["rest"][:, 2] < 0.03       # the flat of the sole, at rest
+        if not cloud["sole"].any():
+            cloud["sole"] = np.ones(cloud["n"], bool)
+        out[ank_b] = cloud
         print(f"[retarget] {ank_b}: {how}", flush=True)
     return out
 
@@ -386,8 +398,8 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
             row = []
             for leg in LEGS:
                 ank = leg[2]
-                M = TWn @ np.array(pbs[ank].matrix)
-                row.append(((sole[ank] @ M.T)[:, :3], TW @ pbs[ank].head))
+                pts = skin_points.pose(sole[ank], tgt)     # dual quaternion, as the viewers deform it
+                row.append((pts[:, :3], TW @ pbs[ank].head))
             rows.append(row)
         return rows
 
@@ -396,13 +408,25 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
     n_contact = sum(1 for li in range(2) for i in range(n) if down[li][i])
 
     # ---- height ----------------------------------------------------------------------------
+    # A planted foot stands on the flat of its sole; the whole shoe, toe cap and heel edge included,
+    # only has to stay above the floor while it is in the air - a toe cap that curves up is not what
+    # a foot stands on. (Planting on the whole shoe instead measured the same on the backpedals that
+    # slid; what made them slide was thinning the shoe to 400 points - see sole_points.)
+    SOLE_MASK = [sole[leg[2]]["sole"] for leg in LEGS]
+
+    def sole_low(r, li):
+        return float(r[li][0][SOLE_MASK[li], 2].min())
+
+    def boot_low(r, li):
+        return float(r[li][0][:, 2].min())
+
     rows = points()
     if n_contact:
         need = [None] * n
         for i in range(n):
             # the HIGHER of the planted feet comes down to the floor; the lower one is then
             # lifted back onto it by its own leg below - a leg can always bend, not always reach
-            zs = [float(rows[i][li][0][:, 2].min()) for li in range(2) if down[li][i]]
+            zs = [sole_low(rows[i], li) for li in range(2) if down[li][i]]
             need[i] = -max(zs) if zs else None
         known = [i for i in range(n) if need[i] is not None]
         for i in range(n):                           # through flight: interpolate between contacts
@@ -424,7 +448,7 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
         if looping:
             need[n - 1] = need[0]
     else:                                            # never down: lowest sole point to the floor
-        need = [-min(float(r[li][0][:, 2].min()) for r in rows for li in range(2))] * n
+        need = [-min(boot_low(r, li) for r in rows for li in range(2))] * n
     if max(abs(x) for x in need) > 0.25:
         print(f"[retarget]   WARNING the feet would need {max(need, key=abs)*100:+.1f} cm to reach "
               f"the floor - height left as captured (a kneel or a fall?)", flush=True)
@@ -447,7 +471,9 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
         for which, m in (("heel", ma), ("ball", mb)):
             for iv in intervals(m):
                 key = iv[0][0] if which == "heel" else iv[-1][0]
-                idx = int(np.argmin(rows[key][li][0][:, 2]))
+                zs_ = rows[key][li][0][:, 2]
+                cand_ = np.flatnonzero(SOLE_MASK[li])
+                idx = int(cand_[np.argmin(zs_[cand_])])            # a pivot on the flat of the sole
                 tracks.append((li, which, iv, idx))
                 for i, _ in iv:
                     if which == "ball" or pivot[li][i] is None:
@@ -521,11 +547,10 @@ def ground_and_plant(tgt, pelvis, n, fps, travelling, src_feet, lap, looping, sp
             # it the retargeted swing foot brushed the floor two keys before landing, lifted, and
             # landed again, and dipped 3 cm through it just after toe-off - both invisible to a
             # contact-only solve, both plain on the mesh.
-            low = float(rows[i][li][0][:, 2].min())
             if pivot[li][i] is not None:
-                goal.z = A.z - low
+                goal.z = A.z - sole_low(rows[i], li)
             else:
-                goal.z = A.z + max(0.0, min(0.015, 0.15 * dist[li][i] / fps) - low)
+                goal.z = A.z + max(0.0, min(0.015, 0.15 * dist[li][i] / fps) - boot_low(rows[i], li))
             if (goal - A).length > 1e-5:
                 goals.setdefault(i, {})[li] = goal
 
@@ -733,6 +758,16 @@ for clip_name, spec_ in clips.items():
     ss, cs = 0.0, 0.0
     hips_path = []
     s_feet = [sname_(k) for k in ("LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase")]
+    # A skeleton that ends at the toe base (UniMate's pruned rigs) loses it on import - the FBX
+    # importer drops leaf bones, meant for Mixamo's _End bones - and with no toe the feet went
+    # unplanted and unground: Cadet's generated moves stood 3-19 cm into the floor, sliding. The foot
+    # bone's tail is where the toe base starts, so it stands in for it.
+    toe_from_tail = [False] * 4
+    for k in (1, 3):
+        if s_feet[k] is None and s_feet[k - 1] is not None:
+            s_feet[k], toe_from_tail[k] = s_feet[k - 1], True
+    if any(toe_from_tail):
+        print("[retarget]   no toe bones in the capture: the foot bone's tail stands in for the toe", flush=True)
     src_feet = []
     for i in range(n):
         t = f0 + i * step
@@ -741,7 +776,8 @@ for clip_name, spec_ in clips.items():
         ss += math.sin(h); cs += math.cos(h)
         hips_path.append((SW @ src.pose.bones[hips].head).copy())
         if all(s_feet):
-            src_feet.append([(SW @ src.pose.bones[k].head).copy() for k in s_feet])
+            src_feet.append([(SW @ (src.pose.bones[k].tail if toe_from_tail[j] else src.pose.bones[k].head)).copy()
+                             for j, k in enumerate(s_feet)])
     hip_yaw = math.atan2(ss, cs)
     d = hips_path[-1] - hips_path[0]
     d.z = 0.0
@@ -887,6 +923,9 @@ for clip_name, spec_ in clips.items():
         print("[retarget]   airborne clip: captured height kept, no floor planting", flush=True)
     elif os.environ.get("CF_NO_PLANT"):                  # measurement only: the fit's legs untouched
         print("[retarget]   CF_NO_PLANT: feet left as fitted", flush=True)
+    elif pelvis is None or len(src_feet) != n:
+        print(f"[retarget]   WARNING feet not planted: {'no pelvis' if pelvis is None else 'the capture has no foot bones'}",
+              flush=True)
     elif pelvis is not None and len(src_feet) == n:
         cap_src = d.length / dur if travelling else 0.0
         st = ground_and_plant(tgt, pelvis, n, float(a.fps), travelling, src_feet,

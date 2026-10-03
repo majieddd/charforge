@@ -3,11 +3,18 @@
  "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
  "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.10",
- "date": "2026-09-30",
+ "version": "0.11",
+ "date": "2026-10-02",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
   "changelog": [
+  {"version": "0.11", "date": "2026-10-02", "changes": [
+    "Moves from words (E129): UniMate generates a move from a sentence on the character's own skeleton - flow matching conditioned on its topology and T-pose - in about 25 s on Apple's GPU with a fixed Euler grid; three samples, one chosen by eye, then retargeted, planted and held inside the joint limits like any clip. Cadet has five, and a bow made from the Studio's new Moves from words panel; on the surface they fall inside his captured clips' range. tools/setup_unimate.sh installs it.",
+    "The shoe the viewer sees is the one planted (E130): every vertex of the shoe below the ankle, posed by its own skin weights with dual quaternions, replaces a rigid copy of the sole on the ankle bone. Cadet's frames with a boot more than 1 cm under the floor 48.3% -> 1.28%; on 13 characters x 9 gaits the worse foot's median slip 4.01% -> 2.89%. Thinning the shoe to 400 points made 12 gaits worse by more than a point (the pivot jumped between samples) and is not used.",
+    "Foot slip is reported from the true-speed audit (metric v2) on all 14 characters: median 3.2%, worst 28.4% - Cadet's sprint, whose flared greaves are planted as if they were the sole (E131); 2.89% without him. The old table, which divided by at least 1 m/s, moved to a new Appendix D, Archive, with the rigid sole it measured.",
+    "A new character, Cadet (stylised, a young space marine without emblems), made with the pipeline as it stands; the prompt writer had read 'about 19 years old' as elderly - fixed. The system overview gains the words lane, the abstract the aberration audit, and armour's large joint-limit corrections are attributed to Cadet's knees.",
+    "The lab notebook leads with the aberration audit, the planted shoe, moves from words and Cadet, and archives the methods they replaced: the second 3D pass, the rigid sole and the old foot-slip table.",
+    "A programme for shape and texture as clean as a professional's, registered before it runs: a model-quality audit against professional baselines (Blender Studio's CC0 Human Base Meshes, Ellie from Sprite Fright) (E132), then the reference's lighting removed before projection (E133), sides and back painted by a multi-view PBR model (E134), quad remeshing with baked detail (E135) and detail from estimated normals (E136); E131 plants the shoe's contact patch."]},
   {"version": "0.10", "date": "2026-09-30", "changes": [
     "The aberration audit runs and is validated (E102): 22 of 22 checks on a synthetic character with known-size aberrations pass under both skinnings, penetration to the millimetre; the checks exposed three measuring errors (quads re-split by pose, depth capped at 3 cm, false inside readings at open rims and between layers), now fixed. Blender's BVH overlap is a triangle-triangle test, so intersections are real; depth tells contact from penetration.",
     "The roster measured on every frame of every clip: crushed 2.72%, stretched 1.52%, sheared 2.71% of faces; dual quaternion against linear skinning; frames with a body region more than 2 cm inside another 48.44%.",

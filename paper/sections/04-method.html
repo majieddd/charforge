@@ -155,7 +155,14 @@
 <p>Eighteen motion captures (idle, walk, jog, run, sprint, backpedals, strafes, turns, crouch, jump, fall, land, wave)
   are retargeted onto the rig with the fingers. Feet are planted by clip selection, grounding and foot IK, and the
   playground drives all locomotion from one stride clock, so the foot on the floor slides a median {{feet.median}}% of
-  ground speed ([#sec-eval-feet]) [E029]. The package follows engine conventions: real height in metres, origin on the
+  the gait's ground speed ([#sec-eval-feet]) [E029]. The foot that is planted is the shoe as the viewer deforms it:
+  every vertex of the shoe below the ankle ({{pl.points_per_foot.0}}-{{pl.points_per_foot.1}} a foot on the roster),
+  each posed by its own skin weights with dual quaternions, the way the playground skins the mesh [E130]. A planted key
+  pivots on the flat of the sole; a key in the air keeps the whole shoe, toe cap included, above the floor. A rigid
+  copy carried on the ankle bone works for an ordinary shoe, which is rigid below the ankle; Cadet's armoured boots
+  blend with the shin above a high ankle joint, and the rigid copy stood on the floor while the boot on screen was
+  4.4 cm under it. All of the shoe is needed, not a sample of it: thinned to 400 points, its lowest point jumped from
+  one sample to the next as the foot rolled, and the planted pivot jumped with it. The package follows engine conventions: real height in metres, origin on the
   floor under the pelvis, glTF [@gltf] and FBX with three levels of detail, and a manifest with the collision capsule,
   each clip's ground speed, direction and contact phase, the jump's take-off and landing, and the face's morph targets.</p>
 
@@ -222,6 +229,29 @@
   <video src="media/mara_punch_combo.mp4" poster="media/angles_mara_punch_combo.webp" autoplay muted loop playsinline controls preload="metadata" aria-label="Mara's punch combo: the generated video beside the rigged character playing the recovered clip"></video>
   <figcaption>Left, the generated video; right, the character's rig playing the clip recovered from it, from the video's
     camera: guard, jab, cross, hook, back to guard.</figcaption>
+</figure>
+
+<h3 id="sec-m-words">Moves from words</h3>
+<p>The capture library has no salute, no boxing guard, no march. A video of the character doing the move works
+  ([#sec-m-motion]) but takes half an hour of video generation per move. UniMate [@unimate] generates a skeletal motion
+  from a sentence for a skeleton it has never seen: a flow-matching model conditioned on the skeleton's topology and
+  T-pose as well as on the text, encoded by Flan-T5 [@flant5]. We run it on each character's own skeleton [E129].
+  UniMate's own preprocessing reads the packaged character - its canonical T-pose, its topology and its clips as
+  motion features - through Blender 4.0 as a Python module, the version it was written for. Its sampler integrates
+  the flow with an adaptive solver that needs double precision, which Apple's GPU lacks; a fixed 50-step Euler grid
+  runs on the GPU in about 25 s per two-second move. UniMate's exporter writes an FBX on the character's canonical
+  rig, and the move then goes through retargeting, foot planting and clearance ([#sec-m-clearance]) like any captured
+  clip. Two of our conventions broke it. Face-rig morph targets kept their old coordinates when UniMate moved the mesh
+  into its canonical frame, so the export tore into ribbons even for the character's own clips; UniMate gets a copy
+  without them, since it only makes bone motion. And its pruned skeleton ends at the toe bone, which the FBX importer
+  drops as a leaf, so the generated moves went unplanted; the foot bone's tail now stands in for a missing toe.</p>
+<p>Each move is sampled three times and the best kept by eye ([#fig-unimate]). Prompts follow the wording of
+  UniMate's training captions ("An object marches in place."): a longer, more specific sentence for the march and
+  for looking around produced lunges and hands on the head, the short one a march.</p>
+<figure id="fig-unimate">
+  <img src="media/unimate_cadet.webp" width="2000" height="400" alt="Cadet, a young space marine in teal armour, in five moves generated from text: a salute with his right hand at his brow, a wide combat-ready stance with fists raised, a raised fist, a high-knee marching step, and standing upright looking to one side">
+  <figcaption>Cadet in five moves generated from words by UniMate on his own skeleton, then retargeted, planted and
+    held inside his joint limits: salute, ready stance, fist pump, march, look around.</figcaption>
 </figure>
 
 <h3 id="sec-m-runtime">Running it on a laptop</h3>

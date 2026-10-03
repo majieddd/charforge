@@ -159,10 +159,13 @@ def _installed(url: str | None = None) -> list[str]:
 
 def age_of(text: str) -> str:
     t = f" {text.lower()} "
-    m = re.search(r"\b(\d{1,2})[- ]year[- ]old\b", t)
+    # "19-year-old", "19 year old", "19 years old", "aged 19", "age 19", "19 yo": a number decides. "years old"
+    # alone must not reach the word test below - "about 19 years old" came out "elder" (1.70 m)
+    m = re.search(r"\b(\d{1,2})[- ]years?[- ]old\b|\bage[d]? (\d{1,2})\b|\b(\d{1,2}) ?(?:yo|y/o|yrs?)\b", t)
     if m:
-        n = int(m.group(1))
-        return "child" if n < 13 else "teen" if n < 18 else "adult"
+        n = int(next(g for g in m.groups() if g))
+        return "child" if n < 13 else "teen" if n < 18 else "elder" if n >= 65 else "adult"
+    t = re.sub(r"\byears? old\b", " ", t)
     if re.search(r"\b(boy|girl|kid|kids|child|children|little|toddler|schoolboy|schoolgirl|scout)\b", t):
         return "child"
     if re.search(r"\b(teen|teenage|teenager|adolescent|high[- ]school)\b", t):

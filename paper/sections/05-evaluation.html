@@ -99,19 +99,40 @@
 </div>
 
 <h3 id="sec-eval-feet">Feet</h3>
-<p>The archived E029 table below reports the historical post-change foot-slip audit. A review found that its normalization divides by
-  <code>max(manifest speed, 1 m/s)</code>: values at or above 1 m/s are normalized to the stated speed, values below 1 m/s are
-  understated, and stationary percentages are undefined. The historical measurements are preserved, but the cross-gait aggregate
-  is provisional until E122 recomputes absolute slip speed and the true-speed ratio at the same 60 fps schedule. The current browser
-  helper also retains that denominator floor; its contact-transition rule differs from the Blender v2 path, so the two implementations
-  must be reconciled or reported as different estimands. The earlier
-  pre-change range is not directly comparable until both sides are rerun under the corrected metric. The worst visual cases previously
-  noted were strafes and crouch-walks on characters whose proportions differ most from the capture actor's.</p>
+<p>Foot slip is measured on the deformed shoe while the playground's controller carries the character forward at the
+  clip's ground speed: the horizontal speed of the lowest shoe vertex while it touches the floor (within 4 mm), as a
+  share of the gait's true ground speed, and in metres per second (<code>blender/foot_audit.py</code>, metric v2). On
+  {{feet.characters}} characters and nine gaits the worse foot slides a median {{feet.median}}% of ground speed, a mean
+  {{feet.mean}}%, and at worst {{feet.max}}% ([#tab-feet]). Walking backwards is now the worst gait, at most
+  {{pl.worst_now_others.0.slip_pct}}% on every character but one. The exception is Cadet: his sprint slides
+  {{pl.cadet.gaits.sprint.after}}% and his left strafe {{pl.cadet.gaits.strafe_left.after}}%, the same with or without
+  clearance. His flared greaves come down to within a few centimetres of the floor and are weighted to the ankle, so
+  their rims are planted as if they were the sole: as the ankle flexes a rim holds the floor and the sole floats
+  millimetres above it, and the audit finds his feet down in {{pl.cadet.on_floor.sprint|pct}} of sprint keys against a
+  median {{pl.cadet.on_floor_roster_median.sprint|pct}} for the others. Planting only the shoe's contact patch is the next
+  experiment [E131].</p>
+<p>Which surface of the shoe is planted changes this [E130]. With a rigid copy of the sole carried on the ankle bone,
+  the {{pl.roster.characters}} characters measured before slid a median {{pl.roster.before.median}}% (mean
+  {{pl.roster.before.mean}}%). Posing the whole shoe by its own skin weights but thinning it to 400 points brought the
+  median to {{pl.roster.thinned.median}}%, and made {{pl.roster.thinned.vs_before_worse_n}} of the
+  {{pl.roster.thinned.pairs}} gaits worse by more than a point: walking backwards, Juno
+  {{pl.examples.juno3_walk_back.before|1}}% → {{pl.examples.juno3_walk_back.thinned|1}}% and Knight2
+  {{pl.examples.knight2_walk_back.before|1}}% → {{pl.examples.knight2_walk_back.thinned|1}}%; Pip strafing left
+  {{pl.examples.pip_strafe_left.before|1}}% → {{pl.examples.pip_strafe_left.thinned|1}}%. Their ground speeds were unchanged;
+  the contact slid. Thinned, the lowest point of the shoe jumped from one sample to the next as the foot rolled, and the
+  planted pivot jumped with it. With every vertex the median is {{pl.roster.after.median}}% (mean
+  {{pl.roster.after.mean}}%): {{pl.roster.after.vs_before_better_n}} gaits better than with the rigid sole by more than a
+  point, {{pl.roster.after.vs_before_worse_n}} worse, and the three above at {{pl.examples.juno3_walk_back.after|1}}%,
+  {{pl.examples.knight2_walk_back.after|1}}% and {{pl.examples.pip_strafe_left.after|1}}%. Cadet, whose armoured boots
+  started it, had a boot more than 1 cm under the floor in {{pl.cadet.floor_frames_pct.rigid}}% of his frames with the
+  rigid sole, {{pl.cadet.floor_frames_pct.thinned}}% thinned, and {{pl.cadet.floor_frames_pct.after}}% now.</p>
 <figure id="tab-feet">
   <div class="tscroll"><!--TABLE:feet--></div>
-  <figcaption>Archived contact-slip percentages of the worse foot, driven by the playground's controller
-    (work/&lt;name&gt;/foot_audit.json). Below-1 m/s entries use the old 1 m/s floor and are provisional until E122 reruns them.
-    Above 10% was highlighted in red. Knight, Kaito and Bo are not yet audited.</figcaption>
+  <figcaption>Contact slip of the worse foot as a share of the gait's true ground speed, with the playground's
+    controller carrying the character (<code>blender/foot_audit.py</code> metric v2,
+    <code>work/&lt;name&gt;/qa/feet_v2.json</code>). Above 10% in red. The last row is how far the deepest shoe goes
+    through the floor. The table this replaces, which divided by at least 1 m/s, is in [#appendix-archive]; the browser's own
+    slip readout is still a different estimand [E122].</figcaption>
 </figure>
 
 <h3 id="sec-eval-aberr">Aberrations</h3>
@@ -147,8 +168,10 @@
   ([#tab-aberrations]). No character's crushed, stretched or sheared share rises, and no pop is added (one hand pop
   already in Wren's sprint now straddles two frames). The planted feet do not move: Bo's foot slip on walk, jog, run
   and sprint is identical to the fourth decimal before and after. The largest single turn clearance makes is
-  {{aberr.min.clearance_max_deg|int}}-{{aberr.max.clearance_max_deg|int}}° per character; the armoured Knights, whose
-  plates meet early, take the most.</p>
+  {{aberr.min.clearance_max_deg|int}}-{{aberr.max.clearance_max_deg|int}}° per character, and armour takes the most:
+  Cadet's knee plates meet at {{aberr.cadet.knee_limit_deg|int}}° of bend, so his sprint's swinging knee, bent
+  {{aberr.cadet.knee_clips_max_deg|int}}° in the capture, is opened by up to {{aberr.cadet.clearance_max_deg|int}}° - a
+  stiffer-legged sprint, plates meeting instead of passing through each other.</p>
 <figure id="tab-aberrations">
   <div class="tscroll"><!--TABLE:aberrations--></div>
   <figcaption>Every character before → after clearance (E128), measured by the aberration audit (E102) with dual
@@ -159,6 +182,24 @@
   moving (the limits are measured with the legs at rest), legs brushing past each other in strafes, arms through long
   hair, which is a job for the hair's own spring chains [E125], and knees through a long coat's hem, which needs the hem
   to follow the thighs.</p>
+
+<h3 id="sec-eval-words">Moves from words</h3>
+<p>Cadet's {{um.generated_n}} generated moves - the five above and a bow made from the Studio's panel - were audited
+  like his {{um.library_n}} captured ones [E129]. On the surface they fall inside
+  the captured clips' range: {{um.aberr.generated.crushed_pct.0}}-{{um.aberr.generated.crushed_pct.1}}% of faces
+  crushed against {{um.aberr.library.crushed_pct.0}}-{{um.aberr.library.crushed_pct.1}}%,
+  {{um.aberr.generated.stretched_pct.0}}-{{um.aberr.generated.stretched_pct.1}}% stretched against
+  {{um.aberr.library.stretched_pct.0}}-{{um.aberr.library.stretched_pct.1}}%,
+  {{um.aberr.generated.sheared_pct.0}}-{{um.aberr.generated.sheared_pct.1}}% sheared against
+  {{um.aberr.library.sheared_pct.0}}-{{um.aberr.library.sheared_pct.1}}%, and no pops. The feet were the problem.
+  Before the toe bone was recovered and the shoe planted as the viewer shows it [E130], the moves meant to stand still
+  slid: the salute's feet at {{um.slip_mps.salute.before}} m/s, the ready stance's at {{um.slip_mps.ready.before}} m/s,
+  against {{um.slip_mps.idle.before}} m/s for the captured idle. After, {{um.slip_mps.salute.after}} and
+  {{um.slip_mps.ready.after}} m/s. The march still slides ({{um.slip_mps.march.after}} m/s): a high-knee stomp scrapes
+  the toe at every lift and landing, which planting a contact does not remove. Three of the five moves came out as asked
+  on the first wording; the march and looking around needed the short, caption-like one. Generation takes about
+  {{um.seconds.sample_gpu_per_move}} s per move on the GPU and {{um.seconds.export_per_move}} s to export, against half an
+  hour of video for a move from video; choosing among three samples is still done by eye.</p>
 
 <h3 id="sec-eval-validity">Validity of the measurements</h3>
 <p>Several of the largest errors we found were in the measuring, not the pipeline. We list them because each would
@@ -189,6 +230,15 @@
     candidates". A two-triangle test shows Blender's overlap query is a triangle-triangle test after the box test
     (boxes that overlap without touching are not returned); what it cannot tell apart is contact from penetration,
     which is why depth is measured.</li>
+  <li><b>Planting that switched itself off</b> [E129]: foot planting needs the capture's toe bones, UniMate's pruned
+    skeleton ends at them, and the FBX importer drops a final bone as a leaf. Nothing failed: the generated moves were
+    simply never planted, and stood 3-19 cm into the floor, sliding. Retargeting now says so when it cannot plant.</li>
+  <li><b>Planting the wrong surface</b> [E130]: the planted sole was a rigid copy of the shoe carried on the ankle bone,
+    and the audit measured the mesh. On an ordinary shoe the two agree; Cadet's boot blends with the shin above a high
+    ankle, and the solve kept the copy on the floor while the boot on screen went 4.4 cm under it, in 48% of his
+    frames. Posed by their own skin weights, with linear blending the points still sat a few centimetres above the
+    boot the viewer draws; with dual quaternions, as the viewer skins, they match Blender's deformation within
+    0.01 mm.</li>
 </ul>
 <p>Threats that remain: the joint and hand scores compare two readings by the same pose model, so its blind spots
   cancel as often as they show; everything is 2D against one camera, with depth checked only by eye in the four views;

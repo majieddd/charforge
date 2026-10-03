@@ -19,9 +19,10 @@
     generated clips. The aberration audit finds defects of known size on a synthetic character, but its scores are not yet
     calibrated against blinded reviewers, so none is used as a gate [E101] [E102]. Its penetration depth assumes each body
     region is a closed-ish surface: a limb buried whole inside another, with no triangle crossing, is not seen, and a face
-    ray escaping along its normal is a geometric proxy for being in view, not a camera's. The archived foot-slip table also needs a
-    corrected rerun: its old denominator was <code>max(speed, 1 m/s)</code>, so ratios are understated below 1 m/s and undefined for
-    stationary clips [E029] [E122]. Real-video motion and scan-anchored synthetic-view evaluation remain planned [E111] [E113].</li>
+    ray escaping along its normal is a geometric proxy for being in view, not a camera's. Foot slip is now measured against each gait's
+    true ground speed in Blender; the playground's own readout still divides by at least 1 m/s and tracks contact
+    differently, so the two remain different estimands until they are reconciled, and the geometric 4 mm contact test
+    has not been checked against pressure-insole labels [E122]. Real-video motion and scan-anchored synthetic-view evaluation remain planned [E111] [E113].</li>
   <li><b>Generated geometry and texture.</b> Solidification has no source-to-output shape-preservation benchmark [E116]; retopology has no
     sampled surface-error score [E118]; UV checks can miss local stretch despite a good median density [E119]; and texture gutters have not been
     checked through the mip levels and samplers used by target engines [E120]. Part-parser confidence is discarded

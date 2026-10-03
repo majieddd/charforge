@@ -4,6 +4,13 @@
   character. The new checks separate known truth, model-based proxies, human acceptance, and engine behavior. Each item is an
   experiment in the tracker with its metric fixed before it runs.</p>
 <ol>
+  <li><b>Shape and texture as clean as a professional's</b> [E132]: first measure what separates our models from
+    professionally made characters - surface roughness where a surface should be smooth, soft creases, topology faults,
+    lighting left in the albedo, a front that does not match the back, smeared sides and back, seams - on the roster and
+    on professional baselines, with the thresholds fixed first. Then aim a change at each gap and score it on the same
+    audit: the reference's lighting removed before it is projected [E133]; sides and back painted by a multi-view PBR
+    texture model [E134] [@hunyuan3d21]; quad remeshing with the generated detail baked back, and feature-preserving
+    smoothing [E135]; detail from estimated normals [@hi3dgen] [E136]; seams [E105]; another generator [E104].</li>
   <li><b>A 3D ground truth for motion</b> [E101]: render a character performing a known clip as a video, run the move
     lane on it with that clip held out of the library, and measure the recovered clip in joint angles, positions,
     contacts and jitter. Then test independent real footage and subjects [E111]: TotalCapture and 3DPW supply different
@@ -17,6 +24,11 @@
     itself swinging and legs pass each other in a strafe; colliders for the hair's spring chains, so arms push long hair
     aside instead of through it [E125]; long coat hems that follow the thighs; and corrective shapes at elbows and
     shoulders, scored by the same audit [E107].</li>
+  <li><b>Moves from words without a person choosing</b> [E129]: rank UniMate's samples by the audits (E102's
+    aberrations, foot slip) and by how well a render reads as the sentence, so the best of three is picked
+    automatically; write the user's words into the caption style itself; and use UniMate's other two abilities -
+    in-betweening, to join one clip to the next, and editing with chosen joints held, to give a captured walk a new
+    upper-body action without touching its planted feet.</li>
   <li><b>Prompt-to-asset fidelity</b> [E112]: use per-attribute questions, informed by TIFA and GenEval [@tifa; @geneval],
     to find where a held-out prompt's attributes are lost or changed between its structured text, reference, and final character.</li>
   <li><b>3D and held-out-view fidelity</b> [E113]: compare a permission-checked scan set against generated geometry and reserved

@@ -14,7 +14,10 @@ Per key, parent before child:
             limits were measured with the arm beside the body, not reaching forward
   elbow     the angle between upper arm and forearm; past the limit it is opened about its own bend axis
   knee      the same, only while that foot is off the ground: faded in as its ankle rises from 8 to 16 cm
-            above the clip's lowest, so the planted feet from retarget.py stay where they were put
+            above the clip's lowest, so the planted feet from retarget.py stay where they were put - and
+            never so far that the shoe goes under the floor (or lower than it was): opening a knee lowers
+            the foot, and Cadet's armoured knees (limits 100-105 deg) took his crouch-walk boot from 11.5
+            to 15.4 cm through the floor. The shoe is posed by its own skin weights, as in retarget.py
 A soft limit: angles more than --soft below the limit are untouched and the last --soft degrees are
 approached smoothly (tanh), so the correction has no corner in time. Changed keys are rewritten as
 Euler angles continuous with the key before.
@@ -78,12 +81,33 @@ def direction(b):
     return (b.tail - b.head).normalized()
 
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import skin_points  # noqa: E402
+
+
+def boot_cloud(side):
+    """The shoe below the ankle as points posed by their own skin weights (as retarget.py plants it)."""
+    ank_b, ball_b = f"{side}_ankle", f"{side}_foot"
+    if ank_b not in rig.data.bones:
+        return None
+    meshes = [o for o in sc.objects if o.type == "MESH" and any(m.type == "ARMATURE" and m.object == rig for m in o.modifiers)]
+    cut = max(0.03, float((rig.matrix_world @ rig.data.bones[ank_b].head_local).z))
+    c = skin_points.build(meshes, rig, lambda q, w: q.z < cut and w.get(ank_b, 0) + w.get(ball_b, 0) > 0.5)
+    return c if c and c["n"] >= 20 else None
+
+
+def boot_low(cloud):
+    bpy.context.view_layer.update()
+    return float(skin_points.pose(cloud, rig)[:, 2].min())
+
+
 chest = pb.get("spine3") or pb.get("spine2")
 chest_rest = chest.bone.matrix_local.to_3x3()
 sides = [s for s in ("left", "right") if f"{s}_shoulder" in L]
 lateral_of = {s: (1.0 if L[f"{s}_shoulder"]["rest_dir"][0] > 0 else -1.0) for s in sides}
 clips = [c for c in (a.clips.split(",") if a.clips else [x.name for x in bpy.data.actions]) if bpy.data.actions.get(c)]
 report = {"soft_deg": a.soft, "clips": {}}
+BOOT = {s: boot_cloud(s) for s in sides}
 
 for clip in clips:
     act = bpy.data.actions[clip]
@@ -169,9 +193,26 @@ for clip in clips:
                 na = soft(ang, L[jn]["limit_deg"])
                 if na < ang - 0.05:
                     axis = u.cross(f).normalized()
-                    turn(b, Matrix.Rotation(math.radians((na - ang) * w), 3, axis))
-                    changed.add(jn)
-                    st = stats.setdefault(jn, [0, 0.0]); st[0] += 1; st[1] = max(st[1], (ang - na) * w)
+                    theta = math.radians((na - ang) * w)
+                    cloud = BOOT.get(s_) if jn.endswith("knee") else None
+                    z0 = boot_low(cloud) if cloud else None
+                    turn(b, Matrix.Rotation(theta, 3, axis))
+                    if cloud and boot_low(cloud) < min(0.0, z0) - 0.002:
+                        # the opened knee put the shoe through the floor: open it only as far as the floor allows
+                        turn(b, Matrix.Rotation(-theta, 3, axis))
+                        lo, hi = 0.0, 1.0
+                        for _ in range(6):
+                            mid = (lo + hi) / 2
+                            turn(b, Matrix.Rotation(theta * mid, 3, axis))
+                            ok = boot_low(cloud) >= min(0.0, z0) - 0.002
+                            turn(b, Matrix.Rotation(-theta * mid, 3, axis))
+                            lo, hi = (mid, hi) if ok else (lo, mid)
+                        theta *= lo
+                        turn(b, Matrix.Rotation(theta, 3, axis))
+                        fc = stats.setdefault(f"{jn} (floor)", [0, 0.0]); fc[0] += 1
+                    if abs(theta) > 1e-4:
+                        changed.add(jn)
+                        st = stats.setdefault(jn, [0, 0.0]); st[0] += 1; st[1] = max(st[1], math.degrees(abs(theta)))
         for bn in changed:
             pb[bn].keyframe_insert("rotation_euler", frame=fr)
     n = f1 - f0 + 1

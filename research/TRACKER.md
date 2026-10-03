@@ -49,6 +49,12 @@ Build a character: `python charforge.py make --prompt "..." --name x` (or the St
 | [E125](#e125) | Secondary motion without tearing or body penetration | geometry | planned |  |
 | [E126](#e126) | Studio queue, cancel, restart and audit-state acceptance | tooling | planned |  |
 | [E127](#e127) | Deferred trial of the fast open-source classifier from the supplied video | classification | planned |  |
+| [E131](#e131) | Plant the shoe's contact patch, not a hem | motion | planned |  |
+| [E132](#e132) | How far from a professionally made model | quality | planned |  |
+| [E133](#e133) | The reference with its lighting taken out | texture | planned |  |
+| [E134](#e134) | Sides and back painted by a multi-view texture model | texture | planned |  |
+| [E135](#e135) | Quad remeshing with the detail baked back | geometry | planned |  |
+| [E136](#e136) | Surface detail from the reference's normals | geometry | planned |  |
 
 ## Done and dropped
 
@@ -83,6 +89,8 @@ Build a character: `python charforge.py make --prompt "..." --name x` (or the St
 | [E028](#e028) | A reference in the wrong pose | reference | done | Pipeline references 0.60-0.79; Bo's fists-on-hips 0.33 (caught). |
 | [E030](#e030) | Running H3 on 24 GB of shared memory | efficiency | done | Loads in about a minute; 32-48 min per 5 s clip. |
 | [E128](#e128) | Joint limits from each character's own mesh | animation | done | 13 characters: frames with >2 cm penetration between body regions 48.44% -> 34.28% (49.76% -> 35.7% counting arms through hair); deepest body penetration 3.89 -> 2.95 cm; crushed 2.72 -> 2.65%, stretched 1.52 -> 1.51%, sheared 2.71 -> 2.62%. Characters where a surface measure rose by more than 0.05 points: none. Largest turn per character 4-31 deg. Foot slip on Bo's walk/jog/run/sprint identical to the fourth decimal (knees only move with the foot off the floor). |
+| [E129](#e129) | Moves from words on the character's own skeleton (UniMate) | motion | done | Cadet: five moves the library lacks (salute, ready stance, fist pump, march, look around), best of three samples by eye; three right on the first wording, march and look-around after rewording in UniMate's caption style. Surface aberrations inside the captured clips' range (crushed 3.18-4.09% vs 1.47-4.96%, stretched 0.61-2.76% vs 0.98-4.70%, sheared 1.85-3.74% vs 1.83-5.01%), no pops. Two breakages found and fixed: face-rig morph targets were not moved into UniMate's canonical frame, tearing even Cadet's own clips (blender/unimate_input.py drops them from UniMate's copy); UniMate's pruned skeleton ends at the toe bone, which the FBX import drops as a leaf, so generated moves went unplanted - the foot tail now stands in (retarget.py). Stationary foot slip after E130: salute 0.002 m/s, ready 0.088, fist pump 0.073, look around 0.053; march 0.939 (stomps scrape the toe). Time: preprocess ~10 s per character, ~25 s per move on the GPU (fixed 50-step Euler; dopri5 needs float64, absent on MPS, and took over 10 min for three moves on the CPU), export ~11 s. research/data/e129_unimate.json |
+| [E130](#e130) | Plant the shoe the viewer shows | motion | done | 13 characters x 9 gaits, worse-foot slip: rigid sole median 4.01% (mean 4.73%, worst 18.2%); shoe thinned to 400 points 3.64% (mean 4.54%) but 12 pairs worse by >1 point - Juno3 walk back 6.0 -> 11.4%, Knight2 walk back 9.1 -> 14.7%, Pip strafe left 15.3 -> 20.5% - at unchanged ground speed: thinned, the lowest point jumped between samples as the foot rolled and the pivot with it (retargeting alone, the variants that changed the pivot rule or the swing set, or posed the points rigidly, gave Juno3 and Knight2 the same numbers; keeping every vertex fixed it). Every vertex (1016-3266 a foot): median 2.89% (mean 3.59%, worst 10.4%), 39 pairs better and 2 worse than the rigid sole by >1 point; Juno3 6.0%, Knight2 6.9%, Pip 7.8%; deepest shoe -0.29 cm. Cadet: frames with a boot >1 cm under the floor 48.3% (rigid) -> 1.88% (thinned) -> 1.28%. |
 
 ## Details
 
@@ -664,3 +672,78 @@ Build a character: `python charforge.py make --prompt "..." --name x` (or the St
 - **Result.** 13 characters: frames with >2 cm penetration between body regions 48.44% -> 34.28% (49.76% -> 35.7% counting arms through hair); deepest body penetration 3.89 -> 2.95 cm; crushed 2.72 -> 2.65%, stretched 1.52 -> 1.51%, sheared 2.71 -> 2.62%. Characters where a surface measure rose by more than 0.05 points: none. Largest turn per character 4-31 deg. Foot slip on Bo's walk/jog/run/sprint identical to the fourth decimal (knees only move with the foot off the floor).
 - **Decision.** Kept: runs at the end of the animate stage (charforge.py). Open: hands into moving thighs and legs past each other (limits measured with the legs at rest), hair colliders (E125), long coat hems through the thighs, corrective shapes (E107).
 - **Files.** `blender/joint_limits.py`, `blender/clearance.py`, `blender/mesh_contact.py`, `charforge.py`
+
+### E129
+
+**Moves from words on the character's own skeleton (UniMate)** · motion · done · 2026-10-01
+
+- **Question.** Can a text-to-motion model conditioned on skeleton topology (UniMate, SIGGRAPH Asia 2026) add moves the capture library lacks, on each character's own rig, faster than the video lane and without more aberrations than library clips?
+- **Method.** vendor/unimate (MIT code and weights, unimate_uniml3d_f60_v2 step 100k; flan-t5-base text encoder). UniMate's own preprocess_char.py (Blender 4.0 as a module) reads the packaged character: canonical T-pose, topology conditioning and its clips as motion features. tools/unimate_sample.py runs UniMate's sampler with a fixed-step Euler ODE (dopri5 needs float64, absent on Apple's GPU); animate_motion.py exports FBX; tools/unimate_moves.py registers them as extra clips, so retargeting, foot planting and clearance (E128) apply. Cadet (a new stylized character) gets five moves the library lacks. Each move is audited like a library clip (E102: aberrations and penetration; foot audit for stationary slip) and rendered from four sides.
+- **Metric.** Seconds per move (preprocess, sample, export); E102 aberration shares and penetration against Cadet's library clips; stationary foot slip; whether the move reads as its text (rendered, by eye - no pose model is trusted for this).
+- **Result.** Cadet: five moves the library lacks (salute, ready stance, fist pump, march, look around), best of three samples by eye; three right on the first wording, march and look-around after rewording in UniMate's caption style. Surface aberrations inside the captured clips' range (crushed 3.18-4.09% vs 1.47-4.96%, stretched 0.61-2.76% vs 0.98-4.70%, sheared 1.85-3.74% vs 1.83-5.01%), no pops. Two breakages found and fixed: face-rig morph targets were not moved into UniMate's canonical frame, tearing even Cadet's own clips (blender/unimate_input.py drops them from UniMate's copy); UniMate's pruned skeleton ends at the toe bone, which the FBX import drops as a leaf, so generated moves went unplanted - the foot tail now stands in (retarget.py). Stationary foot slip after E130: salute 0.002 m/s, ready 0.088, fist pump 0.073, look around 0.053; march 0.939 (stomps scrape the toe). Time: preprocess ~10 s per character, ~25 s per move on the GPU (fixed 50-step Euler; dopri5 needs float64, absent on MPS, and took over 10 min for three moves on the CPU), export ~11 s. research/data/e129_unimate.json
+- **Decision.** Kept as tools/unimate_moves.py (moves from words, added as extra clips); not a default stage. Open: choosing among samples automatically, contacts in stepping-in-place moves, rewriting prompts into caption style automatically.
+- **Files.** `tools/unimate_moves.py`, `tools/unimate_sample.py`, `blender/unimate_input.py`, `research/data/e129_unimate.json`, `vendor/unimate (not in git)`
+
+### E130
+
+**Plant the shoe the viewer shows** · motion · done · 2026-10-01
+
+- **Question.** Does planting the deformed shoe, rather than a rigid copy of it on the ankle bone, keep chunky boots out of the floor without making foot slip worse?
+- **Method.** retarget.py's sole: the shoe below the ankle joint (not only what touches the floor at rest), each point posed by its own skin weights with dual quaternions (blender/skin_points.py, checked against Blender's own DQS within 0.01 mm); a planted key pivots on the flat of the sole, a key in the air keeps the whole shoe above the floor. clearance.py opens a knee only as far as that shoe stays above the floor. Three versions, each with every character rebuilt from the animate stage and audited (blender/foot_audit.py metric v2 on nine gaits; aberration audit): the rigid sole (backups), the shoe thinned to 400 points, every vertex. Where the thinned shoe regressed, retargeting alone was rerun with five variants (pivot on the sole only, sole for swing too, rigid points, split, every vertex) to find the cause.
+- **Metric.** Contact foot slip of the worse foot as a share of the true ground speed, per character and gait (13 characters x 9 gaits); pairs worse or better by more than a point; frames with a vertex more than 1 cm under the floor (Cadet); deepest shoe.
+- **Result.** 13 characters x 9 gaits, worse-foot slip: rigid sole median 4.01% (mean 4.73%, worst 18.2%); shoe thinned to 400 points 3.64% (mean 4.54%) but 12 pairs worse by >1 point - Juno3 walk back 6.0 -> 11.4%, Knight2 walk back 9.1 -> 14.7%, Pip strafe left 15.3 -> 20.5% - at unchanged ground speed: thinned, the lowest point jumped between samples as the foot rolled and the pivot with it (retargeting alone, the variants that changed the pivot rule or the swing set, or posed the points rigidly, gave Juno3 and Knight2 the same numbers; keeping every vertex fixed it). Every vertex (1016-3266 a foot): median 2.89% (mean 3.59%, worst 10.4%), 39 pairs better and 2 worse than the rigid sole by >1 point; Juno3 6.0%, Knight2 6.9%, Pip 7.8%; deepest shoe -0.29 cm. Cadet: frames with a boot >1 cm under the floor 48.3% (rigid) -> 1.88% (thinned) -> 1.28%.
+- **Decision.** Kept: every vertex of the shoe below the ankle, skin-weighted with DQS, in retarget.py and clearance.py's floor cap; thinning is not used. The foot table in the paper and README is now this v2 audit on every character; the old one (a 1 m/s floor under the speed, E029) is archived. Open: Cadet's flared greaves are weighted to the ankle and reach the floor, so their rims are planted as if they were the sole and his soles float millimetres above it (sprint 28.4%, the same without clearance) - E131; walking backwards is the worst gait elsewhere; the browser's own slip readout is a different estimand (E122).
+- **Files.** `blender/skin_points.py`, `blender/retarget.py`, `blender/clearance.py`, `research/data/e130_planting.json`
+
+### E131
+
+**Plant the shoe's contact patch, not a hem** · motion · planned · 2026-10-03
+
+- **Question.** When a garment or armour weighted to the ankle reaches the floor (Cadet's flared greaves; robes, flared trousers), does planting only the shoe's contact patch put the real sole on the floor and stop the slip it causes?
+- **Method.** In retarget.py's sole, define the contact patch from the rest pose: vertices within 1 cm of the floor that face it (normal z < -0.7) and move rigidly with the foot (ankle + foot weight >= 0.95), so hem rims blended with the shin drop out; the whole shoe still clears the floor in swing. Retarget-only runs on Cadet (sprint, strafes, jog back) and controls (Juno3, Knight2, Pip, Wren); if adopted, every character rebuilt from animate and audited.
+- **Metric.** Worse-foot slip share of ground speed per gait; share of keys a foot is within 4 mm of the floor (Cadet sprint 8% against a roster median of 24% before); deepest shoe; pairs worse by more than a point.
+- **Files.** `blender/retarget.py`
+
+### E132
+
+**How far from a professionally made model** · quality · planned · 2026-10-03
+
+- **Question.** Which measurable properties separate our characters' shape and texture from professionally made characters, and by how much - so each later change can be aimed at a gap and scored against it?
+- **Method.** A model-quality audit run identically on every character and on professional baselines (Blender Studio Human Base Meshes v1.4.1, CC0; Ellie from Sprite Fright, CC-BY): shape - surface roughness at the centimetre scale (residual of mean curvature after a fixed low-pass, on smooth regions), crease sharpness (dihedral-angle spread), triangle quality, non-manifold edges, holes, self-intersections, loose pieces, left-right mirror distance; texture - lighting left in the albedo (fit of albedo luminance to baked AO and to a best-fit light direction, per garment), albedo range against PBR limits (sRGB 30-240 for non-metals), front-against-back colour of the same garment (CIEDE2000), sharpness of sides and back against the front, colour step across UV seams, texel density spread (E119). Thresholds and region rules fixed before any comparison; renders of the worst regions kept.
+- **Metric.** Per character and per baseline: each measure with its distribution; the gap to the baselines' range; which measures a person's visible faults line up with (checked on the worst renders).
+- **Files.** `tools/model_quality.py`, `blender/model_quality.py`
+
+### E133
+
+**The reference with its lighting taken out** · texture · planned · 2026-10-03
+
+- **Question.** The reference picture is projected onto the front with its lighting drawn in, while the sides and back carry TRELLIS's unlit colour. Does removing the lighting from the reference first (Marigold appearance decomposition; Hunyuan3D's delighting model) give an albedo without baked light and a front that matches the back, without losing the picture's detail or its style?
+- **Method.** Delight each reference with both models at their native resolution, project as now, and audit (E132); also run both on the professional baselines' clean renders as a control (a model that changes an already unlit picture is changing colour, not lighting). Anime and stylised references checked separately: drawn cel shading is part of the style.
+- **Metric.** Lighting left in the albedo; front-against-back colour per garment; detail kept (gradient energy against the original reference); albedo range; renders side by side.
+- **Files.** `pipeline/delight.py`
+
+### E134
+
+**Sides and back painted by a multi-view texture model** · texture · planned · 2026-10-03
+
+- **Question.** TRELLIS's own texture smears the sides and back that the reference does not show. Does a mesh-conditioned multi-view PBR texture model (Hunyuan3D-Paint 2.1 through its Apple Silicon port) paint them sharper and consistent with the front?
+- **Method.** On fixed characters, texture the same retopologised mesh with Hunyuan3D-Paint 2.1 (its views baked under the projected reference, which keeps the front) against the current TRELLIS texture; resolution limits of the port recorded. Audit (E132); blinded side-by-side ratings of back and side views.
+- **Metric.** Sharpness of sides and back against the front; front-against-back colour; seam step; minutes; ratings.
+- **Files.** `vendor/hunyuan3d-2.1-mac-rocm`
+
+### E135
+
+**Quad remeshing with the detail baked back** · geometry · planned · 2026-10-03
+
+- **Question.** Our retopology decimates the generated surface to 60k triangles, keeping its noise and lumps. Does a quad-dominant remesh (Blender's QuadriFlow, Instant Meshes) with the generated detail baked into a normal map, and a feature-preserving smoothing of the generated surface beforehand, give the clean surfaces and edge flow of a professional model without losing shape?
+- **Method.** Variants on the same characters: decimation (now); quad remesh at matched polygon budget; each with and without bilateral normal-filtering denoise of the generated surface first. Detail baked to normal maps as now. Scored by E132's shape measures, E118's surface distance to the source, and E102's deformation audit on every clip.
+- **Metric.** Surface roughness on smooth regions; crease sharpness; distance to the source surface (mean, D95); crushed/stretched/sheared faces in motion; silhouette IoU.
+- **Files.** `blender/retopo.py`
+
+### E136
+
+**Surface detail from the reference's normals** · geometry · planned · 2026-10-03
+
+- **Question.** Hi3DGen-style normal bridging shows normals carry finer shape than a picture's colours. Does a normal map estimated from the reference (and its front projection into the normal texture) recover detail the generator lost, or add errors?
+- **Method.** Estimate front normals of each reference with an open normal estimator; compare with the current mesh's rendered normals from the reference camera; bake the estimated detail into the normal map where the two agree at low frequency. Score front normal agreement and the shape measures; review renders under raking light.
+- **Metric.** Angular error to the estimated normals at low and high frequency; shape measures (E132); renders.
