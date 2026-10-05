@@ -499,7 +499,7 @@ manifest = {
     "triangles": tris,
     "skeleton": {"convention": "Mixamo", "prefix": PREFIX, "bones": len(rig.data.bones),
                  "root": rig.data.bones[0].name if rig.data.bones else None,
-                 "rest_pose": "T-pose"},
+                 "rest_pose": rig.get("cf_rest_pose", "T-pose")},
     "clips": clips,
     "files": {"gltf": os.path.basename(glb), "fbx": os.path.basename(fbx) if fbx else None,
               "textures": written},

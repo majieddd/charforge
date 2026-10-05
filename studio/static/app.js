@@ -155,6 +155,12 @@ async function charPage(name) {
           ${c.poses.length ? `<div class="poses">${c.poses.map((u) => `<a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(decodeURIComponent(u.split('/').pop().split('?')[0]).replace('.png', '').replace(/_/g, ' '))}" loading="lazy"></a>`).join('')}</div>
             <p class="sub" style="margin-top:8px">Rendered ${new Date(c.poses_at * 1000).toLocaleString()}.</p>` : ''}
         </div>
+        <div class="panel"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2>Close-ups</h2>
+            <button class="btn" id="b-closeups">${c.closeups ? 'Render again' : 'Render the close-ups'}</button></div>
+          <p class="sub" style="margin:4px 0 10px">The face from the front and at three-quarter, a hand from above and both hanging, a shoulder, the upper back and a foot, lit. Look for patches or a second feature on the face, a ring or a bell at a wrist, two-toned hands, shards under armour.</p>
+          ${c.closeups ? `<a href="${c.closeups}" target="_blank" rel="noopener"><img src="${c.closeups}" alt="Close-ups of ${esc(c.name)}" style="width:100%;border-radius:8px;display:block" loading="lazy"></a>
+            <p class="sub" style="margin-top:8px">Rendered ${new Date(c.closeups_at * 1000).toLocaleString()}.</p>` : ''}
+        </div>
         <div class="panel"><h2>Stages</h2><div class="stages">${c.stage_list.map((s) => `<div class="stage ${s.done ? 'done' : ''}" title="${esc(s.why)}">${esc(s.name)}</div>`).join('')}</div>
           ${c.logs.length ? `<p class="sub" style="margin-top:10px">Logs: ${c.logs.slice(0, 40).map((l) => `<a href="#" data-log="${esc(l)}">${esc(l.replace('.log', ''))}</a>`).join(', ')}</p>` : ''}</div>
         ${c.reference ? `<div class="panel"><h2>Reference image</h2><img src="${c.reference}" alt="The image ${esc(c.name)} was generated from" style="width:100%;border-radius:8px;display:block"></div>` : ''}
@@ -195,6 +201,10 @@ async function charPage(name) {
   if ($('#a-clip')) { $('#a-clip').onchange = aSync; aSync(); }
   $('#b-angles').onclick = async () => {
     try { await post('/api/jobs', { kind: 'angles', name: c.name, clip: $('#a-clip').value, video: $('#a-video').checked }); location.hash = '#/jobs'; }
+    catch (e) { alert(e.message); }
+  };
+  $('#b-closeups').onclick = async () => {
+    try { await post('/api/jobs', { kind: 'closeups', name: c.name }); location.hash = '#/jobs'; }
     catch (e) { alert(e.message); }
   };
   $('#b-poses').onclick = async () => {
@@ -386,6 +396,10 @@ async function newChar() {
       <details class="adv"><summary>More options</summary>
         <div class="field"><label for="imodel">Image model (for a description)</label><select id="imodel"><option value="qwen21">Qwen-Image 2.1 - best cut-outs; research-only licence</option><option value="krea2">Krea 2 - commercial use</option></select></div>
         <div class="field"><label for="quality">Quality</label><select id="quality"><option value="fast">One 3D pass - follows the picture (recommended)</option><option value="best">Two passes - repaints the sides and back first; more plausible backs, drifts from the picture, about 16 min longer</option></select></div>
+        <div class="field"><label for="rest">Rest pose</label><select id="rest"><option value="A">As modelled (A-pose) - cleaner shoulders and armpits (recommended)</option><option value="T">T-pose - for tools that insist on one; armour fused to the arm can tear at the shoulders</option></select></div>
+        <div class="field"><label for="tviews">Sides and back</label><select id="tviews"><option value="none">The generator's own colours (recommended)</option><option value="hunyuan">Painted by Hunyuan3D-Paint - cleaner where the generator's back is blotchy, but it can invent what the picture does not show; needs tools/setup_hunyuan.sh</option></select></div>
+        <div class="field"><label for="eyes">Eyes</label><select id="eyes"><option value="rebuild">Rebuilt as lids over an eyeball where the generator left shards (recommended)</option><option value="none">As generated</option></select></div>
+        <div class="field"><label for="head">Head</label><select id="head"><option value="none">As generated with the body (recommended)</option><option value="hunyuan">Made again on its own from a close crop - a sculpted face, about 8 minutes more; experimental, needs tools/setup_hunyuan.sh</option></select></div>
         <div class="field"><label for="seed">Seed</label><input type="number" id="seed" value="7"></div>
       </details>
     </div>
@@ -393,8 +407,9 @@ async function newChar() {
       <h2>What happens</h2>
       <ol class="steps">
         <li>A reference image is drawn (or yours is used), then turned into a textured 3D model by TRELLIS.2.</li>
-        <li>The model is closed into a solid, its arms freed from the body, modelled hands with finger bones put on, retopologised and textured.</li>
-        <li>It is rigged with a Mixamo skeleton, skinned, given a face rig, and 18 clips are retargeted onto it.</li>
+        <li>Its surface is smoothed where the generator left facets (creases kept), closed into a solid with each eye rebuilt as lids over an eyeball, its arms freed from the body, modelled hands with finger bones put on, and retopologised with the head keeping more of the triangles.</li>
+        <li>It is textured from the picture, the face laid on part by part - each brow, eye, the nose, mouth and jaw onto the model's own - the rest of the skin evened to one tone, colours kept in the range a renderer expects.</li>
+        <li>It is rigged with a Mixamo skeleton in the pose it was modelled in, skinned, given a face rig, and 18 clips are retargeted onto it.</li>
         <li>Packaged for engines: glTF, FBX with LODs, textures and a manifest - and a web build you can turn round here.</li>
       </ol>
       <p class="sub" style="margin:14px 0">About 40 minutes on an M5 with 24 GB. One job runs at a time; more wait in the queue. You can close this page - the job keeps going.</p>
@@ -460,7 +475,8 @@ async function newChar() {
   drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); take(e.dataTransfer.files[0]); };
   $('#start').onclick = async () => {
     const body = { kind: 'make', name: $('#name').value.trim().toLowerCase(), style: view.querySelector('input[name=style]:checked').value,
-      image_model: $('#imodel').value, quality: $('#quality').value, seed: $('#seed').value };
+      image_model: $('#imodel').value, quality: $('#quality').value, seed: $('#seed').value,
+      rest: $('#rest').value, texture_views: $('#tviews').value, head: $('#head').value, eyes: $('#eyes').value };
     if (hset.checked) body.height = Number(h.value);
     else if (suggested) body.height = suggested;
     if (tab === 'prompt') {

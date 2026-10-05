@@ -41,6 +41,39 @@
   <figcaption>Archived: contact slip of the worse foot as the paper reported it up to version 0.10, divided by at least
     1 m/s (<code>work/&lt;name&gt;/foot_audit.json</code>, 25 September 2026). Above 10% in red.</figcaption>
 </figure>
+<h3 id="sec-arch-200k" class="plain">The generated surface at 200,000 faces, unfiltered [E135]</h3>
+<p>Until version 0.11 TRELLIS.2 simplified its surface to 200,000 faces, and the solid, the low-poly and the normal map
+  were built on it as it came. Large flat facets on gently curved armour and sawtooth plate edges reached the normal map
+  as a triangle pattern under a grazing light. Replaced by 1M faces and bilateral normal filtering ([#sec-m-generation]);
+  the v0.11 scores of every character are the left side of [#tab-quality].</p>
+<h3 id="sec-arch-t" class="plain">The T baked into the rest pose [E137]</h3>
+<p>Until version 0.11 the rig was posed from the generated A-pose to a T, a copy of its armature modifier applied to
+  the mesh, and the posed skeleton made the rest - so that Mixamo's rest and the target's agreed. The linear blending that
+  carries the mesh up to the T cannot be undone by the same blending on the way down: on Cadet it sheared the pauldrons
+  into shards and left slivers in every arms-down frame. Replaced by the T recorded on the armature and used only in the
+  retargeting maths ([#sec-m-rig]); <code>--rest T</code> still builds the old way.</p>
+<h3 id="sec-arch-hands" class="plain">Modelled hands shaded from the colour bake [E138]</h3>
+<p>The modelled hands took the face's skin tone with ±12% of light and dark from the base colour bake under them - a
+  bake of the generated mesh, where the modelled hand did not exist - which painted pale and dark patches across most
+  hands. Replaced by shading from the ambient occlusion baked on the solid that contains them.</p>
+<h3 id="sec-arch-faceflow" class="plain">The face laid on by optical flow, or kept from the generator [E022] [E140]</h3>
+<p>Until version 0.12 the face was laid on through a finer flow of its own, matched on an upscaled crop on lightness for
+  the eyes and brows and on redness for the lips, and refused when it would move features more than 2.5% of the
+  figure's height - on drawn faces a larger warp painted a second pair of eyes. Knight's generated face sat 2.5% from his
+  picture's: refused, the picture went on unaligned, his fringe across one eye and every feature doubled; forced, the eyes
+  smeared into bands. For realistic characters whose face the flow refused, the front view left the face and fringe to the
+  generator's own texture, softer but on its geometry ([#fig-knight-face]). Accepted, the flow still squinted and smeared
+  Mara's eyes. Replaced by the face laid on in parts ([#sec-m-texture]); both remain in the code as the fallback when the
+  model's face cannot be read.</p>
+<figure id="fig-knight-face">
+  <img src="media/fix_knight_face.webp" width="1704" height="420" alt="Knight's face before and after, from the front and at 35 degrees: before, the fringe falls across one eye and the features are doubled; then, one face on the geometry, with blotchier hair at the fringe">
+  <figcaption>Archived: Knight's face projected unaligned (left pair) and kept from the generator where the reference
+    could not be laid on it (right pair), up to version 0.12.</figcaption>
+</figure>
+<h3 id="sec-arch-skinface" class="plain">One skin tone over the face [E138]</h3>
+<p>In version 0.12 the skin tone evened the face too, to take the picture's shading off a shape not quite the
+  picture's. With the face laid on in parts the shading lies on the right shape, and the tone's colour bands cut the
+  picture's soft cheek shadow into patches; since version 0.13 the face is left as painted.</p>
 <h3 id="sec-arch-sole" class="plain">A rigid sole on the ankle bone</h3>
 <p>Until version 0.11 the planted foot was a copy of the sole - the shoe's vertices within 3 cm of the floor at rest,
   at most 160 - carried rigidly on the ankle bone. It is right for a shoe that is rigid below the ankle and wrong for

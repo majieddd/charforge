@@ -197,6 +197,20 @@ Open each image; read each log line. Each check says what good looks like and wh
    The Studio's Poses button renders the same set into `work/<name>/qa/poses/`, and
    `python tools/make_reel.py --name <name>` (the Reel button) films the clips back to back.
 
+8b. **Close-ups** (`zsh tools/closeups.sh <name>` -> `work/<name>/qa/closeups.png`, or
+   `blender/render_joint.py` on one bone; `blender/render_raking.py` for the shape alone under a grazing light):
+   the face from the front and at three-quarter (no dark patches or second features on the cheek; the projected
+   eyes on the eyes), a hand from above and hanging (one even skin tone, no ring at a bare wrist, no skin-coloured
+   bell where a wide sleeve ends), the shoulder at rest (no shards under armour), the upper back (no dark notches
+   where the arms were cut free), a foot. What averages miss shows here first (E138). A drawn face with a second eye
+   or a dragged feature: since v0.13 the face is laid on in parts (not on anime) - check `[texproj] face laid on in
+   parts` in the texture log, and `[eye_marks]`/`[eyes]`/`[solidify] eye` for the eye rebuild; a face that blotches
+   only from the side is the shape not matching the picture - `--head hunyuan` (experimental, E139).
+8c. **The face against its picture** (`zsh tools/face_review.sh <name>` -> `work/<name>/qa/face_review.png` and
+   `.json`): soft-light front, three-quarter and profile beside the picture, scored by landmark error (NME, DWPose's
+   68 points after one similarity) and per-part DINOv3 likeness (face, eyes, nose, mouth; `tools/face_likeness.py`).
+   NME alone misses a smeared or squinting face - read the likeness and look at the image (E140). Grey shape of the
+   face: `blender/render_front.py --frame face --grey`.
 9. **`work/<name>/qa/aberrations.json`** (`python tools/aberrations.py --name <name> --force`,
    add `--render` for each clip's worst frames with the flagged faces coloured, in
    `work/<name>/qa/aberrations/`) - every frame of every clip: faces crushed, stretched and sheared,

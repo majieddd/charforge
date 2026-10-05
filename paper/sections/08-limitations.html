@@ -9,9 +9,17 @@
     would reach it [E107].</li>
   <li><b>Joins after the arm cut.</b> 1-3 joined slabs an arm survive the re-cut on several characters; the rig keeps
     that side of the garment with the arm [E026].</li>
-  <li><b>Faces.</b> Faces the stage cannot read get no rig (Bo) [E109]. Kept from the generator where the reference
-    cannot be laid on them, realistic faces are softer than the picture and the fringe carries the generator's colour
-    (Knight) [E022].</li>
+  <li><b>Faces.</b> Faces the stage cannot read get no rig (Bo) [E109]. Since version 0.13 each part of a face is
+    laid on the model's own and the eyes are rebuilt as lids over a ball [E140], but only where DWPose reads the model's
+    face on the generator's paint: most anime eyes are not read and stay as generated, cavities and all, and a face it
+    cannot read at all falls back to the older face flow. The parts are laid on from the front; at the side the face is
+    still the generator's shape, softer than the picture and with no ear or jaw line of its own. The hairline is the
+    hair shell's edge, ragged where the generator left it. A head made again on its own from a close crop of the picture
+    has the shape and remains an option being tested [E139].</li>
+  <li><b>Close-up faults still open.</b> Hair carries dark streaks where views disagree; Pip's hands are cut beyond his
+    flared cuffs, which leaves a skin-coloured bell at each wrist; armour fused to the arm still stretches when the arm is
+    raised above the shoulder [E110] [E138]. The shipped surface is two to four times noisier and lumpier than a
+    professionally modelled one, and two to three times less symmetric ([#tab-quality]).</li>
   <li><b>Depth in moves from video</b> is borrowed from the nearest capture, so a move unlike anything in the library is
     right in the image and approximate in depth [E108]; the pose model loses poses it rarely saw, on video and on render
     [E011].</li>

@@ -112,6 +112,16 @@ tgt = next((o for o in scene.objects if o.type == "ARMATURE"), None)
 if tgt is None:
     raise SystemExit("[retarget] no armature in the target rig")
 tgt_rest = {b.name: b.matrix_local.copy() for b in tgt.data.bones}
+# What the clips are expressed against: the rest pose, or - for a rig kept in the pose it was modelled in
+# (tpose.py --keep-rest, E137) - the T it records, so the clips come out as they would on a rig baked to it.
+tgt_ref = dict(tgt_rest)
+if tgt.get("cf_virtual_t"):
+    for _k, _v in tgt["cf_virtual_t"].items():
+        if _k in tgt_ref:
+            _v = list(_v)
+            tgt_ref[_k] = Matrix([_v[0:4], _v[4:8], _v[8:12], _v[12:16]])
+    print(f"[retarget] rest pose as modelled; clips expressed against its recorded T "
+          f"({len(tgt['cf_virtual_t'])} bones)", flush=True)
 
 # Clear any actions already in the file. The target .blend carries the earlier procedural clips
 # under exactly the names used here, so Blender silently renames the new ones to walk.001,
@@ -717,6 +727,27 @@ for clip_name, spec_ in clips.items():
         visit(tgt.data.bones[tname])
     tmap = {t: s for s, t in pairs}
 
+    # Which of the target's poses this clip's rest stands for: a Mixamo capture's rest is a T, matched by the T a
+    # rig kept in its modelled pose records (E137); a source whose rest is already that modelled pose - the
+    # character's own skeleton driven by another model - is matched by the rest itself.
+    clip_ref = tgt_ref
+    if tgt_ref is not tgt_rest and tgt.get("cf_virtual_t"):
+        dev = {"rest": [], "T": []}
+        SW0 = src.matrix_world.to_3x3()
+        if opts.get("mirror"):
+            SW0 = Matrix.Scale(-1.0, 3, Vector((1.0, 0.0, 0.0))) @ SW0
+        for sname, tname in pairs:
+            if tname not in ("left_shoulder", "right_shoulder"):
+                continue
+            ds = (SW0 @ src_rest[sname].to_3x3() @ Vector((0, 1, 0))).normalized()
+            for k, ref in (("rest", tgt_rest), ("T", tgt_ref)):
+                dt = (tgt.matrix_world.to_3x3() @ ref[tname].to_3x3() @ Vector((0, 1, 0))).normalized()
+                dev[k].append(math.degrees(ds.angle(dt)))
+        if dev["rest"] and np.mean(dev["rest"]) < np.mean(dev["T"]):
+            clip_ref = tgt_rest
+            print(f"[retarget]   the source's rest is the rig's own pose (upper arms {np.mean(dev['rest']):.0f} deg "
+                  f"from it, {np.mean(dev['T']):.0f} from the T): expressed against the rest", flush=True)
+
     # ---- bake ------------------------------------------------------------------------------
     act = bpy.data.actions.new(clip_name)
     if act.name != clip_name:
@@ -874,7 +905,7 @@ for clip_name, spec_ in clips.items():
             tpb = tgt.pose.bones[tname]
             src_pose_w = SW @ spb.matrix
             src_rest_w = SW @ src_rest[spb.name]
-            tgt_rest_w = TW @ tgt_rest[tname]
+            tgt_rest_w = TW @ clip_ref[tname]
             M_world = UNYAW @ src_pose_w @ src_rest_w.inverted() @ tgt_rest_w
             M = TW_inv @ M_world
             # normalise: the source's unit scale must not ride along into the target

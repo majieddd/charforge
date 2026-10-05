@@ -32,6 +32,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TRELLIS = ROOT / "vendor" / "trellis2mlx"
+HUNYUAN = ROOT / "vendor" / "hunyuan3d-2.1-mac-rocm"      # tools/setup_hunyuan.sh; optional (texture views)
+
+
+def hunyuan_shape_ready() -> bool:
+    return ((HUNYUAN / "venv" / "bin" / "python").exists()
+            and (HUNYUAN / "weights" / "Hunyuan3D-2.1" / "hunyuan3d-dit-v2-1").is_dir())
+
+
+def hunyuan_ready() -> bool:
+    return ((HUNYUAN / "venv" / "bin" / "python").exists()
+            and (HUNYUAN / "weights" / "Hunyuan3D-2.1" / "hunyuan3d-paintpbr-v2-1").is_dir())
 DWPOSE = ROOT / "models" / "dwpose" / "dw-ll_ucoco_384.onnx"    # optional: the hands (tools/dwpose.py)
 MIXAMO_HF = Path.home() / ".cache/huggingface/hub/datasets--jasongzy--Mixamo/snapshots"
 
@@ -79,6 +90,13 @@ def _recorded(r, key, given, default):
 def style_of(r) -> str:
     """The character's style: given now, or recorded when it was first generated."""
     return _recorded(r, "style", getattr(r.a, "style", None), "realistic")
+
+
+def option_of(r, key, default):
+    """An opt-in build option (--texture-views, --head, --rest): given now and recorded, or as recorded. A rebuild from
+    a later stage without it used to drop it: v0.13's benchmark rebuild gave Pip back the generator's blotchy sides
+    where v0.12 had built him with Hunyuan3D-Paint's."""
+    return _recorded(r, key, getattr(r.a, key, None), default)
 
 
 def image_model_of(r) -> str:
@@ -143,7 +161,7 @@ def description_of(r):
 
 
 _GPU = {"depth": 0, "f": None}
-GPU_SCRIPTS = {"pose_gate.py", "parts.py", "skeleton.py", "face_landmarks.py", "refine_pose.py"}
+GPU_SCRIPTS = {"pose_gate.py", "parts.py", "skeleton.py", "face_landmarks.py", "refine_pose.py", "head_crop.py"}
 
 
 @contextlib.contextmanager
@@ -194,7 +212,7 @@ def blender_bin() -> str:
 STAGES = [
     ("reference", "reference.png", "the image everything is generated from"),
     ("generate",  "pass1.glb",     "TRELLIS.2: geometry and PBR texture from the reference"),
-    ("multiview", "mesh.glb",      "the 3D model (--quality best: a second pass on repainted side and back views)"),
+    ("multiview", "mesh.glb",      "the 3D model, its surface filtered (--quality best: a second pass on repainted views)"),
     ("views",     "views/projection.json", "orbit renders for segmentation and pose"),
     ("parts",     "parts.json",    "per-vertex body / clothing / hair / accessory labels"),
     ("skeleton",  "joints.json",   "3D joint positions from the orbit renders"),
@@ -204,12 +222,12 @@ STAGES = [
     ("retopo",    "retopo.glb",    "decimated to 60k triangles; colour, normal, roughness/metal, AO baked"),
     ("labels",    "labels.json",   "part labels carried onto the clean mesh"),
     ("texclean",  "albedo_clean.png", "skin the generator painted onto clothing, removed"),
-    ("texture",   "albedo.png",    "the source images projected back onto the mesh, sharp"),
+    ("texture",   "albedo.png",    "the reference, delit, and painted side and back views projected onto the mesh"),
     ("weights",   "weights.npz",   "skin weights by distance measured through the body"),
     ("rig",       "rig.blend",     "skeleton with finger bones; weights applied"),
     ("springs",   "rig_s.blend",   "bone chains for what hangs - braids, ponytails, bags"),
     ("frame",     "rig_m.blend",   "metres, soles on the floor, origin under the pelvis"),
-    ("tpose",     "rig_t.blend",   "rest pose baked to a T, hands squared"),
+    ("tpose",     "rig_t.blend",   "the T the clips are retargeted to, hands squared (kept as the rest with --rest T)"),
     ("face",      "rig_f.blend",   "face rig: jaw bone, blink / smile / brows / pucker shapes"),
     ("animate",   "final.blend",   "Mixamo captures retargeted onto the rig, fingers included"),
     ("refine",    "refine.json",   "clips made from the character's own videos re-posed to lie on them"),
@@ -240,6 +258,8 @@ class Run:
         """Run one command, logging everything, echoing only the lines that carry a result."""
         log = self.logs / f"{stage}.log"
         with open(log, "w") as fh:
+            fh.write("$ " + " ".join(str(c) for c in cmd) + "\n")     # the command, to replay a stage by hand
+            fh.flush()
             p = subprocess.run([str(c) for c in cmd], cwd=cwd, env=env, stdout=fh,
                                stderr=subprocess.STDOUT)
         lines = log.read_text(errors="replace").splitlines()
@@ -393,7 +413,9 @@ def trellis(r: Run, stage, images, out, seed=None):
     if not py.exists():
         raise SystemExit(f"TRELLIS environment missing at {py} - see README, 'Running it'")
     cmd = [py, "-u", "generate.py", "--image", *images, "--output", out,
-           "--resolution", "1024", "--steps", "12", "--target-faces", "200000",
+           "--resolution", "1024", "--steps", "12", "--target-faces", str(getattr(r.a, "trellis_faces", 1_000_000)),
+           # its colours at 2048: at the default 1024 a million faces' charts are a texel or two across (E140)
+           "--texture-size", "2048",
            "--seed", str(r.a.seed if seed is None else seed)]
     try:
         with gpu("TRELLIS"):
@@ -483,6 +505,8 @@ def s_multiview(r: Run):
     if r.a.quality == "fast":
         shutil.copy(r.path("pass1.glb"), out)
         print("      one pass (the default): the first model is the mesh", flush=True)
+        head_swap(r)
+        smooth_source(r)
         return
     try:
         sys.path.insert(0, str(ROOT / "pipeline"))
@@ -523,6 +547,79 @@ def s_multiview(r: Run):
         if iou2 < FRONT_IOU_MIN and iou2 < g.get("front_iou", 0) - 0.05:
             shutil.copy(r.path("pass1.glb"), out)
             print("      the second pass fits the reference worse than the first - keeping the first", flush=True)
+    head_swap(r)
+    smooth_source(r)
+
+
+HEAD_FIT = {"head_iou": 0.80, "surface_median_mm": 15.0, "icp_turn_deg": 12.0}     # a fit worse than these is not used
+
+
+def head_swap(r: Run):
+    """The head made again on its own, from a close crop of the reference (--head hunyuan, E139).
+
+    In a whole-figure model the head is a few dozen voxels across: Boyscout's eyes came out as ragged holes and his
+    grin as a slit, so the reference's face, projected on, lay on a shape unlike the picture's and slid off it seen
+    from the side. Hunyuan3D 2.1's shape model on a crop of the head alone (pipeline/head_crop.py; 7-8 minutes)
+    sculpts brows, lids, lips and ears that follow the picture. It is placed on the old head through the picture
+    both were made from and ICP (pipeline/head_align.py), and replaces it above the neck, coloured from the old
+    surface until the texture stage paints the face (blender/head_merge.py). A fit outside HEAD_FIT keeps the old head."""
+    (r.work / "head" / "swapped.json").unlink(missing_ok=True)
+    if option_of(r, "head", "none") != "hunyuan":
+        return
+    if not hunyuan_shape_ready():
+        print("      --head hunyuan needs Hunyuan3D 2.1 (tools/setup_hunyuan.sh): the generated head is kept", flush=True)
+        return
+    hd = r.work / "head"
+    hd.mkdir(exist_ok=True)
+    r.py("head_crop", "head_crop.py", "--work", r.work, "--out-dir", hd, keep=("[head]",))
+    box = json.load(open(hd / "head_box.json"))["box"]
+    import hashlib
+    digest = hashlib.md5((hd / "head_rgba.png").read_bytes()).hexdigest()
+    made = json.load(open(hd / "head_hy.json")) if (hd / "head_hy.json").exists() else {}
+    if made.get("crop_md5") == digest and (hd / "head_hy.glb").exists() and not r.a.force:
+        print("      the head's shape: made before from the same crop", flush=True)
+    else:
+        with gpu("the head's shape (Hunyuan3D 2.1)"):
+            r.sh("head_shape", [HUNYUAN / "venv" / "bin" / "python", ROOT / "tools" / "hunyuan_shape.py", "--name", r.a.name,
+                                "--image", hd / "head_rgba.png", "--out", hd / "head_hy.glb"], keep=("[hy_shape]",))
+        json.dump({"crop_md5": digest}, open(hd / "head_hy.json", "w"))
+    g = json.load(open(r.work / "generate.json")) if (r.work / "generate.json").exists() else {}
+    if r.a.quality == "best" and (r.work / "gate" / "mesh" / "meta.json").exists():
+        body, gate_dir = "mesh.glb", r.work / "gate" / "mesh"             # the second pass, with its own front render
+    else:
+        body, gate_dir = "pass1.glb", r.work / "gate" / f"pass1_{g.get('input', 'alpha')}_s{g.get('seed', r.a.seed)}"
+    try:
+        r.py("head_align", "head_align.py", "--work", r.work, "--body", body, "--gate", gate_dir,
+             "--head", hd / "head_hy.glb", "--crop", hd / "head_rgba.png", "--box", ",".join(str(v) for v in box),
+             "--out", hd / "head_aligned.glb", "--debug", hd / "align.png", "--json", hd / "align.json", keep=("[head]",))
+    except SystemExit:
+        print("      the new head could not be placed: the generated head is kept", flush=True)
+        return
+    fit = json.load(open(hd / "align.json"))
+    bad = [k for k, lim in HEAD_FIT.items() if (fit[k] < lim if k == "head_iou" else fit[k] > lim)]
+    if bad:
+        print(f"      the new head does not sit on the old one ({', '.join(f'{k} {fit[k]}' for k in bad)}): "
+              "the generated head is kept", flush=True)
+        return
+    shutil.copy(r.path("mesh.glb"), r.work / "mesh_old_head.glb")
+    r.bl("head_merge", "head_merge.py", "--body", r.work / "mesh_old_head.glb", "--head", hd / "head_aligned.glb",
+         "--out", r.path("mesh.glb"), "--report", hd / "merge.json", keep=("[head]",))
+    json.dump({"fit": fit, "box": box}, open(hd / "swapped.json", "w"))
+
+
+def smooth_source(r: Run):
+    """Bilateral normal filtering of the generated surface (blender/mesh_denoise.py), in place on mesh.glb.
+
+    solidify puts the solid's vertices back onto the generated surface to keep its detail, so the surface's
+    flaws reach the normal map: a decimated mesh's large flat facets on gently curved armour came out as a
+    triangle pattern under raking light, whatever the low-poly's triangles (decimated, relaxed or remeshed).
+    Filtering turns facets a few degrees apart into one smooth surface and keeps creases tens of degrees
+    sharp; positions only move (a median 0.05 mm on a 1M-face model), so UVs and texture stay (E135)."""
+    if getattr(r.a, "no_denoise", False):
+        return
+    raw = r.path("mesh_raw.glb")
+    shutil.copy(r.path("mesh.glb"), raw)
+    r.bl("multiview", "mesh_denoise.py", "--mesh", raw, "--out", r.path("mesh.glb"), keep=("[denoise]",))
 
 
 def s_views(r: Run):
@@ -540,11 +637,35 @@ def s_skeleton(r: Run):
          keep=("[skeleton]",))
 
 
+def locate_eyes(r: Run):
+    """Each eye opening of the generated model, for the solid to rebuild as lids over a ball (blender/eye_fill.py,
+    pipeline/eye_marks.py; E140). None with --eyes none, or when DWPose cannot read the model's eyes."""
+    if getattr(r.a, "eyes", "rebuild") == "none":
+        return None
+    py = TRELLIS / ".venv" / "bin" / "python"
+    if not py.exists():
+        return None
+    ed = r.work / "eyes"
+    ed.mkdir(exist_ok=True)
+    r.bl("eyes_render", "eye_fill.py", "render", "--mesh", r.path("mesh.glb"), "--out", ed / "front.png",
+         "--cam", ed / "cam.json", keep=("[eyes]",))
+    mask = reference_mask(r)
+    r.sh("eyes_marks", [py, ROOT / "pipeline" / "eye_marks.py", "--render", ed / "front.png", "--out", ed / "marks.json",
+                        "--debug", ed / "marks.png", "--reference", texture_reference(r),
+                        *(["--ref-mask", mask] if mask.exists() else [])], keep=("[eye_marks]",))
+    r.bl("eyes_locate", "eye_fill.py", "locate", "--mesh", r.path("mesh.glb"), "--cam", ed / "cam.json",
+         "--marks", ed / "marks.json", "--style", style_of(r), "--out", ed / "eyes.json", keep=("[eyes]",))
+    found = json.load(open(ed / "eyes.json"))
+    return ed / "eyes.json" if any(e.get("used") for e in found.get("eyes", [])) else None
+
+
 def s_solidify(r: Run):
     r.bl("solidify", "sdf_io.py", "to-sdf", "--mesh", r.path("mesh.glb"), "--out", r.path("sdf.npz"),
          keep=("[sdf]",))
+    eyes = locate_eyes(r)
     r.py("solidify", "solidify.py", "--sdf", r.path("sdf.npz"), "--mesh", r.path("mesh.glb"),
-         "--parts", r.path("parts.json"), "--out", r.path("solid.npz"), keep=("[solidify]",))
+         "--parts", r.path("parts.json"), "--out", r.path("solid.npz"),
+         *(["--eyes", eyes] if eyes else []), keep=("[solidify]",))
 
 
 def s_joints(r: Run):
@@ -565,16 +686,22 @@ def s_hands(r: Run):
          "--joints", r.path("joints_refined.json"), "--out", r.path("solid_free.npz"),
          "--report", r.path("free_arms.json"), keep=("[arms]",))
     r.bl("hands_mesh", "sdf_io.py", "to-mesh", "--sdf", r.path("solid_free.npz"), "--out",
-         r.path("solid_cut.glb"), "--project", r.path("mesh.glb"), keep=("put back",))
+         r.path("solid_cut.glb"), "--project", r.path("mesh.glb"),
+         *(["--keep-out", r.path("solid_eyes.json")] if r.path("solid_eyes.json").exists() else []),
+         keep=("put back", "rebuilt"))
     r.bl("hands_union", "hands.py", "--mesh", r.path("solid_cut.glb"), "--spec", r.path("hands_spec.json"),
          "--out", r.path("solid_hands.glb"), "--json", r.path("hands.json"), keep=("[hands]",))
 
 
 def s_retopo(r: Run):
-    r.bl("retopo", "retopo.py", "--mesh", r.path("mesh.glb"), "--cage", r.path("solid_hands.glb"),
+    # the generator's colours without the black specks its bake leaves along its charts' edges (E140)
+    r.py("despeck", "despeck_source.py", "--mesh", r.path("mesh.glb"), "--out", r.work / "source_albedo.png",
+         keep=("[despeck]",))
+    r.bl("retopo", "retopo.py", "--source-albedo", r.work / "source_albedo.png", "--mesh", r.path("mesh.glb"), "--cage", r.path("solid_hands.glb"),
          "--out", r.path("retopo.glb"), "--bake-res", 4096, "--cage-extrusion", 0.006,
          "--ray-distance", 0.014, "--joints", r.path("joints_refined.json"),
-         keep=("source winding", "cage:", "legs:", "UVs:", "AO mean", "AO bake", "normal map:", "ORM:"))
+         "--head-share", getattr(r.a, "head_share", 0.28),
+         keep=("source winding", "cage:", "head share", "baked from", "legs:", "UVs:", "AO mean", "AO bake", "normal map:", "ORM:"))
 
 
 def s_labels(r: Run):
@@ -590,25 +717,59 @@ def s_texclean(r: Run):
          keep=("[texclean]",))
 
 
-def s_texture(r: Run):
-    # the reference's own silhouette: plain backgrounds pass a colour threshold, a painting's
-    # street does not, so the generation stage's background remover cuts it out
+def reference_mask(r: Run):
+    """The reference's own silhouette: plain backgrounds pass a colour threshold, a painting's street does not, so the
+    generation stage's background remover cuts it out."""
     mask = r.path("reference_mask.png")
     py = TRELLIS / ".venv" / "bin" / "python"
     if not mask.exists() and py.exists():
         r.sh("foreground", [py, ROOT / "pipeline" / "foreground.py", "--image", r.path("reference.png"),
                             "--out", mask], keep=("[foreground]",))
-    views = [f"000:{r.path('reference.png')}" + (f":{mask}" if mask.exists() else "")]
-    for az, stem in (("090", "side"), ("180", "back")):
-        hits = sorted((r.work / "mv").glob(f"{stem}_*.png"))
-        if hits:
-            views.append(f"{az}:{hits[-1]}")
+    return mask
+
+
+def texture_reference(r: Run):
+    """The picture projected onto the front: the reference itself, or with its lighting taken out when
+    tools/delight.py has made work/<name>/reference_delit.png (E133), so that the front's colours are an
+    albedo like the sides' and back's."""
+    delit = r.path("reference_delit.png")
+    return delit if delit.exists() else r.path("reference.png")
+
+
+def s_texture(r: Run):
+    mask = reference_mask(r)
+    if option_of(r, "texture_views", "none") == "hunyuan" and hunyuan_ready():
+        # sides and back from Hunyuan3D-Paint's multi-view model instead of TRELLIS's own blotchy colours (E134),
+        # and the reference's lighting taken out so the front is an albedo like them (E133; a drawn anime style
+        # keeps its painted shading)
+        hy_py = HUNYUAN / "venv" / "bin" / "python"
+        with gpu("Hunyuan3D-Paint views"):
+            r.sh("texture_paint", [hy_py, ROOT / "tools" / "hunyuan_views.py", "--name", r.a.name], keep=("[hy_views]",))
+        if style_of(r) != "anime":
+            with gpu("delighting"):
+                r.sh("texture_delight", [hy_py, ROOT / "tools" / "delight.py", "--name", r.a.name, "--model", "hunyuan",
+                                         "--out", r.path("reference_delit.png")], keep=("[delight]",))
+    hy = option_of(r, "texture_views", "none") == "hunyuan" and (r.work / "hy_views" / "views.json").exists()
     r.bl("texture_maps", "uv_maps.py", "--mesh", r.path("retopo.glb"), "--out-dir", r.work / "texproj",
          "--face-joints", r.path("joints_refined.json"), "--face-frame", r.path("sdf.npz"),
-         keep=("[uv_maps]",))
+         *(["--views", "0,90,180,270"] if hy else []), keep=("[uv_maps]",))
+    if hy:
+        # side and back views painted by Hunyuan3D-Paint's multi-view model (tools/hunyuan_views.py), fitted
+        # onto our cameras: they follow the reference where TRELLIS's own colours, and the old repaints of
+        # them, carried blotches and invented boots (E134)
+        r.py("texture_views", "hy_views_to_mv.py", "--work", r.work,
+             *(["--front", texture_reference(r), "--front-mask", mask] if mask.exists() else []), keep=("[hy_mv]",))
+    views = [f"000:{texture_reference(r)}" + (f":{mask}" if mask.exists() else "")]
+    for az, stem in (("090", "side"), ("180", "back"), ("270", "side2")):
+        hy_view = r.work / "mv" / f"{stem}_hy.png"
+        hits = sorted(p for p in (r.work / "mv").glob(f"{stem}_*.png") if not p.name.endswith("_hy.png"))
+        if hy and hy_view.exists():
+            views.append(f"{az}:{hy_view}")
+        elif hits:
+            views.append(f"{az}:{hits[-1]}")
     fd = face_detail(r, mask)
     args = ["--dir", r.work / "texproj", "--base", r.path("albedo_clean.png"), "--out", r.path("albedo.png"),
-            "--hands", r.path("hands_spec.json"), "--edge-guard", 0.02]
+            "--hands", r.path("hands_spec.json"), "--edge-guard", 0.02, "--ao", r.work / "baked_ao.png"]
     if r.path("solid_cut.npz").exists():                      # the modelled hand is what stands outside it
         args += ["--hands-solid", r.path("solid_cut.npz")]
     if fd:
@@ -619,9 +780,39 @@ def s_texture(r: Run):
             args += ["--keep-base-face"]
     for v in views:
         args += ["--view", v]
+    if (r.work / "head" / "swapped.json").exists() or style_of(r) != "realistic":
+        # The face flow lays the picture's features onto the generator's own; on a drawn face those disagree by more
+        # than a warp can mend, and its 2.5% gate does not catch it: on v0.12's finer mesh Pip's flow came in under it
+        # and dragged his eye into a second one, where projected without it his face is as drawn (E138). A head made on
+        # its own sits where the picture puts it and has no features of its own to align to (E139). Realistic faces keep
+        # it: there the generator draws the face as the picture does (juno 1.0%, mara 1.2%, rowan 1.7%).
+        args += ["--no-face-flow"]
+    if (r.work / "head" / "swapped.json").exists() and (r.work / "head" / "merge.json").exists():
+        args += ["--front-only", r.work / "head" / "merge.json"]
+    marks = r.work / "eyes" / "marks.json"
+    if marks.exists() and "picture" in json.load(open(marks)) and style_of(r) != "anime":
+        # the face laid on in parts: each brow, eye, the nose, mouth and jaw onto the model's own (E140). Not on anime:
+        # a drawn face's shape does not say how big its eyes are, only the generator's paint does, and fitted to it
+        # Kaito's eyes came out a fifth wider than his picture's
+        args += ["--face-marks", marks, "--face-cam", r.work / "eyes" / "cam.json"]
     if r.path("solid_free.npz").exists():                     # the arms were cut free: colour what that opened
         args += ["--solid", r.path("solid.npz"), "--mesh", r.path("retopo.glb")]
     r.py("texture", "project_texture.py", *args, keep=("[texproj]",))
+    if style_of(r) != "anime":
+        # one skin, one tone: the picture's shadows and the generator's shading taken out of the skin at the 1-2 cm
+        # scale they come at, its fine detail kept - no ring at a bare wrist (Mara's dE 16 -> 2), fewer blotches on
+        # the face (E138). A cel-shaded style draws its skin's shading on purpose.
+        r.py("texture_skin", "skin_tone.py", "--albedo", r.path("albedo.png"), "--dir", r.work / "texproj",
+             "--hands", r.path("hands_spec.json"), "--labels", r.path("labels.json"), "--retopo", r.path("retopo.glb"),
+             "--out", r.path("albedo.png"),
+             *(["--keep", r.work / "texproj" / "face_keep.png"] if (r.work / "texproj" / "face_keep.png").exists() else []),
+             keep=("[skin]",))
+    if style_of(r) != "anime":
+        # a physically based renderer multiplies the light by the albedo: black cloth painted at sRGB 5-15 renders
+        # as a hole without folds (Rowan's jeans; 17-38% of five characters' textures), so non-metals are eased
+        # into the PBR guides' 30-240 (E132). A cel-shaded style draws with its colours as painted.
+        r.py("texture_range", "albedo_range.py", "--albedo", r.path("albedo.png"), "--orm", r.work / "baked_orm.png",
+             "--out", r.path("albedo.png"), keep=("[albedo]",))
 
 
 def face_detail(r: Run, mask):
@@ -632,7 +823,7 @@ def face_detail(r: Run, mask):
     the full-body reference alone, as before."""
     tp = r.work / "texproj"
     try:
-        r.py("face_detail", "face_detail.py", "--dir", tp, "--reference", r.path("reference.png"),
+        r.py("face_detail", "face_detail.py", "--dir", tp, "--reference", texture_reference(r),
              *(["--mask", mask] if mask.exists() else []), keep=("[face_detail]",))
     except SystemExit:
         return None
@@ -698,7 +889,8 @@ def s_frame(r: Run):
 
 
 def s_tpose(r: Run):
-    r.bl("tpose", "tpose.py", "--blend", r.path("rig_m.blend"), "--out", r.path("rig_t.blend"),
+    keep_rest = ["--keep-rest"] if option_of(r, "rest", "A") == "A" else []
+    r.bl("tpose", "tpose.py", "--blend", r.path("rig_m.blend"), "--out", r.path("rig_t.blend"), *keep_rest,
          keep=("rest after", "squared"))
 
 
@@ -1025,6 +1217,33 @@ def main():
                         "(Boyscout grew knee socks, Vex's trainers became boots, Mara's braid moved behind), though "
                         "a back can come out more plausible (experiment E106)")
     m.add_argument("--seed", type=int, default=7)
+    m.add_argument("--trellis-faces", type=int, default=1_000_000,
+                   help="faces TRELLIS.2 keeps of its surface (default 1M: at 200k, large flat facets and sawtooth "
+                        "plate edges reached the normal map; experiment E135)")
+    m.add_argument("--no-denoise", action="store_true",
+                   help="skip the bilateral normal filtering of the generated surface (E135)")
+    m.add_argument("--texture-views", choices=("hunyuan", "none"), default=None,
+                   help="hunyuan (needs tools/setup_hunyuan.sh): side and back views painted by Hunyuan3D-Paint 2.1 and "
+                        "the reference delit (E133, E134) - a cleaner back where TRELLIS's is blotchy (Pip), but on 6 of 8 "
+                        "other characters it painted what the reference does not show or lost a pattern; none "
+                        "(default): the sides and back the generator painted")
+    m.add_argument("--head", choices=("hunyuan", "none"), default=None,
+                   help="hunyuan (needs tools/setup_hunyuan.sh): the head made again on its own from a close crop of the "
+                        "reference by Hunyuan3D 2.1's shape model - a sculpted face where the whole-figure model's has a few "
+                        "rough facets, ~8 more minutes (experiment E139); none: the head as generated with the body")
+    m.add_argument("--eyes", choices=("rebuild", "none"), default="rebuild",
+                   help="rebuild (default): each eye the generator modelled as an opening full of shards becomes lids "
+                        "over a ball - found by DWPose on the model's own paint, rebuilt in the solid; eyes it cannot "
+                        "read (most anime faces) stay as generated (experiment E140). none: every eye as generated")
+    m.add_argument("--head-share", type=float, default=0.28,
+                   help="the share of the triangle budget the head keeps (default 0.28; 0 leaves it to the "
+                        "decimation, which gave Mara's 17%% and crumpled her eyes and lips; experiment E140)")
+    m.add_argument("--rest", choices=("T", "A"), default=None,
+                   help="the rest pose the character ships in: A (default) keeps the pose it was modelled in and "
+                        "records the T only for retargeting, so no shoulder is skinned up to a T and down again - on "
+                        "Cadet that halved crushed faces and self-intersections and took frames with deep "
+                        "penetration from 40%% to 28%%, the clips unchanged (experiment E137); T bakes the mesh to "
+                        "a T-pose, the animation library's own rest, for tools that insist on one")
     m.add_argument("--keep-comfy-loaded", action="store_true",
                    help="do not ask ComfyUI to unload its cached models before a TRELLIS pass "
                         "(use this if you are working in ComfyUI while CharForge runs)")

@@ -13,6 +13,7 @@ Axes: the array is indexed [i, j, k] = Blender world x, y, z (Z up) divided by t
 starting at `origin_ijk`. Values are signed distance in world units, negative inside.
 """
 import argparse
+import json
 import os
 import sys
 
@@ -31,6 +32,8 @@ ap.add_argument("--band", type=float, default=0.03, help="narrow band either sid
 ap.add_argument("--project", default=None,
                 help="to-mesh: put each vertex back on this source mesh where it is within --reach")
 ap.add_argument("--reach", type=float, default=1.5, help="projection reach, in voxels")
+ap.add_argument("--keep-out", default=None, help="solidify.py's <solid>_eyes.json: rebuilt regions left as solidified, "
+                                                "blended back over a feather round them")
 a = ap.parse_args(argv)
 
 
@@ -98,10 +101,25 @@ else:
         bvh = BVHTree.FromPolygons(sp.tolist(), st.tolist())
         reach = a.reach * v
         moved = 0
+        keep = np.zeros(len(pts))                # 1: stays where the solid put it; 0: put back; between, blended
+        if a.keep_out and os.path.exists(a.keep_out):
+            for k_ in json.load(open(a.keep_out))["keep_out"]:
+                (x_, y_, z_), (ax_, az_) = k_["centre"], k_["axis_xz"]
+                u_ = (pts[:, 0] - x_) * ax_ + (pts[:, 2] - z_) * az_
+                v_ = -(pts[:, 0] - x_) * az_ + (pts[:, 2] - z_) * ax_
+                e_ = np.sqrt((u_ / k_["a"]) ** 2 + (v_ / k_["b"]) ** 2)
+                fe = k_.get("feather", 0.0)
+                inside = (pts[:, 1] > k_["y"][0]) & (pts[:, 1] < k_["y"][1])
+                kk = np.clip((1 + fe - e_) / fe, 0, 1) if fe > 0 else (e_ < 1).astype(float)
+                keep = np.maximum(keep, kk * inside)
+            print(f"[sdf] {int((keep > 0.5).sum()):,} vertices in rebuilt regions left where the solid put them, "
+                  f"{int(((keep > 0) & (keep < 1)).sum()):,} more blended toward it", flush=True)
         for i in range(len(pts)):
+            if keep[i] >= 1:
+                continue
             hit = bvh.find_nearest(Vector(pts[i]), reach)
             if hit[0] is not None:
-                pts[i] = hit[0][:]
+                pts[i] = keep[i] * pts[i] + (1 - keep[i]) * np.array(hit[0][:])
                 moved += 1
         print(f"[sdf] {moved:,} of {len(pts):,} vertices put back on the source surface "
               f"(within {a.reach:.1f} voxels)", flush=True)

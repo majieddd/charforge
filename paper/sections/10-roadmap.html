@@ -4,13 +4,17 @@
   character. The new checks separate known truth, model-based proxies, human acceptance, and engine behavior. Each item is an
   experiment in the tracker with its metric fixed before it runs.</p>
 <ol>
-  <li><b>Shape and texture as clean as a professional's</b> [E132]: first measure what separates our models from
-    professionally made characters - surface roughness where a surface should be smooth, soft creases, topology faults,
-    lighting left in the albedo, a front that does not match the back, smeared sides and back, seams - on the roster and
-    on professional baselines, with the thresholds fixed first. Then aim a change at each gap and score it on the same
-    audit: the reference's lighting removed before it is projected [E133]; sides and back painted by a multi-view PBR
-    texture model [E134] [@hunyuan3d21]; quad remeshing with the generated detail baked back, and feature-preserving
-    smoothing [E135]; detail from estimated normals [@hi3dgen] [E136]; seams [E105]; another generator [E104].</li>
+  <li><b>Shape and texture as clean as a professional's</b> [E132]: the audit and its baselines now exist, and this
+    version spent the first round on it - the finer surface [E135], the loose shards, the hands and the skin [E138], the
+    rest pose [E137] ([#sec-eval-quality]). What is left, in the order a viewer sees it: <i>faces</i> - taken part by part in
+    version 0.13 (eyes rebuilt, features laid on the model's own, the face the picture's alone [E140]); next the hairline,
+    anime eyes the pose model cannot read, the profile, and relief from the picture's estimated normals where it is still
+    missing [@hi3dgen] [E136], with a head made on its own as the route to a sculpted shape [E139]; <i>hair</i> without the dark streaks
+    where views disagree; <i>armour raised above the shoulder</i>, with rigid shoulder pieces [E110]; the gap of two to four
+    times on surface noise and lumps, which the low-poly's decimation now sets (crease-aware normals, a quad remesh of the
+    solid); and likeness measured beside cleanliness on the whole body as it now is on faces (per-part DINOv3 likeness,
+    [#sec-eval-faces]), since the texture audit scored Hunyuan3D-Paint's views better on characters where they were plainly
+    worse [E134].</li>
   <li><b>A 3D ground truth for motion</b> [E101]: render a character performing a known clip as a video, run the move
     lane on it with that clip held out of the library, and measure the recovered clip in joint angles, positions,
     contacts and jitter. Then test independent real footage and subjects [E111]: TotalCapture and 3DPW supply different

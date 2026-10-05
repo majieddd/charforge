@@ -12,7 +12,16 @@
     aberrations - faces crushed, stretched or sheared, one body part inside another, a shoe through the floor - and holding
     each clip inside joint limits measured on the character's own mesh takes the frames with a part more than 2 cm inside
     another from {{b.aberrations_before_clearance.mean.deep_body_frames_pct|int}}% to
-    {{aberr.same.mean.deep_body_frames_pct|int}}%. The work is organised as a record of
+    {{aberr.same.mean.deep_body_frames_pct|int}}%. Measured against professionally made meshes, the models' surfaces
+    were two to four times rougher; generating at a million faces with the surface filtered, keeping the pose the model
+    was made in as its rest pose, and mending what close-ups of every character showed - loose shards, two-toned hands,
+    one skin in three colours - brought the roster's median surface noise from {{q.summary.noise_deg_before|2}}° to
+    {{q.summary.noise_deg_after|2}}° and its loose pieces from {{q.summary.pieces_before}} to {{q.summary.pieces_after}}. Faces, the
+    largest gap left, were then taken part by part - each eye rebuilt as a smooth cap under its lids, each feature laid on
+    the model's own, the face left as the picture painted it - which on a benchmark set of two characters per style and
+    gender took the median likeness of the eyes to the picture from {{f.summary.like_eyes_before|2}} to
+    {{f.summary.like_eyes_after_paired|2}} and of the mouth from {{f.summary.like_mouth_before|2}} to {{f.summary.like_mouth_after_paired|2}} -
+    on realistic faces most; drawn faces held. The work is organised as a record of
     measured decisions: {{n.experiments_done}} experiments, each with its question, metric and result, and what was
     dropped kept beside what was kept. Several of the largest errors we found were in our own measurements - a comparison
     video running 25% fast, a score dip that was the pose model misreading our render, face positions read in 3.9 mm
@@ -21,8 +30,9 @@
 </div>
 
 <figure id="fig-cast" class="wide">
-  <img src="media/studio_grid.webp" width="1440" height="900" alt="The CharForge Studio's character grid: thirteen generated characters in realistic, stylised and anime styles, standing in A-pose, each with its height">
-  <figcaption>Characters made by the pipeline on one laptop, as the Studio lists them: realistic, stylised and anime,
-    from a written prompt, a user's few words or a painting. Each is rigged, face-rigged where its face can be read, and
+  <img src="media/studio_grid.webp" width="1440" height="900" alt="The CharForge Studio's character grid: twelve generated characters - the benchmark set - in realistic, stylised and anime styles, standing in A-pose, each with its height">
+  <figcaption>Characters made by the pipeline on one laptop, as the Studio lists them - the benchmark set of two per
+    style and gender, newest first: realistic, stylised and anime, from a written prompt, a user's few words or a
+    painting. Each is rigged, face-rigged where its face can be read, and
     carries the same eighteen clips.</figcaption>
 </figure>

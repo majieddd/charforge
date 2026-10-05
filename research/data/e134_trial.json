@@ -1,0 +1,171 @@
+{
+ "_about": "E134 roster trial, 2026-10-03: the texture stage's new steps (Hunyuan3D-Paint 2.1 side and back views fitted onto our cameras, the front delit by Hunyuan's delighting model (not on anime), each garment's colour matched to the front, the albedo range) on each character's shipped v0.11 mesh, against its shipped texture. Texture measures from tools/model_quality.py (E132) on the same mesh; 'eye' is the verdict from four unlit albedo renders side by side (charforge_notes/polish/e134/trial/*_sheet.png). Hunyuan's views are generated at 256 px (the port's 'safe' preset on 24 GB) and super-resolved to 1024.",
+ "pilot": {
+  "pip": {
+   "eye": "better",
+   "note": "the back's blotches and invented brown boots gone; the hood grey instead of blue"
+  }
+ },
+ "characters": {
+  "cadet": {
+   "eye": "about equal",
+   "note": "",
+   "shipped": {
+    "light_r2": 0.139,
+    "front_back_de": 3.271,
+    "back_sharp": 0.945,
+    "dark_pct": 1.53,
+    "bright_pct": 0.0,
+    "seam_de": 1.15
+   },
+   "trial": {
+    "light_r2": 0.2,
+    "front_back_de": 1.513,
+    "back_sharp": 1.187,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 1.05
+   }
+  },
+  "mara": {
+   "eye": "worse",
+   "note": "the braid came out red; a light patch on the back",
+   "shipped": {
+    "light_r2": 0.131,
+    "front_back_de": 2.941,
+    "back_sharp": 0.851,
+    "dark_pct": 4.23,
+    "bright_pct": 0.0,
+    "seam_de": 1.14
+   },
+   "trial": {
+    "light_r2": 0.093,
+    "front_back_de": 2.793,
+    "back_sharp": 0.749,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.95
+   }
+  },
+  "juno3": {
+   "eye": "slightly worse",
+   "note": "the red duller",
+   "shipped": {
+    "light_r2": 0.148,
+    "front_back_de": 1.796,
+    "back_sharp": 0.725,
+    "dark_pct": 9.14,
+    "bright_pct": 0.0,
+    "seam_de": 0.9
+   },
+   "trial": {
+    "light_r2": 0.061,
+    "front_back_de": 0.749,
+    "back_sharp": 0.974,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.75
+   }
+  },
+  "vex": {
+   "eye": "about equal",
+   "note": "a smudge on the back of the leggings",
+   "shipped": {
+    "light_r2": 0.061,
+    "front_back_de": 2.302,
+    "back_sharp": 1.02,
+    "dark_pct": 19.3,
+    "bright_pct": 0.0,
+    "seam_de": 1.18
+   },
+   "trial": {
+    "light_r2": 0.101,
+    "front_back_de": 2.358,
+    "back_sharp": 0.678,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.97
+   }
+  },
+  "bo": {
+   "eye": "worse",
+   "note": "the checked trousers became blotchy dots on the back and sides; the jacket duller",
+   "shipped": {
+    "light_r2": 0.113,
+    "front_back_de": 2.288,
+    "back_sharp": 0.952,
+    "dark_pct": 0.06,
+    "bright_pct": 11.74,
+    "seam_de": 0.82
+   },
+   "trial": {
+    "light_r2": 0.121,
+    "front_back_de": 1.964,
+    "back_sharp": 1.089,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.79
+   }
+  },
+  "aoi": {
+   "eye": "worse",
+   "note": "the back of the coat dark; a white patch at the belt (anime: front not delit)",
+   "shipped": {
+    "light_r2": 0.072,
+    "front_back_de": 1.16,
+    "back_sharp": 0.993,
+    "dark_pct": 6.51,
+    "bright_pct": 0.01,
+    "seam_de": 1.1
+   },
+   "trial": {
+    "light_r2": 0.054,
+    "front_back_de": 3.726,
+    "back_sharp": 1.046,
+    "dark_pct": 13.48,
+    "bright_pct": 0.27,
+    "seam_de": 1.24
+   }
+  },
+  "boyscout": {
+   "eye": "worse",
+   "note": "a face-like pattern painted on the back of the head; the neckerchief lost at the back",
+   "shipped": {
+    "light_r2": 0.185,
+    "front_back_de": 2.457,
+    "back_sharp": 0.956,
+    "dark_pct": 0.02,
+    "bright_pct": 0.0,
+    "seam_de": 0.83
+   },
+   "trial": {
+    "light_r2": 0.191,
+    "front_back_de": 3.29,
+    "back_sharp": 0.923,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.66
+   }
+  },
+  "knight2": {
+   "eye": "worse",
+   "note": "the armour darker; a pale patch on the back plate",
+   "shipped": {
+    "light_r2": 0.097,
+    "front_back_de": 2.263,
+    "back_sharp": 1.011,
+    "dark_pct": 4.51,
+    "bright_pct": 0.0,
+    "seam_de": 1.36
+   },
+   "trial": {
+    "light_r2": 0.089,
+    "front_back_de": 2.642,
+    "back_sharp": 1.036,
+    "dark_pct": 0.02,
+    "bright_pct": 0.0,
+    "seam_de": 1.22
+   }
+  }
+ }
+}
