@@ -107,6 +107,8 @@ nav = """<nav class="top" aria-label="Sections">
     <a href="#studio">Studio</a>
     <a href="#prompts">Few-word prompts</a>
     <a href="#pipeline">How it is made</a>
+    <a href="#quality">Toward professional</a>
+    <a href="#faces">Faces</a>
     <a href="#polish">Polish</a>
     <a href="#aberr">Aberrations</a>
     <a href="#cast">New characters</a>
@@ -141,7 +143,7 @@ facts = f"""
     </div>"""
 
 opener = f"""<header class="opener" id="top">
-    <div class="eyebrow">24 September - 2 October 2026 · M5 MacBook, 24 GB shared memory</div>
+    <div class="eyebrow">24 September - 5 October 2026 · M5 MacBook, 24 GB shared memory</div>
     <h1>What CharForge makes now, and what fixing it took</h1>
     <p class="sub">A prompt or a picture becomes a rigged, animated game character on this laptop; a video becomes a
       move on it, and now so does a sentence. The first round went through every character in the poses that break
@@ -153,8 +155,10 @@ opener = f"""<header class="opener" id="top">
       the floor - and what the audit found was fixed. Limbs keep out of each other within joint limits measured on each
       character's own mesh; the shoe that is planted is the shoe the viewer sees; the second 3D pass, which made models
       less like their pictures, is off. A new character, <a href="#cast">Cadet</a>, was made with the pipeline as it
-      stands and given moves the motion library lacks <a href="#words">from a sentence each</a>. CharForge Studio does
-      all of it without a terminal. The page leads with how things work now; what they replaced is in the
+      stands and given moves the motion library lacks <a href="#words">from a sentence each</a>. The third round measured
+      the models against professionally made ones and <a href="#quality">made them cleaner</a>, and then took the
+      <a href="#faces">face apart</a>, part by part, on a benchmark set of twelve. CharForge Studio does all of it without
+      a terminal. The page leads with how things work now; what they replaced is in the
       <a href="#archive">archive</a> at the end.</p>
 {facts}
     <div class="licence"><span aria-hidden="true">⚠</span><div><b>Licences.</b> The videos of moves on this page come from MiniMax H3 (the Singularity community fine-tune). Its licence excludes the US, EU, UK and South Korea and covers what it generates; they are shown here as research. Qwen-Image 2.1, which draws the references, is under a research-only licence: commercial use needs a licence from Qwen. UniMate, which makes moves from words, is MIT-licensed, and its text encoder Flan-T5 Apache-2.0.</div></div>
@@ -331,6 +335,129 @@ feet_card = "" if not FT or not (MEDIA / "polish_feet.webp").exists() else fix(
     which lifted them, and nothing put them back. The correction step now measures each key's lowest shoe before the turn
     and after, and moves the pelvis by the difference - the lowest foot goes back to where the retarget had it, on the floor
     while planted, as high as it was in a jump. {FT.get('note', '')}</p>''', 720, 240)
+QD = json.load(open(HERE.parents[1] / "research" / "data" / "v012_quality.json")) if (HERE.parents[1] / "research" / "data" / "v012_quality.json").exists() else None
+QS = (QD or {}).get("summary", {})
+QE = (QD or {}).get("e137_cadet", {})
+quality = "" if not QD else f"""<section id="quality">
+    <div class="sechead">
+      <div class="eyebrow">Toward a professionally made model · 3 October</div>
+      <h2>Measured against models people made, then made closer to them</h2>
+      <p>The question for this round was what makes a model look professionally made, and how to get ours there. A
+        model-quality audit runs the same way on every character and on Blender Studio's Human Base Meshes and Ellie from
+        Sprite Fright; the professional bodies score surface noise {QS.get('pro_noise_deg_min')}-{QS.get('pro_noise_deg_max')}°
+        and lumps {QS.get('pro_lump_mm_min')}-{QS.get('pro_lump_mm_max')} mm, ours were two to four times that. Then every
+        character was looked at close up - face, hands, shoulders, back, feet - because a whole model's averages moved little
+        between builds that look very different up close. The roster was rebuilt on what came out of it: over
+        {QS.get('n')} characters the median noise went {QS.get('noise_deg_before')} → {QS.get('noise_deg_after')}°, lumps
+        {QS.get('lump_mm_before')} → {QS.get('lump_mm_after')} mm, loose pieces {QS.get('pieces_before')} → {QS.get('pieces_after')}.</p>
+    </div>
+    {fix("the shape", "A finer surface, filtered", "q_rake.webp",
+         "Knight2, Cadet and Gray as shipped, grey under a raking light, v0.11 beside v0.12: faceted plates and a jagged slot before, smooth plates with crisp edges after",
+         f"{QS.get('tilt_deg_before')} → {QS.get('tilt_deg_after')}° <small>median triangle tilt the normal map corrects (professional meshes 2.4-8.4)</small>",
+         '''<p>The generator was asked for 200,000 faces, and simplifying to that turned gently curved armour into flat facets with
+         sawtooth edges. Every later stage kept them - the solid is put back on the generated surface to keep its detail - so they
+         reached the normal map as a triangle pattern under any grazing light. It now keeps a million faces, and the surface is
+         filtered by bilateral normal filtering before anything is built on it: facets a few degrees apart become one surface,
+         a plate's edge, tens of degrees sharp, stays. Quad remeshing refused our meshes outright.</p>''', 1338, 1092)}
+    {fix("the rig", "The pose it was modelled in, as its rest", "q_rest.webp",
+         "Cadet's shoulder at rest, idle and walking: slivers and torn armour under the pauldron with the T baked in; the plate whole with the modelled pose kept",
+         f"{QE.get('T', {}).get('crushed_pct')} → {QE.get('A', {}).get('crushed_pct')}% <small>Cadet's crushed faces over every clip; frames with a limb 2 cm inside another {round(QE.get('T', {}).get('deep_frames_pct', 0))} → {round(QE.get('A', {}).get('deep_frames_pct', 0))}%</small>",
+         '''<p>Every character was skinned up from the pose it was generated in to a T and saved in it, because the motion library's
+         rest is a T. Skinning is linear blending and cannot be undone: Cadet's pauldron sheared into shards on the way up, and
+         every arms-down frame came back down from that T with slivers. Now the T is only recorded, for the retargeting maths,
+         and the rest stays as modelled. The clips are the same - foot slip identical in all nine gaits. Arms raised above the
+         shoulder still stretch armour fused to the arm.</p>''', 1002, 728)}
+    {fix("the mesh", "No loose shards", "q_debris.webp",
+         "Knight2's back under a raking light: noise and floating shards in v0.11, a clean back in v0.12",
+         f"{QS.get('pieces_before_total')} → {QS.get('pieces_after_total')} <small>loose pieces over the roster</small>",
+         '''<p>Every low-poly carried 2-94 floating shells of a few faces - where the modelled hands were unioned on, and where
+         the decimation's repairs cut round bad edges - and they held nearly all its open edges. Pieces under a quarter of a
+         percent of the faces are dropped now; a strand or a garment kept apart by design is hundreds of faces.</p>''', 846, 454)}
+    {fix("the texture", "Hands shaded by their own shape", "q_hands.webp",
+         "Cadet's hand from above and hanging, before and after: a pale patch across the back of the hand before, an even skin tone with soft shade between the fingers after",
+         "two-tone → even <small>the hands' light and dark from their own occlusion</small>",
+         '''<p>The modelled hands took their light and dark from a colour bake of the generated mesh - which has the old hand, or
+         nothing, where the modelled one stands - so most hands carried pale and dark patches. They take it from their own
+         ambient occlusion now: shade between the fingers, nothing elsewhere.</p>''', 1338, 364)}
+    {fix("the texture", "One skin", "q_skin.webp",
+         "Mara's and the boy scout's faces at three-quarter view before and after: the skin evener after, the features unchanged",
+         "dE 16.6 → 1.5 <small>the colour step at Mara's bare wrist</small>",
+         '''<p>The skin's colour came from three places - the picture with its shading on the front, the generator's colours on
+         the sides, one tone on the hands - so the same skin was three colours: a ring at every bare wrist, and on faces the
+         picture's shading lying on a shape not quite the picture's. Skin, found by its hue and on the parts the parser calls
+         skin, has its colour at the 1-2 cm scale of shading replaced by one tone and keeps its freckles and pores. It evens
+         a face; it cannot move a feature onto the right part of one.</p>''', 1338, 364)}
+    {fix("what did not work", "Backs painted by a multi-view model", "q_views.webp",
+         "Shipped textures beside Hunyuan3D-Paint's views: a face-like pattern on the back of the boy scout's head, Bo's checks turned to dots, Knight2's back plate darker with a pale patch",
+         "6 of 8 <small>characters worse by eye, though the texture audit scored them better</small>",
+         '''<p>Hunyuan3D-Paint 2.1 paints a mesh's views from its own normals, consistent with the picture and each other, and
+         cleaned Pip's blotchy back. On eight more characters it invented what the picture does not show and lost fine pattern:
+         at the 256 px this Mac can run it at, it guesses. It is an option now, used for Pip - and the texture audit, which
+         scored it better, needs a likeness measure beside its cleanliness measures.</p>''', 1710, 314)}
+    {fix("the face", "A head made on its own", "q_head.webp",
+         "Boyscout's head under a raking light: from the whole figure, ragged holes for eyes and a slit for a mouth; made on its own from a crop of the picture, brows, lids, lips and ears",
+         "7-8 min <small>Hunyuan3D 2.1's shape model on a crop of the head</small>",
+         '''<p>The most visible fault left is the face. In a whole-figure model the head is a few dozen voxels across, and the
+         picture is projected onto a face shaped unlike it: seen from the side, its features and shading slide off. Made again on
+         its own from a close crop of the picture, the head has the picture's shape. It is placed on the body through the picture
+         both were made from, replaces the old head above the neck, and the picture is projected onto it; joining and painting
+         it cleanly is still in progress (<code>--head hunyuan</code>). The <a href="#faces">next chapter</a> takes the
+         generated face apart instead, and mends each part.</p>''', 1338, 364)}
+  </section>"""
+
+FD = json.load(open(HERE.parents[1] / "research" / "data" / "v013_faces.json")) if (HERE.parents[1] / "research" / "data" / "v013_faces.json").exists() else None
+FS = (FD or {}).get("summary", {})
+faces = "" if not FD else f"""<section id="faces">
+    <div class="sechead">
+      <div class="eyebrow">Faces, part by part · 4 October</div>
+      <h2>The face taken apart: eyes, triangles, features and skin, each mended on its own</h2>
+      <p>After the shape and texture round, faces were what looked sloppy - eyes hollow or smeared, features not where the
+        face has them, patches on a cheek. Taken one part at a time, each fault had its own cause, and each part its own fix.
+        Instead of rebuilding every character, a benchmark set of two per style and gender - realistic Mara, Juno, Rowan and
+        Knight, stylised Vex, Rivet, Pip and Cadet, anime Aoi, Hana, Kaito and Ren - is scored before and after: landmark
+        error against the picture, and how alike the face's parts look by a vision model's features, robust to lighting but
+        not to a smeared eye. Over the {FS.get('like_eyes_paired_n')} with a v0.12 build to compare, the eyes' likeness went
+        {FS.get('like_eyes_before')} → {FS.get('like_eyes_after_paired')}, the mouth's {FS.get('like_mouth_before')} →
+        {FS.get('like_mouth_after_paired')}. The gain is the realistic faces' (eyes {FS.get('realistic_like_eyes_before')} →
+        {FS.get('realistic_like_eyes_after')}), where every part had been misplaced and the eyes were pits; drawn faces held,
+        and those left wrong are wrong in shape - Vex's chin sunk in her collar, Ren's head longer than his picture's.</p>
+    </div>
+    {fix("the shape", "Eyes rebuilt as a smooth cap under the lids", "q_eyes.webp",
+         "Mara's head in plain grey at five stages: ragged almond eye openings as generated, streaked slabs in the solid, crumpled pits in v0.12's low-poly, and smooth lids over the eyes once rebuilt",
+         f"17 → {FS.get('head_share_median')}% <small>of the triangles on the head; eyes rebuilt on {FS.get('eyes_rebuilt_chars')} of {FS.get('n')} benchmark characters</small>",
+         '''<p>The generator models every eye as an almond opening with shards inside it. The solid filled it with streaks, and
+         the decimation, which gave the whole head 17% of 60,000 triangles, crumpled it into a pit - and no texture laid on a
+         pit reads as an eye. More texels on the head changed nothing you could see. The openings are found by a pose model on
+         the generator's own paint (on a grey render of a drawn face it only guessed), and rebuilt in the solid as a smooth cap
+         across the opening that follows the lids and bulges a little like an eyeball under them - an eyeball set behind
+         the opening left a slot that rendered as goggles. The head now keeps 28% of the triangles. Anime eyes the pose model cannot read stay as generated.</p>''', 1524, 334)}
+    {fix("the texture", "The face laid on in parts", "q_faceparts.webp",
+         "Mara's face lit from the front: the picture; v0.12 with hollow, smeared eyes; the eyes rebuilt but squinted by the old face flow; laid on in parts with dark patches on one cheek; v0.13 with the picture's face and clean skin",
+         f"{FS.get('parts_chars')} of {FS.get('n')} <small>benchmark faces laid on in parts</small>",
+         '''<p>The picture's face had been projected larger than the sculpted one, its eyes 10-30 pixels off, and the optical flow
+         meant to line it up squinted and smeared them. Now each part - each brow, each eye, the nose, the mouth, the jaw - is
+         moved by its own small fit onto the model's own features, and the moves are spread smoothly over the face. Two more
+         sources of patches went: the generated side views, whose faces never sit quite where the picture's does, no longer paint
+         the face; and the skin-evening step, whose colour bands cut the picture's soft cheek shadow into blotches, leaves the
+         face alone.</p>''', 1524, 334)}
+    {fix("the texture", "The generator's colours without the crackle", "q_crackle.webp",
+         "Knight's generated head in its own colours from the side: crackled with short grey lines as generated, dark flecks when mended in the atlas, clean skin and hair when rebuilt through the mesh",
+         "1024 px <small>for a million faces: most triangles smaller than a texel</small>",
+         '''<p>Every surface the picture does not paint - the side of a face, an ear, the hair, the back - carried a crackle of
+         short grey and dark lines. They were not holes in the mesh and not dark specks: the generator paints its colours
+         into an atlas of thousands of tiny charts, and along their edges leaves texels sampled off the surface. Mending them
+         from the atlas's neighbouring texels borrowed other charts' colours. Rebuilt through the mesh instead - each vertex
+         given the median colour of its triangles, outliers given their neighbours', the atlas painted again at four times
+         its size - the skin and hair come out clean.</p>''', 1500, 500)}
+    {fix("the benchmark", "Twelve faces, before and after", "q_faces_bench.webp",
+         "The twelve benchmark characters' faces from the front in soft light, v0.12 beside v0.13",
+         f"{FS.get('nme_before')} → {FS.get('nme_after_paired')} <small>landmark error against the picture, as a share of the eye spacing</small>",
+         '''<p>The same twelve characters from the front, v0.12 beside v0.13. Landmark error alone missed the improvement - a
+         smeared eye is still where an eye should be - which is why the likeness of each part is measured too. Still open: the
+         hairline (the hair shell's ragged edge), anime eyes, and the face from the side, where it is still the generator's
+         shape.</p>''', 1500, 900)}
+  </section>"""
+
 polish = f"""<section id="polish">
     <div class="sechead">
       <div class="eyebrow">Polish · every character in the poses that break things, front-left and back-right</div>
@@ -623,6 +750,15 @@ left = f"""<section id="left">
       <h2>Open problems</h2>
     </div>
     <ul class="left">
+      <li><b>Faces, the parts not yet mended.</b> Eyes, feature placement and skin patches were taken one at a time
+        (<a href="#faces">Faces</a>). Left: the hairline, which is the hair shell's ragged edge; anime eyes, which the pose
+        model cannot read on the generated paint and so stay as generated; and the face from the side, where it is still the
+        generator's shape, softer than the picture. A head made again on its own from a crop of the picture has the right
+        shape and remains an option being tested (<code>--head hunyuan</code>).</li>
+      <li><b>Close-up faults still open.</b> Dark streaks in hair where views disagree; Pip's hands cut beyond his flared
+        cuffs leave a skin-coloured bell at each wrist; where the arms were cut free of a jacket, two dark notches show on
+        the back (Bo); Blender's boolean union of the modelled hand fails on a few wrists (joined as a separate shell
+        instead, four hands on the roster).</li>
       <li><b>The audit has not met a person yet.</b> Its thresholds - half the area, double, 60°, 2 cm - are ours.
         Whether a viewer objects where it flags, and only there, needs blinded ratings before any score is allowed to
         stop a build.</li>
@@ -745,7 +881,7 @@ archive = f"""<section id="archive">
   </section>"""
 
 footer = """<footer>
-    <div>Built from <code>charforge/</code>, 24 September - 2 October 2026. Numbers from each character's logs in <code>work/&lt;name&gt;/logs/</code> (<code>arms</code>, <code>retopo</code>, <code>texture</code>, <code>rig</code>), <code>work/&lt;name&gt;/motion_videos/*_fidelity.json</code> and <code>refine.json</code>, <code>results/v3/</code>, the renders from <code>blender/render_poses.py</code>, and - for the aberrations, the feet and moves from words - the paper's own data (<code>paper/data/metrics.json</code>, <code>research/data/e129_unimate.json</code>, <code>e130_planting.json</code>), so this page and the paper quote the same numbers.</div>
+    <div>Built from <code>charforge/</code>, 24 September - 5 October 2026. Numbers from each character's logs in <code>work/&lt;name&gt;/logs/</code> (<code>arms</code>, <code>retopo</code>, <code>texture</code>, <code>rig</code>), <code>work/&lt;name&gt;/motion_videos/*_fidelity.json</code> and <code>refine.json</code>, <code>results/v3/</code>, the renders from <code>blender/render_poses.py</code>, and - for the aberrations, the feet and moves from words - the paper's own data (<code>paper/data/metrics.json</code>, <code>research/data/e129_unimate.json</code>, <code>e130_planting.json</code>), so this page and the paper quote the same numbers.</div>
     <div>Every figure on this page was measured by a script in the repository; nothing is estimated except the time per clip, which varies with what else the Mac is doing.</div>
   </footer>"""
 
@@ -761,7 +897,7 @@ style = style.replace("</style>", """  .nbbanner{background:var(--panel2);border
   .nbbanner .in{max-width:1100px;margin:0 auto;padding:9px 20px}
 </style>""")
 page = (head + style + "\n</head>\n<body>\n" + nav + "\n" + banner + '\n\n<div class="wrap">\n  ' + opener + "\n\n  " + studio + "\n\n  " + prompts_sec + "\n\n  " + pipeline
-        + "\n\n  " + polish + "\n\n  " + aberr + "\n\n  " + cast + "\n\n  " + words + "\n\n  " + moves + "\n\n  " + angles_sec + "\n\n  " + fid + "\n\n  " + hands + "\n\n  " + mac
+        + "\n\n  " + quality + "\n\n  " + faces + "\n\n  " + polish + "\n\n  " + aberr + "\n\n  " + cast + "\n\n  " + words + "\n\n  " + moves + "\n\n  " + angles_sec + "\n\n  " + fid + "\n\n  " + hands + "\n\n  " + mac
         + "\n\n  " + left + "\n\n  " + archive + "\n\n  " + footer + "\n</div>\n</body>\n</html>\n")
 page = page.replace('<meta name="description" content="Workflow, measurements and side-by-side comparisons from the video-to-motion and image-model tests.">',
                     '<meta name="description" content="How CharForge makes characters now: the Studio, the polish pass, new characters, moves from video - with the replaced methods archived.">')

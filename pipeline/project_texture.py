@@ -79,12 +79,30 @@ ap.add_argument("--edge-guard", type=float, default=0.0,
                      "of the outline of a nearer surface (the pipeline passes 0.02): a generated view and the "
                      "mesh never line up exactly, and the texels just past an arm's outline read the arm - "
                      "Aoi's hands streaked her trousers from the side view")
+ap.add_argument("--front-only", default=None,
+                help="head/merge.json: a head made on its own - only the front view (the picture it was made from) paints it; "
+                     "side and back views drawn from the old head put its features where the new head has none (E139)")
+ap.add_argument("--ao", default=None,
+                help="baked_ao.png - ambient occlusion baked on the solid with the modelled hands in it: their shading "
+                     "in the creases (the base colour bake is the generated mesh's, which has no modelled hand)")
 ap.add_argument("--old-hands", default=None,
                 help="solid.npz,solid_cut.npz: the generated hands cut_hands.py removed; the pixels each source "
                      "image shows them in paint nothing (they painted Aoi's trousers and Wren's satchel)")
 ap.add_argument("--solid", default=None,
                 help="the generated solid (solid.npz) when free_arms.py cut the arms free of it: the surfaces "
                      "the cut opened lie inside it, and take their colour from their own side of the cut")
+ap.add_argument("--face-marks", default=None,
+                help="eyes/marks.json (pipeline/eye_marks.py --reference): the face's 68 points on the model, read on "
+                     "the generator's own paint, and on the picture - each part of the face (brows, eyes, nose, mouth, "
+                     "jaw) is laid on the model's own (E140); replaces the face flow")
+ap.add_argument("--face-cam", default=None, help="eyes/cam.json: the frame the model's points were read in")
+ap.add_argument("--hairline", action="store_true",
+                help="with --face-marks, experimental: round the face, where the picture would paint skin on what the "
+                     "model's own colours call hair (a pale band at a hairline), the model's colour is kept. On Mara it "
+                     "sharpened the hairline a little and let a few of the generator's dark specks through; off by default (E140)")
+ap.add_argument("--face-parts-max", type=float, default=0.25,
+                help="leave the parts as they fall when they would move more than this share of the face's width "
+                     "(the picture and the model then disagree on the face, not on where it is)")
 a = ap.parse_args()
 
 meta = json.load(open(os.path.join(a.dir, "views.json")))
@@ -215,6 +233,176 @@ def face_flow(warped, img, wmask, imask):
     return full, np.clip(wgt * 1.5, 0, 1)
 
 
+PARTS68 = {"jaw": range(0, 17), "brow (right)": range(17, 22), "brow (left)": range(22, 27), "nose": range(27, 36),
+           "eye (right)": range(36, 42), "eye (left)": range(42, 48), "mouth": range(48, 68)}
+
+
+def fit_similarity(A, B, scale_lim=(0.75, 1.33), turn_lim=15.0):
+    """Least-squares scale, turn and shift taking points A onto B (Umeyama 1991), the scale and turn held in bounds."""
+    ma, mb = A.mean(0), B.mean(0)
+    A0, B0 = A - ma, B - mb
+    U, S, Vt = np.linalg.svd(B0.T @ A0 / len(A))
+    d = np.sign(np.linalg.det(U @ Vt)) or 1.0
+    Rm = U @ np.diag([1.0, d]) @ Vt
+    ang = np.degrees(np.arctan2(Rm[1, 0], Rm[0, 0]))
+    if abs(ang) > turn_lim:
+        t_ = np.radians(np.clip(ang, -turn_lim, turn_lim))
+        Rm = np.array([[np.cos(t_), -np.sin(t_)], [np.sin(t_), np.cos(t_)]])
+    var = (A0 ** 2).sum() / len(A)
+    c = float(np.clip((S * [1.0, d]).sum() / max(var, 1e-9), *scale_lim))
+    return lambda P: c * (P - ma) @ Rm.T + mb
+
+
+def face_parts_field(v, s, tx, ty, flow, W_, H_):
+    """The face laid on in parts (E140). The silhouette fit and the body's smooth flow put the picture's face on the
+    model's head, but not its features on the model's features: Mara's painted face came out larger than her
+    sculpted one, its eyes 10-30 pixels off the sculpted eyes and her skin carried up onto the hair. The model's
+    features are read on the generator's own paint (which lies where its geometry has them - DWPose on a grey render
+    of a drawn face only guessed), the picture's on the picture; each part - each brow, each eye, the nose, the mouth,
+    the jaw - is moved as a whole by its own similarity (single points are noisy), and the moves are spread into a
+    smooth field over the face that falls to nothing past it. Returns (field over render pixels, report) or
+    (None, why)."""
+    from scipy.interpolate import RBFInterpolator
+    M = json.load(open(a.face_marks))
+    Cm = json.load(open(a.face_cam))
+    if "picture" not in M:
+        return None, "no picture points"
+    Lm = np.array(M["face"], float)
+    sm = np.array(M.get("face_scores") or [M.get("face_score", 0.0)] * 68, float)
+    Lp = np.array(M["picture"]["face"], float)
+    sp = np.array(M["picture"]["face_scores"], float)
+    if np.median(sm) < 0.6 or np.median(sp) < 0.6:
+        return None, f"the face read too weakly (model {np.median(sm):.2f}, picture {np.median(sp):.2f})"
+    x = Cm["cx"] + (Lm[:, 0] / Cm["res"] - 0.5) * Cm["ortho"]
+    z = Cm["cz"] - (Lm[:, 1] / Cm["res"] - 0.5) * Cm["ortho"]
+    rp = to_render_px(np.stack([x, np.full_like(x, ctr[1]), z], 1), v)
+    ip0 = rp * s + np.array([tx, ty])
+    ii_ = np.clip(np.round(ip0).astype(int), [0, 0], [W_ - 1, H_ - 1])
+    cur = ip0 + flow[ii_[:, 1], ii_[:, 0]]
+    ok = (sm > 0.4) & (sp > 0.4) & np.isfinite(Lm).all(1) & np.isfinite(Lp).all(1)
+    fw = float(np.ptp(Lp[0:17, 0]))
+    tgt = np.full_like(cur, np.nan)
+    moves = {}
+    for name, idx in PARTS68.items():
+        idx = [i for i in idx if ok[i]]
+        if len(idx) < 3:
+            continue
+        tgt[idx] = fit_similarity(cur[idx], Lp[idx])(cur[idx])
+        moves[name] = float(np.linalg.norm((tgt[idx] - cur[idx]).mean(0)) / fw)
+    use = np.isfinite(tgt).all(1)
+    e = tgt - cur
+    if use.sum() < 20:
+        return None, "too few parts read"
+    worst = float(np.percentile(np.linalg.norm(e[use], axis=1), 90) / fw)
+    if worst > a.face_parts_max:
+        return None, f"the parts would move {worst:.0%} of the face's width (over {a.face_parts_max:.0%})"
+    # nothing moves past the face: a ring of fixed points round it, the field faded to nothing beyond the ring
+    cm = rp[use].mean(0)
+    rx = 0.5 * float(np.ptp(rp[0:17, 0]))
+    ry = 0.5 * float(rp[8, 1] - rp[17:27, 1].min()) + 0.15 * rx
+    t = np.linspace(0, 2 * np.pi, 28, endpoint=False)
+    ring = cm + np.stack([1.7 * rx * np.cos(t), 1.7 * ry * np.sin(t)], 1)
+    P = np.concatenate([rp[use], ring])
+    Vv = np.concatenate([e[use], np.zeros((len(ring), 2))])
+    rbf = RBFInterpolator(P, Vv, kernel="thin_plate_spline", smoothing=1.0)
+
+    field_info = {"cm": cm, "rx": rx, "ry": ry, "model_rp": rp, "picture": Lp}
+
+    def field(q):
+        out = np.zeros((len(q), 2))
+        el = np.sqrt(((q[:, 0] - cm[0]) / rx) ** 2 + ((q[:, 1] - cm[1]) / ry) ** 2)
+        near = el < 2.3
+        if near.any():
+            fade = np.clip((2.3 - el[near]) / 0.6, 0, 1)
+            out[near] = rbf(q[near]) * fade[:, None]
+        return out
+    field.info = field_info
+    json.dump({"render_px": rp.tolist(), "now_px": cur.tolist(), "picture_px": Lp.tolist(), "target_px": tgt.tolist(),
+               "face_width_px": fw, "moves": moves, "used": use.tolist()},
+              open(os.path.join(a.dir, "face_parts.json"), "w"))
+    rep = ", ".join(f"{k} {v_:.1%}" for k, v_ in moves.items())
+    return field, f"face laid on in parts (moves as shares of the face's width): {rep}"
+
+
+def skin_odds(lab, skin, other):
+    """P(skin) of each Lab colour between two Gaussians fitted to samples of skin and of everything else, and how far
+    apart the two are (Bhattacharyya distance); None when either sample is too small."""
+    if len(skin) < 50 or len(other) < 50:
+        return None, 0.0
+    fits = []
+    for smp in (skin, other):
+        mu = smp.mean(0)
+        cov = np.cov((smp - mu).T) + np.eye(3) * 4.0
+        fits.append((mu, cov))
+    (m1, c1), (m2, c2) = fits
+    cm_ = (c1 + c2) / 2
+    dm = m1 - m2
+    bhat = float(dm @ np.linalg.solve(cm_, dm) / 8 + 0.5 * np.log(np.linalg.det(cm_) / np.sqrt(np.linalg.det(c1) * np.linalg.det(c2))))
+
+    def logp(x, mu, cov):
+        d = x - mu
+        return -0.5 * np.einsum("ij,ij->i", d @ np.linalg.inv(cov), d) - 0.5 * np.log(np.linalg.det(cov))
+    l1, l2 = logp(lab, m1, c1), logp(lab, m2, c2)
+    return 1.0 / (1.0 + np.exp(np.clip(l2 - l1, -50, 50))), bhat
+
+
+def hairline_mismatch(info, rp, ip, facing, vis, el_, img, imask, base_cols, W_, H_):
+    """Where the picture and the model disagree, round the face, on what is skin (E140). The parts put the picture's
+    features on the model's, but a fringe or a hairline is not a part: Juno's picture sweeps its fringe across her
+    forehead where her model's forehead is bare, and painted hair on skin and skin on her hair. Skin and everything else
+    are told apart by colour, on the picture (the cheeks against what lies above the brows) and on the generator's own
+    paint, which lies where its geometry is (the same places by the model's points). Outside the face's outline - the
+    jaw and brows' points, inside which the features are the parts' - a texel the picture calls skin and the model
+    calls hair takes nothing from the picture. Returns (weight to take off, report) or (None, why)."""
+    Lm, Lp = info["model_rp"], info["picture"]
+    sel = (el_ < 1.8) & (vis > 0.5) & (facing > 0.1)
+    if sel.sum() < 1000:
+        return None, "too few face texels"
+    # outside the face's outline (the jaw, then the brows back), in render pixels
+    hull = np.concatenate([Lm[0:17], Lm[26:16:-1]]).astype(np.float32)
+    R_ = int(max(W_, H_, rp[sel].max() + 2))
+    canvas = np.zeros((R_, R_), np.uint8)
+    cv2.fillPoly(canvas, [np.round(hull * 4).astype(np.int32)], 1, shift=2)
+    rr = np.clip(np.round(rp[sel]).astype(int), 0, R_ - 1)
+    zone = canvas[rr[:, 1], rr[:, 0]] == 0
+    # samples: the cheeks and the bridge of the nose for skin; above the brows, within the head's width, for the rest
+    def samples(pts, L, cols):
+        fw = float(np.ptp(L[0:17, 0]))
+        fh = float(L[8, 1] - L[17:27, 1].min())
+        cheeks = np.stack([(L[2] + L[31]) / 2, (L[14] + L[35]) / 2, (L[27] + L[28]) / 2])
+        d = np.min(np.linalg.norm(pts[:, None, :] - cheeks[None], axis=2), 1)
+        skin = d < 0.07 * fw
+        brow_y = float(L[17:27, 1].min())
+        other = (pts[:, 1] < brow_y - 0.45 * fh) & (pts[:, 0] > L[0, 0] - 0.1 * fw) & (pts[:, 0] < L[16, 0] + 0.1 * fw)
+        return cols[skin], cols[other]
+    # the picture, pixel by pixel
+    Hh, Ww = img.shape[:2]
+    ys, xs = np.nonzero(imask)
+    pts = np.stack([xs, ys], 1).astype(np.float32)
+    lab_img = srgb_to_lab(img[ys, xs].astype(np.float32) / 255.0)
+    s_p, o_p = samples(pts, Lp, lab_img)
+    ii_ = np.clip(np.round(ip[sel]).astype(int), [0, 0], [Ww - 1, Hh - 1])
+    lab_at = srgb_to_lab(img[ii_[:, 1], ii_[:, 0]].astype(np.float32) / 255.0)
+    p_pic, sep_p = skin_odds(lab_at, s_p, o_p)
+    # the model's own paint, texel by texel
+    lab_base = srgb_to_lab(base_cols[sel])
+    good = facing[sel] > 0.3
+    s_m, o_m = samples(rp[sel][good], Lm, lab_base[good])
+    p_mod, sep_m = skin_odds(lab_base, s_m, o_m)
+    if p_pic is None or p_mod is None:
+        return None, "no skin or no hair to sample"
+    if min(sep_p, sep_m) < 1.0:
+        return None, f"skin and hair too alike in colour to tell apart (separation {sep_p:.1f} picture, {sep_m:.1f} model)"
+    # one way only: the picture's skin on the model's hair is the fault (a pale band along a hairline); the picture's
+    # hair over skin the model left bare reads as hair falling there, and dropping it showed the generator's own skin
+    # in orange patches at Mara's temples
+    mism = np.clip(((p_pic - p_mod) - 0.4) / 0.4, 0, 1) * zone
+    out = np.zeros(len(rp), np.float32)
+    out[np.nonzero(sel)[0]] = mism
+    return out, (f"hairline: {int((out > 0.5).sum()):,} texels of the model's hair round the face that the picture "
+                 f"would paint as skin left to the model's own colour (separation {sep_p:.1f} picture, {sep_m:.1f} model)")
+
+
 # Colour groups for matching. Part labels were the first idea, but the parser's hair label is
 # unreliable (2% of Juno's vertices, most of her bob filed as clothing), so texels are grouped by
 # their own colour instead: k-means in Lab on the bake, so black hair, red jacket, grey trousers
@@ -271,6 +459,12 @@ if a.hands and os.path.exists(a.hands):
         hand[hi_[body_]] = False
         print(f"[texproj] hands: {int(body_.sum()):,} texels by a wrist that lie on the body itself are "
               f"not the modelled hand's", flush=True)
+front_only = None
+if a.front_only and os.path.exists(a.front_only):
+    hr = json.load(open(a.front_only))
+    front_only = ((P[:, 2] > hr["neck_z"] - hr["band"])
+                  & (np.linalg.norm(P[:, :2] - np.array(hr["axis"]), axis=1) < 1.3 * hr["radius"]))
+    print(f"[texproj] head made on its own: {int(front_only.sum()):,} texels painted by the front view alone", flush=True)
 vmeta = {v["tag"]: v for v in meta["views"]}
 # The generated hands, as cut_hands.py removed them: every source image still shows them, and where the
 # modelled hand does not stand in the same place the mesh behind the old one - a thigh, a bag - read the
@@ -290,6 +484,8 @@ report = []
 face_skin = None
 face_img, face_box = None, None
 face_unaligned = False
+face_front = None
+face_keep = None
 if a.face_detail and a.face_box and os.path.exists(a.face_detail) and os.path.exists(a.face_box):
     fb = json.load(open(a.face_box))
     face_box = [float(x) for x in fb["box"]]
@@ -346,7 +542,11 @@ for spec in a.view:
     mag = np.linalg.norm(flow, axis=2, keepdims=True)
     lim = 0.015 * H_
     flow = flow * np.minimum(1.0, lim / np.maximum(mag, 1e-6))
-    if tag in ("000", "face") and not a.no_face_flow:
+    parts_field = None
+    if tag == "000" and a.face_marks and a.face_cam and os.path.exists(a.face_marks) and os.path.exists(a.face_cam):
+        parts_field, why = face_parts_field(v, s, tx, ty, flow, W_, H_)
+        report.append(why if parts_field is not None else f"face not laid on in parts: {why}")
+    if tag in ("000", "face") and not a.no_face_flow and parts_field is None:
         ff, fw = face_flow(warped, img, wmask, imask)
         # A face flow is a small correction or it is wrong. Where the generator drew the face much as
         # the reference did it moves features 1-2% of the figure's height (juno 1.0%, mara 1.2%,
@@ -408,6 +608,8 @@ for spec in a.view:
     ip = rp * s + np.array([tx, ty])
     ii = np.clip(np.round(ip).astype(int), [0, 0], [W_ - 1, H_ - 1])
     ip = ip + flow[ii[:, 1], ii[:, 0]]
+    if parts_field is not None:
+        ip = ip + parts_field(rp)
     f, _, _ = camera(v)
     facing = -(N @ f)
     w = np.clip((facing - 0.2) / 0.8, 0, 1) ** 1.5
@@ -415,6 +617,26 @@ for spec in a.view:
     ii = np.clip(np.round(ip).astype(int), [0, 0], [W_ - 1, H_ - 1])
     w *= np.clip(edge[ii[:, 1], ii[:, 0]] / 6.0, 0, 1) * vis * imask[ii[:, 1], ii[:, 0]]
     w[hand] = 0
+    if front_only is not None and tag != "000":
+        w[front_only] = 0
+    if parts_field is not None:
+        # The face is the picture's alone. The side and back views are generated pictures of the character, their
+        # faces drawn again and never quite where the picture's is: blended in where the front view sees the face
+        # at a slant they put dark patches on Mara's cheek and skin onto her hair (E140). Every texel the front
+        # view sees inside the face's ellipse, the ears and forehead included, is left to it.
+        fi = parts_field.info
+        el_ = np.sqrt(((rp[:, 0] - fi["cm"][0]) / fi["rx"]) ** 2 + ((rp[:, 1] - fi["cm"][1]) / fi["ry"]) ** 2)
+        face_front = (el_ < 1.45) & (facing > 0.1) & (vis > 0.5)
+        # how much of the face is the picture's own, for skin_tone.py --keep: all of it inside, fading past the ellipse
+        face_keep = np.clip((1.6 - el_) / 0.3, 0, 1) * (facing > 0.1) * np.clip(vis, 0, 1)
+        if a.hairline:
+            mism, why = hairline_mismatch(fi, rp, ip, facing, vis, el_, img, imask, base_t, W_, H_)
+            if mism is not None:
+                w *= 1 - mism
+            report.append(why)
+        report.append(f"face: {int(face_front.sum()):,} texels the front view sees inside the face left to it alone")
+    if face_front is not None and tag != "000":
+        w[face_front] = 0
     if tag == "000" and face_box is not None:
         # the face's own texels, for the hands' skin tone: the middle of the face region, facing the camera
         fx0, fy0, fx1, fy1 = face_box
@@ -594,9 +816,18 @@ if hand.any():
     else:
         tone = np.array([0.80, 0.63, 0.53])
         src_n = 0
-    # a little of the bake's own light and dark variation, so the hand is not a flat plastic
-    lum = srgb_to_lab(base_t[hand])[:, 0]
-    var = np.clip((lum - np.median(lum)) / 60.0, -0.12, 0.12)[:, None]
+    # a little shading in the creases, so the hand is not flat plastic: from the ambient occlusion baked on the
+    # solid the modelled hands are part of. The base colour bake (used before) is the generated mesh's, with the
+    # old hand or nothing where the modelled one stands, so its light and dark painted patches - a pale blotch
+    # across the back of Cadet's hand (E138)
+    if a.ao and os.path.exists(a.ao):
+        ao_img = Image.open(a.ao).convert("L")
+        if ao_img.size != (R, R):
+            ao_img = ao_img.resize((R, R), Image.BILINEAR)
+        ao_t = (np.asarray(ao_img, np.float32) / 255.0).reshape(-1)[ti][hand]
+        var = np.clip((ao_t - np.median(ao_t)) * 0.6, -0.12, 0.03)[:, None]
+    else:
+        var = 0.0
     out_t[hand] = np.clip(tone * (1.0 + var), 0, 1)
     print(f"[texproj] modelled hands: {int(hand.sum()):,} texels in the body's skin tone "
           f"{tuple(int(c * 255) for c in tone)} (from {src_n:,} skin texels"
@@ -617,5 +848,14 @@ for _ in range(8):
         grown[..., c] = np.where(m, s_ / np.maximum(n_, 1e-6), grown[..., c])
     cov_img |= m
 Image.fromarray((np.clip(grown, 0, 1) * 255 + 0.5).astype(np.uint8)).save(a.out)
+keep_path = os.path.join(a.dir, "face_keep.png")
+if face_keep is not None:
+    # the face as the picture painted it: skin_tone.py leaves it (its colour bands cut the picture's soft cheek
+    # shadow into patches - some texels lifted, their neighbours not; E140)
+    km = np.zeros(R * R, np.float32)
+    km[ti] = face_keep
+    Image.fromarray((km.reshape(R, R) * 255 + 0.5).astype(np.uint8)).save(keep_path)
+elif os.path.exists(keep_path):
+    os.remove(keep_path)                 # an earlier run's face must not be kept on this one
 seen_any = (wsum > 0.5).mean()
 print(f"[texproj] {seen_any:.1%} of surface texels now come mainly from a source image -> {a.out}", flush=True)

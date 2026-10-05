@@ -1,0 +1,399 @@
+{
+ "_about": "v0.12's rebuild of the roster on the new defaults (TRELLIS.2 at 1M faces, the generated surface filtered, debris dropped, AO-shaded hands, one skin tone, the albedo range, the modelled pose as the rest), audited by tools/model_quality.py (E132) on the shipped low-poly and albedo before (the v0.11 build) and after; medians over the characters done. Professional baselines: Blender Studio's Human Base Meshes (CC0) and Ellie from Sprite Fright (CC-BY), shape only. E137: Cadet with the T baked into the rest pose and with the modelled pose kept, aberration audit over every clip.",
+ "summary": {
+  "n": 9,
+  "noise_deg_before": 3.07,
+  "noise_deg_after": 2.92,
+  "lump_mm_before": 1.05,
+  "lump_mm_after": 0.94,
+  "tilt_deg_before": 15.66,
+  "tilt_deg_after": 14.85,
+  "symmetry_mm_before": 4.92,
+  "symmetry_mm_after": 10.29,
+  "skinny_pct_before": 5.19,
+  "skinny_pct_after": 4.34,
+  "open_per10k_before": 11.01,
+  "open_per10k_after": 5.84,
+  "pieces_before": 13,
+  "pieces_after": 1,
+  "front_back_de_before": 2.23,
+  "front_back_de_after": 1.79,
+  "seam_de_before": 1.1,
+  "seam_de_after": 1.24,
+  "light_r2_before": 0.11,
+  "light_r2_after": 0.13,
+  "pieces_before_total": 250,
+  "pieces_after_total": 123,
+  "noise_better_n": 6,
+  "lump_better_n": 8,
+  "tilt_better_n": 8,
+  "pro_noise_deg_min": 0.74,
+  "pro_noise_deg_max": 0.83,
+  "pro_lump_mm_min": 0.2,
+  "pro_lump_mm_max": 0.27,
+  "pro_symmetry_mm_min": 1.35,
+  "pro_symmetry_mm_max": 1.54
+ },
+ "characters": {
+  "aoi": {
+   "before": {
+    "noise_deg": 3.31,
+    "lump_mm": 0.791,
+    "tilt_deg": 18.58,
+    "symmetry_mm": 3.57,
+    "skinny_pct": 7.57,
+    "open_per10k": 20.34,
+    "pieces": 13,
+    "cuts_per10k": 125.39,
+    "front_back_de": 2.254,
+    "seam_de": 1.1,
+    "light_r2": 0.105,
+    "dark_pct": 6.51,
+    "bright_pct": 0.01
+   },
+   "after": {
+    "noise_deg": 3.43,
+    "lump_mm": 0.824,
+    "tilt_deg": 16.43,
+    "symmetry_mm": 10.29,
+    "skinny_pct": 6.1,
+    "open_per10k": 18.89,
+    "pieces": 1,
+    "cuts_per10k": 106.35,
+    "front_back_de": 1.502,
+    "seam_de": 1.27,
+    "light_r2": 0.086,
+    "dark_pct": 5.75,
+    "bright_pct": 0.02
+   }
+  },
+  "boyscout": {
+   "before": {
+    "noise_deg": 3.14,
+    "lump_mm": 0.557,
+    "tilt_deg": 14.77,
+    "symmetry_mm": 26.15,
+    "skinny_pct": 6.75,
+    "open_per10k": 5.0,
+    "pieces": 3,
+    "cuts_per10k": 14.34,
+    "front_back_de": 2.231,
+    "seam_de": 0.83,
+    "light_r2": 0.189,
+    "dark_pct": 0.02,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 3.25,
+    "lump_mm": 0.513,
+    "tilt_deg": 11.41,
+    "symmetry_mm": 25.75,
+    "skinny_pct": 5.22,
+    "open_per10k": 5.84,
+    "pieces": 1,
+    "cuts_per10k": 5.0,
+    "front_back_de": 1.793,
+    "seam_de": 0.91,
+    "light_r2": 0.223,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0
+   }
+  },
+  "cadet": {
+   "before": {
+    "noise_deg": 1.93,
+    "lump_mm": 1.265,
+    "tilt_deg": 20.71,
+    "symmetry_mm": 2.83,
+    "skinny_pct": 4.08,
+    "open_per10k": 41.05,
+    "pieces": 78,
+    "cuts_per10k": 16.52,
+    "front_back_de": 4.152,
+    "seam_de": 1.15,
+    "light_r2": 0.165,
+    "dark_pct": 1.53,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 1.92,
+    "lump_mm": 1.215,
+    "tilt_deg": 20.36,
+    "symmetry_mm": 24.4,
+    "skinny_pct": 3.98,
+    "open_per10k": 51.92,
+    "pieces": 112,
+    "cuts_per10k": 24.88,
+    "front_back_de": 3.584,
+    "seam_de": 1.36,
+    "light_r2": 0.135,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0
+   }
+  },
+  "gray": {
+   "before": {
+    "noise_deg": 2.08,
+    "lump_mm": 0.913,
+    "tilt_deg": 11.94,
+    "symmetry_mm": 6.16,
+    "skinny_pct": 3.84,
+    "open_per10k": 11.01,
+    "pieces": 13,
+    "cuts_per10k": 35.18,
+    "front_back_de": 0.72,
+    "seam_de": 0.65,
+    "light_r2": 0.094,
+    "dark_pct": 32.07,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 1.88,
+    "lump_mm": 0.816,
+    "tilt_deg": 10.5,
+    "symmetry_mm": 11.29,
+    "skinny_pct": 3.63,
+    "open_per10k": 0.33,
+    "pieces": 3,
+    "cuts_per10k": 143.34,
+    "front_back_de": 1.123,
+    "seam_de": 0.59,
+    "light_r2": 0.134,
+    "dark_pct": 0.04,
+    "bright_pct": 0.0
+   }
+  },
+  "kaito": {
+   "before": {
+    "noise_deg": 3.02,
+    "lump_mm": 0.967,
+    "tilt_deg": 14.3,
+    "symmetry_mm": 6.7,
+    "skinny_pct": 5.19,
+    "open_per10k": 3.83,
+    "pieces": 10,
+    "cuts_per10k": 45.51,
+    "front_back_de": 1.079,
+    "seam_de": 0.58,
+    "light_r2": 0.111,
+    "dark_pct": 17.06,
+    "bright_pct": 1.25
+   },
+   "after": {
+    "noise_deg": 2.92,
+    "lump_mm": 0.837,
+    "tilt_deg": 15.08,
+    "symmetry_mm": 3.0,
+    "skinny_pct": 5.1,
+    "open_per10k": 5.54,
+    "pieces": 1,
+    "cuts_per10k": 15.45,
+    "front_back_de": 1.361,
+    "seam_de": 0.66,
+    "light_r2": 0.1,
+    "dark_pct": 18.04,
+    "bright_pct": 0.0
+   }
+  },
+  "knight": {
+   "before": {
+    "noise_deg": 3.55,
+    "lump_mm": 1.21,
+    "tilt_deg": 21.35,
+    "symmetry_mm": 19.15,
+    "skinny_pct": 10.39,
+    "open_per10k": 40.03,
+    "pieces": 27,
+    "cuts_per10k": 218.51,
+    "front_back_de": 1.479,
+    "seam_de": 1.53,
+    "light_r2": 0.075,
+    "dark_pct": 8.66,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 3.27,
+    "lump_mm": 1.131,
+    "tilt_deg": 20.19,
+    "symmetry_mm": 7.41,
+    "skinny_pct": 7.01,
+    "open_per10k": 22.05,
+    "pieces": 1,
+    "cuts_per10k": 125.79,
+    "front_back_de": 1.783,
+    "seam_de": 1.41,
+    "light_r2": 0.085,
+    "dark_pct": 0.03,
+    "bright_pct": 0.0
+   }
+  },
+  "knight2": {
+   "before": {
+    "noise_deg": 3.07,
+    "lump_mm": 1.72,
+    "tilt_deg": 25.09,
+    "symmetry_mm": 3.11,
+    "skinny_pct": 9.75,
+    "open_per10k": 60.77,
+    "pieces": 95,
+    "cuts_per10k": 90.15,
+    "front_back_de": 2.226,
+    "seam_de": 1.36,
+    "light_r2": 0.104,
+    "dark_pct": 4.51,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 2.3,
+    "lump_mm": 1.265,
+    "tilt_deg": 14.85,
+    "symmetry_mm": 2.28,
+    "skinny_pct": 4.11,
+    "open_per10k": 4.0,
+    "pieces": 1,
+    "cuts_per10k": 29.69,
+    "front_back_de": 3.302,
+    "seam_de": 1.24,
+    "light_r2": 0.219,
+    "dark_pct": 0.02,
+    "bright_pct": 0.0
+   }
+  },
+  "mara": {
+   "before": {
+    "noise_deg": 3.45,
+    "lump_mm": 1.053,
+    "tilt_deg": 15.66,
+    "symmetry_mm": 4.92,
+    "skinny_pct": 4.86,
+    "open_per10k": 8.17,
+    "pieces": 7,
+    "cuts_per10k": 79.34,
+    "front_back_de": 3.333,
+    "seam_de": 1.14,
+    "light_r2": 0.16,
+    "dark_pct": 4.23,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 3.12,
+    "lump_mm": 0.936,
+    "tilt_deg": 13.21,
+    "symmetry_mm": 36.29,
+    "skinny_pct": 4.34,
+    "open_per10k": 8.51,
+    "pieces": 2,
+    "cuts_per10k": 42.87,
+    "front_back_de": 1.984,
+    "seam_de": 1.27,
+    "light_r2": 0.121,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0
+   }
+  },
+  "pip": {
+   "before": {
+    "noise_deg": 2.33,
+    "lump_mm": 1.048,
+    "tilt_deg": 15.39,
+    "symmetry_mm": 2.32,
+    "skinny_pct": 4.53,
+    "open_per10k": 5.0,
+    "pieces": 4,
+    "cuts_per10k": 8.34,
+    "front_back_de": 5.691,
+    "seam_de": 0.86,
+    "light_r2": 0.158,
+    "dark_pct": 0.31,
+    "bright_pct": 0.0
+   },
+   "after": {
+    "noise_deg": 2.54,
+    "lump_mm": 1.01,
+    "tilt_deg": 14.76,
+    "symmetry_mm": 1.95,
+    "skinny_pct": 4.22,
+    "open_per10k": 5.01,
+    "pieces": 1,
+    "cuts_per10k": 20.38,
+    "front_back_de": 3.295,
+    "seam_de": 1.08,
+    "light_r2": 0.245,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0
+   }
+  }
+ },
+ "baselines": {
+  "ellie": {
+   "noise_deg": 2.98,
+   "lump_mm": 1.731,
+   "symmetry_mm": 3.23,
+   "skinny_pct": 10.4,
+   "open_per10k": 245.6,
+   "pieces": 108,
+   "cuts_per10k": 1505.31
+  },
+  "female_realistic": {
+   "noise_deg": 0.8,
+   "lump_mm": 0.202,
+   "symmetry_mm": 1.54,
+   "skinny_pct": 0.4,
+   "open_per10k": 0.0,
+   "pieces": 1,
+   "cuts_per10k": 40.74
+  },
+  "female_stylized": {
+   "noise_deg": 0.74,
+   "lump_mm": 0.203,
+   "symmetry_mm": 1.35,
+   "skinny_pct": 0.21,
+   "open_per10k": 0.0,
+   "pieces": 1,
+   "cuts_per10k": 148.0
+  },
+  "male_realistic": {
+   "noise_deg": 0.83,
+   "lump_mm": 0.242,
+   "symmetry_mm": 1.51,
+   "skinny_pct": 0.27,
+   "open_per10k": 0.0,
+   "pieces": 1,
+   "cuts_per10k": 20.7
+  },
+  "male_stylized": {
+   "noise_deg": 0.77,
+   "lump_mm": 0.273,
+   "symmetry_mm": 1.43,
+   "skinny_pct": 0.09,
+   "open_per10k": 0.0,
+   "pieces": 1,
+   "cuts_per10k": 161.6
+  }
+ },
+ "e137_cadet": {
+  "T": {
+   "crushed_pct": 3.44,
+   "stretched_pct": 1.666,
+   "sheared_pct": 3.031,
+   "intersecting_pairs_mean": 1092.621,
+   "deep_frames_pct": 40.071,
+   "penetration_max_cm": 4.407
+  },
+  "A": {
+   "crushed_pct": 1.446,
+   "stretched_pct": 2.113,
+   "sheared_pct": 2.166,
+   "intersecting_pairs_mean": 501.788,
+   "deep_frames_pct": 27.958,
+   "penetration_max_cm": 4.293
+  }
+ },
+ "pending": [
+  "bo",
+  "juno3",
+  "rowan",
+  "vex",
+  "wren"
+ ]
+}

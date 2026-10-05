@@ -1,0 +1,163 @@
+{
+ "_about": "E133 alone, 2026-10-03: each v0.11 build's texture re-projected with the front from the reference delit by Hunyuan3D's delighting model (applied as a smoothed lightness ratio), the side and back from the default sources, then the albedo range; 'delit' keeps the model's overall level, 'level' divides the ratio by its median inside the figure (the picture's level kept). Measures from tools/model_quality.py (E132): front_back_de (CIEDE2000, same garment), light_r2, seam_de p50. Renders: charforge_notes/polish/e133/.",
+ "characters": {
+  "cadet": {
+   "shipped": {
+    "light_r2": 0.139,
+    "front_back_de": 3.271,
+    "back_sharp": 0.945,
+    "dark_pct": 1.53,
+    "bright_pct": 0.0,
+    "seam_de": 1.15
+   },
+   "delit": {
+    "light_r2": 0.221,
+    "front_back_de": 2.811,
+    "back_sharp": 0.937,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.99
+   },
+   "level": {
+    "light_r2": 0.201,
+    "front_back_de": 3.265,
+    "back_sharp": 0.883,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 1.05
+   }
+  },
+  "knight2": {
+   "shipped": {
+    "light_r2": 0.093,
+    "front_back_de": 2.353,
+    "back_sharp": 1.015,
+    "dark_pct": 4.51,
+    "bright_pct": 0.0,
+    "seam_de": 1.36
+   },
+   "delit": {
+    "light_r2": 0.107,
+    "front_back_de": 1.76,
+    "back_sharp": 1.122,
+    "dark_pct": 0.02,
+    "bright_pct": 0.0,
+    "seam_de": 1.08
+   },
+   "level": {
+    "light_r2": 0.111,
+    "front_back_de": 1.789,
+    "back_sharp": 0.917,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 1.2
+   }
+  },
+  "boyscout": {
+   "shipped": {
+    "light_r2": 0.255,
+    "front_back_de": 2.288,
+    "back_sharp": 0.981,
+    "dark_pct": 0.02,
+    "bright_pct": 0.0,
+    "seam_de": 0.83
+   },
+   "delit": {
+    "light_r2": 0.242,
+    "front_back_de": 2.11,
+    "back_sharp": 1.135,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.77
+   }
+  },
+  "mara": {
+   "shipped": {
+    "light_r2": 0.132,
+    "front_back_de": 2.979,
+    "back_sharp": 0.84,
+    "dark_pct": 4.23,
+    "bright_pct": 0.0,
+    "seam_de": 1.14
+   },
+   "delit": {
+    "light_r2": 0.094,
+    "front_back_de": 2.011,
+    "back_sharp": 0.691,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 1.1
+   }
+  },
+  "juno3": {
+   "shipped": {
+    "light_r2": 0.142,
+    "front_back_de": 1.565,
+    "back_sharp": 0.719,
+    "dark_pct": 9.14,
+    "bright_pct": 0.0,
+    "seam_de": 0.9
+   },
+   "delit": {
+    "light_r2": 0.097,
+    "front_back_de": 0.836,
+    "back_sharp": 0.789,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.72
+   },
+   "level": {
+    "light_r2": 0.107,
+    "front_back_de": 0.829,
+    "back_sharp": 0.744,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.76
+   }
+  },
+  "vex": {
+   "shipped": {
+    "light_r2": 0.078,
+    "front_back_de": 2.244,
+    "back_sharp": 1.05,
+    "dark_pct": 19.3,
+    "bright_pct": 0.0,
+    "seam_de": 1.18
+   },
+   "delit": {
+    "light_r2": 0.068,
+    "front_back_de": 2.315,
+    "back_sharp": 0.964,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 1.08
+   }
+  },
+  "bo": {
+   "shipped": {
+    "light_r2": 0.114,
+    "front_back_de": 2.235,
+    "back_sharp": 0.927,
+    "dark_pct": 0.06,
+    "bright_pct": 11.74,
+    "seam_de": 0.82
+   },
+   "delit": {
+    "light_r2": 0.096,
+    "front_back_de": 2.245,
+    "back_sharp": 1.064,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.78
+   },
+   "level": {
+    "light_r2": 0.131,
+    "front_back_de": 2.65,
+    "back_sharp": 1.054,
+    "dark_pct": 0.0,
+    "bright_pct": 0.0,
+    "seam_de": 0.79
+   }
+  }
+ }
+}

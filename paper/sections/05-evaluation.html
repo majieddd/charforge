@@ -183,6 +183,87 @@
   hair, which is a job for the hair's own spring chains [E125], and knees through a long coat's hem, which needs the hem
   to follow the thighs.</p>
 
+<h3 id="sec-eval-quality">Against professionally made models</h3>
+<p>The measures above are of motion and deformation. Whether a model looks professionally made is measured by a
+  model-quality audit run the same way on every character and on professionally made meshes [E132]: Blender Studio's
+  Human Base Meshes [@basemeshes] and Ellie from the open film Sprite Fright [@elliepose]. Shape, on the shipped low-poly
+  at the character's height: <i>noise</i>, how far each surface point's normal turns from the mean normal within 1 cm;
+  <i>lumps</i>, how far the surface within 4 cm departs from the quadric that fits it best, the worst quarter left out so
+  a designed crease does not count; <i>triangle tilt</i>, how far each triangle leans against the smooth normals at its
+  corners - what a normal map has to correct; <i>asymmetry</i>, the mirrored surface's distance to the surface about the
+  best mirror plane; open edges and loose pieces. Texture: lighting left in the albedo, the same garment's colour where
+  it faces front and back (CIEDE2000), the colour step across UV seams, and the PBR range. The professional bodies score
+  noise {{q.summary.pro_noise_deg_min|2}}-{{q.summary.pro_noise_deg_max|2}}°, lumps {{q.summary.pro_lump_mm_min|2}}-{{q.summary.pro_lump_mm_max|2}} mm and
+  asymmetry {{q.summary.pro_symmetry_mm_min|1}}-{{q.summary.pro_symmetry_mm_max|1}} mm, with no open edges and one piece. Ellie, a layered
+  production character, scores noise {{q.baselines.ellie.noise_deg|2}}° and lumps {{q.baselines.ellie.lump_mm|2}} mm: folds and hair are designed
+  detail, and the audit cannot yet tell them from noise, so a garment needs comparing with garments.</p>
+<p>[#tab-quality] scores each character's shipped model as version 0.11 built it and as rebuilt on this version's
+  defaults - the finer surface ([#sec-m-generation]), the loose shards dropped, the hands and the skin, the albedo range
+  ([#sec-m-texture]). Over the {{q.summary.n}} characters, the median noise went from {{q.summary.noise_deg_before|2}}° to
+  {{q.summary.noise_deg_after|2}}°, lumps from {{q.summary.lump_mm_before|2}} to {{q.summary.lump_mm_after|2}} mm, triangle tilt from
+  {{q.summary.tilt_deg_before|1}}° to {{q.summary.tilt_deg_after|1}}°, open edges from {{q.summary.open_per10k_before|1}} to
+  {{q.summary.open_per10k_after|1}} per 10,000 triangles and loose pieces from {{q.summary.pieces_before}} to {{q.summary.pieces_after}}; the
+  same garment's colour front and back from dE {{q.summary.front_back_de_before|2}} to {{q.summary.front_back_de_after|2}}. The low-poly's numbers
+  move less than the renders do - the solid and the decimation set it - and the gap to the professional meshes remains
+  two to four times on noise and lumps: the visible gain of the finer surface is in the normal map ([#fig-rake]).</p>
+<figure id="tab-quality">
+  <div class="tscroll"><!--TABLE:quality--></div>
+  <figcaption>The model-quality audit [E132] of every character's shipped model, version 0.11 → 0.12 (better in green),
+    and the professional meshes below. Shape at the character's height; texture where it applies.</figcaption>
+</figure>
+<p><b>Close-ups.</b> A whole model's averages moved little between builds that look very different close up, so every
+  character was rendered in eight lit close-ups - face, three-quarter, a hand from above and both hanging, a shoulder,
+  the upper back, a foot - and each fault listed [E138] ([#fig-inventory]). On the fourteen version 0.11 builds: faces
+  blotched where the picture is projected onto a face shaped unlike it (nine), shoulders and armpits torn by the T bake
+  (five), two-toned hands (most), rings at bare wrists, a skin-coloured bell at Pip's wrists where the hand was cut beyond
+  his flared cuff, dark streaks in hair, and floating debris (all). Hands, wrists, debris and shoulders are mended above,
+  faces taken part by part below ([#sec-eval-faces]); hair and Pip's wrists are open ([#sec-limits]).</p>
+<figure id="fig-inventory">
+  <img src="media/q_inventory.webp" width="1524" height="334" alt="Five close-ups of version 0.11 builds: Mara's and the boy scout's faces at three-quarter view with dark patches where the picture's shading lands on the cheeks; Bo's back with dark tears under the arms; Pip's wrist with a skin-coloured bell between the cuff and the hand; Knight2's back with dark gaps between the plates">
+  <figcaption>What close-ups of version 0.11 showed: blotched faces (Mara, the boy scout), torn armpits (Bo), a bell at the
+    wrist (Pip), gaps between plates (Knight2).</figcaption>
+</figure>
+
+<h3 id="sec-eval-faces">Faces, on a benchmark set</h3>
+<p>Faces are judged on a benchmark set rather than the whole roster: two characters for each style and gender -
+  realistic Mara, Juno, Rowan and Knight, stylised Vex, Rivet, Pip and Cadet, anime Aoi, Hana, Kaito and Ren - chosen to
+  differ (hair over the face, a helmet collar, a drawn smile, painted eyes) so a change that helps one kind and hurts
+  another shows [E140]. Each face is rendered from the front in soft light and scored against its picture two ways.
+  Landmark error: DWPose's 68 face points [@dwpose] on the render are fitted onto the picture's by one similarity
+  [@umeyama] (the render is framed differently) and the mean distance left, as a share of the eye spacing, is the NME of
+  face alignment. It is not enough: Mara's smeared, squinting version 0.12 face had every point within 3% of the
+  picture's, because a smeared eye is still where an eye should be. Likeness: the render is laid onto the picture by
+  those points and the whole face, the eyes, the nose and the mouth are compared by the cosine of their DINOv3 features
+  [@dinov3], robust to the render's light but not to a smeared lid. Over the {{f.summary.like_eyes_paired_n}}
+  characters with a version 0.12 build to compare, the median likeness of the eyes went from
+  {{f.summary.like_eyes_before|2}} to {{f.summary.like_eyes_after_paired|2}} ({{f.summary.like_eyes_better_n}} better), of the whole
+  face from {{f.summary.like_face_before|2}} to {{f.summary.like_face_after_paired|2}} ({{f.summary.like_face_better_n}} better), of the mouth
+  from {{f.summary.like_mouth_before|2}} to {{f.summary.like_mouth_after_paired|2}} ({{f.summary.like_mouth_better_n}} better), and the landmark
+  error from {{f.summary.nme_before|pct1}} to {{f.summary.nme_after_paired|pct1}} ([#tab-faces], [#fig-faces-bench]). The gain is the
+  realistic faces': their eyes from {{f.summary.realistic_like_eyes_before|2}} to {{f.summary.realistic_like_eyes_after|2}} and whole faces
+  from {{f.summary.realistic_like_face_before|2}} to {{f.summary.realistic_like_face_after|2}}, where every part had been misplaced and the
+  eyes were pits. Stylised faces held ({{f.summary.stylized_like_face_before|2}} and {{f.summary.stylized_like_face_after|2}}) and so did
+  anime ({{f.summary.anime_like_face_before|2}} and {{f.summary.anime_like_face_after|2}}): drawn features were already roughly where the
+  generator sculpts them, two of the eight cannot be read on the model at all (Vex's fringe hides her eyes, Aoi's are
+  drawn too large), and the faces left wrong are wrong in shape - Vex's chin sunk in her collar, Ren's head longer than
+  his picture's. On the same characters
+  the rest of the model held: median surface noise {{f.summary.noise_deg_v012|2}}° in version 0.12 and
+  {{f.summary.noise_deg_v013|2}}° now, asymmetry {{f.summary.symmetry_mm_v012|1}} and {{f.summary.symmetry_mm_v013|1}} mm, faces crushed during
+  the clips {{f.summary.crushed_pct_v012|2}}% and {{f.summary.crushed_pct_v013|2}}%, foot slip {{f.summary.slip_v012|1}}% and
+  {{f.summary.slip_v013|1}}% of the ground speed; frames with a part deep in another moved by
+  {{f.summary.deep_change_min|1}} to +{{f.summary.deep_change_max|1}} points a character (a mean of {{f.summary.deep_change_mean|1}}): the
+  largest, Vex's, is her arms 2-5 cm into her torso in most clips, at the audit's 2 cm line, and her first rebuild of
+  this round had scored 45.9% against version 0.12's 46.4%.</p>
+<figure id="tab-faces">
+  <div class="tscroll"><!--TABLE:faces--></div>
+  <figcaption>The benchmark set's faces, version 0.12 → 0.13 (better in green): landmark error against the picture
+    (lower is better) and DINOv3 likeness of the whole face and its parts (higher is better).</figcaption>
+</figure>
+<figure id="fig-faces-bench">
+  <img src="media/q_faces_bench.webp" width="1802" height="672" alt="The twelve benchmark characters' faces from the front in soft light, each as version 0.12 built it and as rebuilt in version 0.13">
+  <figcaption>The benchmark set from the front, version 0.12 beside version 0.13.</figcaption>
+</figure>
+
 <h3 id="sec-eval-words">Moves from words</h3>
 <p>Cadet's {{um.generated_n}} generated moves - the five above and a bow made from the Studio's panel - were audited
   like his {{um.library_n}} captured ones [E129]. On the surface they fall inside

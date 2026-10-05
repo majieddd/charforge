@@ -28,6 +28,13 @@ order matters:
 Vertex weights are untouched throughout, so the skinning solved in the A-pose still holds; only
 the frame it is expressed in changes.
 
+--keep-rest (E137) stops after step 1: the T is recorded on the armature (the custom property
+cf_virtual_t, each bone's armature-space matrix in the T) and the rig is saved in the pose it was
+modelled in. retarget.py then uses the recorded T as the target's rest in the formula above, so the
+clips come out the same, while the mesh is never skinned up to a T and back down: raising the arm
+45 degrees by linear blending sheared Cadet's fused pauldron into shards and collapsed the armpit,
+and lowering it again by the same blending could not undo that.
+
 Run: blender -b -noaudio --python tpose.py -- --blend cloth_ready.blend --out tposed.blend
 """
 import argparse
@@ -44,6 +51,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--blend", required=True)
 ap.add_argument("--out", required=True)
 ap.add_argument("--json", default=None)
+ap.add_argument("--dqs", action="store_true", help="bake the T with dual quaternion skinning (E137)")
+ap.add_argument("--keep-rest", action="store_true",
+                help="keep the modelled pose as the rest pose and record the T for retargeting (E137)")
 a = ap.parse_args(argv)
 
 bpy.ops.wm.open_mainfile(filepath=a.blend)
@@ -150,6 +160,34 @@ for side, sgn in (("left", 1.0), ("right", -1.0)):
 
 after_pose = report("posed to T")
 
+if a.keep_rest:
+    # ---- the T recorded, not baked (E137) -------------------------------------------------------
+    worst = max(abs(v["deg_from_down"] - 90.0) for v in after_pose.values()) if after_pose else 999
+    if worst > 6.0:
+        raise SystemExit(f"[tpose] the posed T is still {worst:.1f}deg off - refusing to record it")
+    rig["cf_virtual_t"] = {pb.name: [x for row in pb.matrix for x in row] for pb in rig.pose.bones}
+    rig["cf_rest_pose"] = "A-pose (as modelled)"
+    for pb in rig.pose.bones:
+        pb.rotation_quaternion = (1, 0, 0, 0)
+        pb.location = (0, 0, 0)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.context.view_layer.update()
+    stale = [act for act in bpy.data.actions]
+    for act in stale:
+        act.use_fake_user = False
+        bpy.data.actions.remove(act)
+    if rig.animation_data:
+        rig.animation_data.action = None
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=a.out)
+    if a.json:
+        json.dump({"before": before, "virtual_t": after_pose, "max_deg_off_T": round(worst, 2), "rest": "kept"},
+                  open(a.json, "w"), indent=2)
+    print(f"[tpose] rest after: kept as modelled; the T recorded for retargeting ({worst:.1f} deg off at worst)",
+          flush=True)
+    print(f"[tpose] -> {a.out}", flush=True)
+    sys.exit(0)
+
 # ---- 2. bake the pose into every skinned mesh -------------------------------------------------
 bpy.ops.object.mode_set(mode="OBJECT")
 for ob in meshes:
@@ -162,6 +200,9 @@ for ob in meshes:
     bpy.ops.object.modifier_copy(modifier=arm_mod.name)
     copy_mod = next(m for m in ob.modifiers
                     if m.type == "ARMATURE" and m.name != arm_mod.name)
+    # raised to the T with dual quaternions, as the playground deforms: linear blending collapsed the shoulder
+    # and sheared Cadet's pauldron into shards on the way up (E137)
+    copy_mod.use_deform_preserve_volume = a.dqs
     bpy.ops.object.modifier_apply(modifier=copy_mod.name)
     if len(ob.data.vertices) != n_before:
         raise SystemExit(f"[tpose] {ob.name} vertex count changed during bake")

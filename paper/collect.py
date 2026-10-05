@@ -18,6 +18,8 @@ OUT = ROOT / "paper" / "data" / "metrics.json"
 MOVES = [("mara", "punch_combo", "Mara · punch combo"), ("mara", "roundhouse_kick", "Mara · roundhouse kick"),
          ("aoi", "spell_cast", "Aoi · spell cast"), ("pip", "victory_cheer", "Pip · victory cheer")]
 SUPERSEDED = {"juno"}                          # the first Juno, remade as juno3
+SUPERSEDED |= {"cadet_hq", "cadet_hq2"}        # E135's test builds of Cadet (1M faces; filtered surface)
+SUPERSEDED |= {d.name for d in (ROOT / "out").glob("e1[0-9][0-9]_*")}  # an experiment's variant build, e137_cadet
 GAITS = ["walk", "jog", "run", "sprint", "walk_back", "jog_back", "strafe_left", "strafe_right", "crouch_walk"]
 
 
@@ -261,6 +263,10 @@ def main():
         "multiview": multiview(),
         "unimate": load(ROOT / "research" / "data" / "e129_unimate.json"),
         "planting": load(ROOT / "research" / "data" / "e130_planting.json"),
+        "quality": load(ROOT / "research" / "data" / "v012_quality.json"),
+        "faces": load(ROOT / "research" / "data" / "v013_faces.json"),
+        "e134": load(ROOT / "research" / "data" / "e134_trial.json"),
+        "e133": load(ROOT / "research" / "data" / "e133_delight_only.json"),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     s = json.dumps(data, indent=1, ensure_ascii=False)

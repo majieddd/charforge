@@ -143,7 +143,7 @@ def values():
             else:
                 v[f"{prefix}.{k}"] = x
     flat("b", B)
-    for key, prefix in (("unimate", "um"), ("planting", "pl")):
+    for key, prefix in (("unimate", "um"), ("planting", "pl"), ("quality", "q"), ("faces", "f")):
         if M.get(key):
             flat(prefix, M[key])
     moves = M["moves"]
@@ -388,9 +388,68 @@ def t_controls():
             + "".join(rows) + "</tbody></table>")
 
 
+def t_quality():
+    """Every character's E132 audit before (the v0.11 build) and after v0.12's rebuild, against professional meshes."""
+    Q = M.get("quality") or {}
+    names = {c["id"]: c["name"] for c in M["roster"]}
+    rows = []
+
+    def pair(b, a, nd, lower=True):
+        if b is None or a is None:
+            return "<td class='num muted'>-</td>"
+        better = (a < b - 10 ** -nd) if lower else (a > b + 10 ** -nd)
+        return f"<td class='num'>{fmt(float(b), nd)} → <span class='{'good' if better else ''}'>{fmt(float(a), nd)}</span></td>"
+    for cid in sorted(Q.get("characters", {}), key=lambda c: names.get(c, c)):
+        b, a = Q["characters"][cid]["before"], Q["characters"][cid]["after"]
+        rows.append(f"<tr><td>{esc(names.get(cid, cid))}</td>{pair(b['noise_deg'], a['noise_deg'], 2)}{pair(b['lump_mm'], a['lump_mm'], 2)}"
+                    f"{pair(b['tilt_deg'], a['tilt_deg'], 1)}{pair(b['symmetry_mm'], a['symmetry_mm'], 1)}"
+                    f"{pair(b['open_per10k'], a['open_per10k'], 1)}{pair(b['pieces'], a['pieces'], 0)}"
+                    f"{pair(b['front_back_de'], a['front_back_de'], 2)}{pair(b['seam_de'], a['seam_de'], 2)}</tr>")
+    for k, b in sorted((Q.get("baselines") or {}).items()):
+        label = "Ellie (Sprite Fright)" if k == "ellie" else "Human Base Mesh, " + k.replace("_", " ")
+        cell = lambda x, nd: f"<td class='num muted'>{fmt(float(x), nd) if x is not None else '-'}</td>"   # noqa: E731
+        rows.append(f"<tr class='muted'><td><i>{esc(label)}</i></td>{cell(b.get('noise_deg'), 2)}{cell(b.get('lump_mm'), 2)}"
+                    f"{cell(b.get('tilt_deg'), 1)}{cell(b.get('symmetry_mm'), 1)}{cell(b.get('open_per10k'), 1)}"
+                    f"{cell(b.get('pieces'), 0)}<td class='num muted'>-</td><td class='num muted'>-</td></tr>")
+    return ("<table><thead><tr><th>character</th><th class='num'>noise, deg</th><th class='num'>lumps, mm</th>"
+            "<th class='num'>triangle tilt, deg</th><th class='num'>asymmetry, mm</th><th class='num'>open edges /10k</th>"
+            "<th class='num'>loose pieces</th><th class='num'>front/back dE</th><th class='num'>seam dE</th></tr></thead><tbody>"
+            + "".join(rows) + "</tbody></table>")
+
+
+def t_faces():
+    """The benchmark set's faces before (v0.12) and after v0.13's rebuild (E140): landmark error and DINOv3 likeness."""
+    F = M.get("faces") or {}
+    names = {c["id"]: c["name"] for c in M["roster"]}
+    rows = []
+
+    def pair(b, a, nd, lower=False):
+        if a is None:
+            return "<td class='num muted'>-</td>"
+        if b is None:
+            return f"<td class='num'>{fmt(float(a), nd)}</td>"
+        better = (a < b - 10 ** -nd) if lower else (a > b + 10 ** -nd)
+        return f"<td class='num'>{fmt(float(b), nd)} → <span class='{'good' if better else ''}'>{fmt(float(a), nd)}</span></td>"
+    order = {"realistic": 0, "stylized": 1, "anime": 2}
+    for cid, c in sorted((F.get("characters") or {}).items(), key=lambda kv: (order.get(kv[1]["style"], 9), kv[1]["gender"], kv[0])):
+        b, a = c.get("before") or {}, c["after"]
+        st = c.get("steps") or {}
+        eyes = f"{st.get('eyes_rebuilt', 0)} of 2" if st.get("eyes_rebuilt") else "as generated"
+        nm = names.get(cid, cid)
+        nm = nm.capitalize() if nm == cid else nm
+        rows.append(f"<tr><td>{esc(nm)}</td><td>{esc(c['style'].replace('stylized', 'stylised'))}, {esc(c['gender'])}</td>"
+                    f"{pair(b.get('nme'), a.get('nme'), 3, lower=True)}{pair(b.get('like_face'), a.get('like_face'), 2)}"
+                    f"{pair(b.get('like_eyes'), a.get('like_eyes'), 2)}{pair(b.get('like_nose'), a.get('like_nose'), 2)}"
+                    f"{pair(b.get('like_mouth'), a.get('like_mouth'), 2)}<td>{esc(eyes)}</td></tr>")
+    return ("<table><thead><tr><th>character</th><th>style</th><th class='num'>landmark error (NME)</th>"
+            "<th class='num'>likeness: face</th><th class='num'>eyes</th><th class='num'>nose</th><th class='num'>mouth</th>"
+            "<th>eyes rebuilt</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
+
+
 TABLES = {"moves": t_moves, "stages": t_stages, "roster": t_roster, "feet": t_feet, "feet_e029": t_feet_e029, "prompts": t_prompts,
           "selftest": t_selftest, "times": t_times, "comparison": t_comparison, "tracker": t_tracker,
-          "changelog": t_changelog, "cite": t_cite, "aberrations": t_aberrations, "controls": t_controls}
+          "changelog": t_changelog, "cite": t_cite, "aberrations": t_aberrations, "controls": t_controls,
+          "quality": t_quality, "faces": t_faces}
 
 
 # ---- assembly -------------------------------------------------------------------------------------
@@ -411,6 +470,8 @@ def main():
         x = V[k]
         if spec == "pct":
             return f"{round(100 * x)}%"
+        if spec == "pct1":
+            return f"{100 * x:.1f}%"
         if spec and spec.isdigit():
             return fmt(float(x), int(spec))
         if spec == "int":

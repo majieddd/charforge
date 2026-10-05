@@ -43,6 +43,24 @@ ap.add_argument("--cage", default=None,
                 help="a clean solid to decimate into the low-poly (pipeline/solidify.py + hands.py) "
                      "instead of voxel-remeshing the generated mesh; also the normal and AO source")
 ap.add_argument("--tris", type=int, default=60000, help="triangle budget when decimating --cage")
+ap.add_argument("--source-albedo", default=None,
+                help="the generator's base colour with its specks taken out (pipeline/despeck_source.py), baked "
+                     "instead of the one mesh.glb carries")
+ap.add_argument("--head-share", type=float, default=0.0,
+                help="with --cage: the share of the triangle budget the head gets (0: what collapse decimation gives it, "
+                     "~17%%; E140 uses 0.28)")
+ap.add_argument("--head-texels", type=float, default=2.5,
+                help="how many times more texels across the head gets than the body (needs --joints): a face is "
+                     "where a viewer looks, and the face image projected on it carries ~4x the detail the "
+                     "generator's body texture does (E140)")
+ap.add_argument("--low", default=None,
+                help="with --cage: use this mesh as the low-poly instead of decimating the cage (e.g. an isotropic "
+                     "remesh of it, E135); it must lie on the cage")
+ap.add_argument("--relax", type=int, default=0,
+                help="relax the decimated cage this many times, each followed by a projection back onto the solid (E135)")
+ap.add_argument("--taubin", type=int, default=0,
+                help="instead, smooth the decimated cage with this many Taubin steps (no shrinking, no projection): "
+                     "the low-poly a smooth approximation, the normal map all the detail (E135)")
 a = ap.parse_args(argv)
 
 
@@ -70,6 +88,50 @@ def import_one(path):
     if len(ms) > 1:
         bpy.ops.object.join()
     return bpy.context.view_layer.objects.active
+
+
+def drop_debris(bm, share=0.0025):
+    """Delete the pieces of a low-poly too small to be part of the design: fewer than `share` of its faces.
+
+    The solid is one piece, but the modelled hands are unioned onto it (108 inside-out pieces turned on Cadet)
+    and the decimation's repairs delete faces round non-manifold edges, so small shells survive into the
+    model: E132 found 2-94 per character, 1-58 faces each, a few millimetres to 3 cm across, floating at
+    Cadet's and Knight2's shoulders, and nearly all the open edges were theirs (Cadet 207 of 212). A
+    garment or strand kept apart by design is hundreds of faces or more (Kaito's, Mara's, Vex's)."""
+    import bmesh
+    bm.faces.ensure_lookup_table()
+    bm.faces.index_update()
+    seen = bytearray(len(bm.faces))
+    pieces = []
+    for f in bm.faces:
+        if seen[f.index]:
+            continue
+        seen[f.index] = 1
+        stack, comp = [f], []
+        while stack:
+            g = stack.pop()
+            comp.append(g)
+            for v in g.verts:
+                for h in v.link_faces:
+                    if not seen[h.index]:
+                        seen[h.index] = 1
+                        stack.append(h)
+        pieces.append(comp)
+    small = [c for c in pieces if len(c) < share * len(bm.faces)]
+    if not small:
+        return
+    size = max((max(v.co[k] for f in c for v in f.verts) - min(v.co[k] for f in c for v in f.verts))
+               for c in small for k in range(3))
+    faces = [f for c in small for f in c]
+    bmesh.ops.delete(bm, geom=faces, context="FACES_ONLY")
+    loose = [e for e in bm.edges if not e.link_faces]
+    if loose:
+        bmesh.ops.delete(bm, geom=loose, context="EDGES")
+    lone = [v for v in bm.verts if not v.link_faces]
+    if lone:
+        bmesh.ops.delete(bm, geom=lone, context="VERTS")
+    print(f"[retopo] debris: dropped {len(small)} loose piece(s) of {len(pieces)}, {len(faces)} faces, the largest "
+          f"{size:.3f} units across", flush=True)
 
 
 def fix_winding(ob):
@@ -136,6 +198,164 @@ def main():
     # The pre-simplification mesh carries detail the exported GLB already threw away, so it is
     # the right normal-bake source. It has no texture, hence two sources: albedo from the
     # textured mesh, normals from the dense one.
+    def tilt(obj):
+        """Median and 99th percentile angle between each corner's smooth normal and its triangle's own normal: how
+        far the triangles lean against the surface they stand for (professional meshes 2.4-8.4 deg median)."""
+        import numpy as np_
+        me = obj.data
+        me.calc_loop_triangles()
+        cn = np_.empty(len(me.loops) * 3)
+        me.corner_normals.foreach_get("vector", cn)
+        cn = cn.reshape(-1, 3)
+        fn = np_.empty(len(me.polygons) * 3)
+        me.polygons.foreach_get("normal", fn)
+        fn = fn.reshape(-1, 3)
+        lp = np_.repeat(np_.arange(len(me.polygons)), [p.loop_total for p in me.polygons])
+        ang = np_.degrees(np_.arccos(np_.clip((cn * fn[lp]).sum(1), -1, 1)))
+        return float(np_.median(ang)), float(np_.quantile(ang, 0.99))
+
+    def relax_onto(obj, target, rounds):
+        """Even the decimated triangles out along the surface and put them back on it. Collapse decimation of a
+        voxel solid leaves triangles leaning a median 15-21 deg against their own smooth normals (a normal map then
+        has to carry large corrections everywhere, and the smallest mismatch between baker and renderer shows the
+        triangles); each round moves every vertex halfway to its neighbours' centre and then onto the nearest point
+        of the solid, so the shape is the solid's and the triangles lie along it."""
+        import bmesh as bmesh_
+        from mathutils.bvhtree import BVHTree
+        t0 = tilt(obj)
+        tbm = bmesh_.new()
+        tbm.from_mesh(target.data)
+        tbm.transform(target.matrix_world)
+        tree = BVHTree.FromBMesh(tbm)
+        mw, mwi = obj.matrix_world, obj.matrix_world.inverted()
+        b = bmesh_.new()
+        b.from_mesh(obj.data)
+        inner = [v for v in b.verts if not v.is_boundary]
+        for _ in range(rounds):
+            bmesh_.ops.smooth_vert(b, verts=inner, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+            for v in inner:
+                hit = tree.find_nearest(mw @ v.co)
+                if hit[0] is not None:
+                    v.co = mwi @ hit[0]
+        b.normal_update()
+        b.to_mesh(obj.data)
+        b.free()
+        tbm.free()
+        obj.data.update()
+        t1 = tilt(obj)
+        print(f"[retopo] relaxed onto the solid x{rounds}: triangle tilt median {t0[0]:.1f} -> {t1[0]:.1f} deg, "
+              f"p99 {t0[1]:.1f} -> {t1[1]:.1f}", flush=True)
+
+    def taubin(obj, steps, lam=0.5, mu=-0.53):
+        """Taubin smoothing (a shrink step and an inflate step alternately): noise goes, volume stays."""
+        import numpy as np_
+        me = obj.data
+        n = len(me.vertices)
+        co = np_.empty(n * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        e = np_.empty(len(me.edges) * 2, np_.int64)
+        me.edges.foreach_get("vertices", e)
+        e = e.reshape(-1, 2)
+        deg = np_.bincount(e.ravel(), minlength=n).astype(float)
+        bnd = np_.zeros(n, bool)                                # boundary vertices stay where they are
+        import bmesh as bmesh_
+        b = bmesh_.new()
+        b.from_mesh(me)
+        b.verts.ensure_lookup_table()
+        for v in b.verts:
+            bnd[v.index] = v.is_boundary
+        b.free()
+        t0 = tilt(obj)
+        for _ in range(steps):
+            for f in (lam, mu):
+                s_ = np_.zeros((n, 3))
+                for i in range(3):
+                    s_[:, i] = np_.bincount(e[:, 0], co[e[:, 1], i], minlength=n) + np_.bincount(e[:, 1], co[e[:, 0], i], minlength=n)
+                lap = s_ / np_.maximum(deg, 1)[:, None] - co
+                lap[bnd] = 0
+                co = co + f * lap
+        me.vertices.foreach_set("co", co.ravel())
+        me.update()
+        t1 = tilt(obj)
+        print(f"[retopo] Taubin x{steps}: triangle tilt median {t0[0]:.1f} -> {t1[0]:.1f} deg, p99 {t0[1]:.1f} -> {t1[1]:.1f}",
+              flush=True)
+
+    def head_weights(obj):
+        """1 on the head, fading to 0 over 3% of the height below the neck joint and past 0.14 H from its axis; and
+        a test for 'in the head' on face centres. None without joints."""
+        if not (a.joints and os.path.exists(a.joints)):
+            return None, None
+        Jh = json.load(open(a.joints))["joints"]
+        HW_ = np.array([(high.matrix_world @ v.co)[:] for v in high.data.vertices])
+        blo, bhi = HW_.min(0), HW_.max(0)
+        k_, c_ = 2.0 / float(bhi[2] - blo[2]), (blo + bhi) / 2
+        neck, head = np.array(Jh["neck"]) / k_ + c_, np.array(Jh["head"]) / k_ + c_
+        H_ = float(bhi[2] - blo[2])
+        mw_ = np.array(obj.matrix_world)
+        V_ = np.array([v.co[:] for v in obj.data.vertices]) @ mw_[:3, :3].T + mw_[:3, 3]
+        w_ = (np.clip((V_[:, 2] - (neck[2] - 0.03 * H_)) / (0.03 * H_), 0, 1)
+              * np.clip((0.14 * H_ - np.linalg.norm(V_[:, :2] - head[:2], axis=1)) / (0.02 * H_), 0, 1))
+
+        def in_head(o_):
+            m_ = np.array(o_.matrix_world)
+            P_ = np.array([v.co[:] for v in o_.data.vertices]) @ m_[:3, :3].T + m_[:3, 3]
+            cen = np.array([P_[list(p.vertices)].mean(0) for p in o_.data.polygons])
+            return (cen[:, 2] > neck[2]) & (np.linalg.norm(cen[:, :2] - head[:2], axis=1) < 0.12 * H_)
+        return w_, in_head
+
+    def decimate_cage(low, tris0):
+        """Collapse decimation to the budget. With --head-share the head keeps that share of it (E140): collapse
+        decimation spends triangles where the surface turns, and gave Mara's head 17% - eyes and lips crumpled into
+        pits on 60k triangles, where the clean solid had them. A vertex group lets the head's vertices collapse less
+        freely (weight 0.5 against the body's 1); how much less is the modifier's factor, found by bisection on its
+        logarithm (the share rises smoothly with it: 1e-3 gave Mara 26%, 1e-2 55%)."""
+        ratio = min(1.0, a.tris / max(1, tris0))
+        w_, in_head = head_weights(low) if a.head_share > 0 else (None, None)
+
+        def run(vf):
+            obj = low.copy()
+            obj.data = low.data.copy()
+            bpy.context.scene.collection.objects.link(obj)
+            md = obj.modifiers.new("dec", "DECIMATE")
+            md.decimate_type = "COLLAPSE"
+            md.ratio = ratio
+            md.use_collapse_triangulate = True
+            if vf is not None:
+                vg = obj.vertex_groups.new(name="free")
+                wt = np.round(1.0 - 0.5 * w_, 3)
+                for val in np.unique(wt):
+                    vg.add([int(i) for i in np.nonzero(wt == val)[0]], float(val), "REPLACE")
+                md.vertex_group = "free"
+                md.vertex_group_factor = vf
+            bpy.ops.object.select_all(action="DESELECT")
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.modifier_apply(modifier=md.name)
+            obj.vertex_groups.clear()
+            return obj
+        if w_ is None:
+            best = run(None)
+        else:
+            lo_, hi_, best, best_err = -4.0, -1.0, None, None
+            for it in range(5):
+                lv = (lo_ + hi_) / 2
+                obj = run(10 ** lv)
+                share = float(in_head(obj).mean())
+                print(f"[retopo] head share {share:.1%} with factor 1e{lv:.2f}", flush=True)
+                err = abs(share - a.head_share)
+                if best is None or err < best_err:
+                    if best is not None:
+                        bpy.data.objects.remove(best, do_unlink=True)
+                    best, best_err = obj, err
+                else:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                if err < 0.02:
+                    break
+                lo_, hi_ = (lv, hi_) if share < a.head_share else (lo_, lv)
+        low.data = best.data
+        bpy.data.objects.remove(best, do_unlink=True)
+
     dense = None
     if a.cage:
         a.highres = a.cage
@@ -162,17 +382,20 @@ def main():
         low = bpy.context.view_layer.objects.active
         low.name = "low"
         import bmesh
+        tris0 = sum(len(p.vertices) - 2 for p in low.data.polygons)
+        if a.low:
+            given = import_one(a.low)                        # a low-poly made elsewhere, on the cage
+            low.data = given.data
+            bpy.data.objects.remove(given, do_unlink=True)
+            for p_ in low.data.polygons:
+                p_.use_smooth = True
         bm = bmesh.new()
         bm.from_mesh(low.data)
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
         bm.to_mesh(low.data)
         bm.free()
-        tris0 = sum(len(p.vertices) - 2 for p in low.data.polygons)
-        md = low.modifiers.new("dec", "DECIMATE")
-        md.decimate_type = "COLLAPSE"
-        md.ratio = min(1.0, a.tris / max(1, tris0))
-        md.use_collapse_triangulate = True
-        bpy.ops.object.modifier_apply(modifier=md.name)
+        if not a.low:
+            decimate_cage(low, tris0)
         # decimation can leave slivers and the odd non-manifold edge; skinning solvers and the
         # UV packer both choke on those, so repair until clean
         bm = bmesh.new()
@@ -189,9 +412,14 @@ def main():
             if bnd:
                 r = bmesh.ops.holes_fill(bm, edges=bnd, sides=0)
                 bmesh.ops.triangulate(bm, faces=r["faces"])
+        drop_debris(bm)
         nm = sum(1 for e in bm.edges if not e.is_manifold)
         bm.to_mesh(low.data)
         bm.free()
+        if a.relax:
+            relax_onto(low, dense, a.relax)
+        if a.taubin:
+            taubin(low, a.taubin)
         method = "solid_decimate"
         print(f"[retopo] cage: {tris0:,} triangles of clean solid -> {len(low.data.polygons):,} "
               f"({nm} non-manifold edges left)", flush=True)
@@ -405,7 +633,65 @@ def main():
         bpy.ops.uv.average_islands_scale()
         pack_all()
         ov, bm_ = overlapping(twin)
+    # The head's islands larger, then everything packed again (relative sizes are kept): uniform density gave a
+    # 14 cm face 190-330 texels across, a professional head texture gives it 1000 and more. The body's colour comes
+    # from the generator's own texture, which the 4096 atlas already oversamples, so it can spare the room (E140).
+    head_islands = 0
+    if a.head_texels and a.head_texels != 1.0 and a.joints and os.path.exists(a.joints):
+        Jh = json.load(open(a.joints))["joints"]
+        HWh = np.array([(high.matrix_world @ v.co)[:] for v in high.data.vertices])
+        blo_, bhi_ = HWh.min(0), HWh.max(0)
+        kk_ = 2.0 / float(bhi_[2] - blo_[2])
+        cc_ = (blo_ + bhi_) / 2
+        neck_ = np.array(Jh["neck"]) / kk_ + cc_
+        head_ = np.array(Jh["head"]) / kk_ + cc_
+        Hh = float(bhi_[2] - blo_[2])
+        mw_ = np.array(low.matrix_world)
+        Vl = np.array([v.co[:] for v in low.data.vertices]) @ mw_[:3, :3].T + mw_[:3, 3]
+        bm_ = bmesh.from_edit_mesh(twin.data)
+        bm_.faces.ensure_lookup_table()
+        uvl = bm_.loops.layers.uv.active
+        # islands: faces joined across an edge whose two loops agree in UV at both ends
+        parent = list(range(len(bm_.faces)))
+
+        def find(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+        for e in bm_.edges:
+            lf = e.link_loops
+            if len(lf) != 2:
+                continue
+            l1, l2 = lf
+            a1, b1 = l1[uvl].uv, l1.link_loop_next[uvl].uv
+            a2, b2 = l2.link_loop_next[uvl].uv, l2[uvl].uv            # the other face runs the edge the other way
+            if (a1 - a2).length < 1e-6 and (b1 - b2).length < 1e-6:
+                parent[find(l1.face.index)] = find(l2.face.index)
+        cent = np.array([Vl[[v.index for v in f.verts]].mean(0) for f in bm_.faces])
+        in_head = (cent[:, 2] > neck_[2]) & (np.linalg.norm(cent[:, :2] - head_[:2], axis=1) < 0.12 * Hh)
+        roots = np.array([find(i) for i in range(len(bm_.faces))])
+        share = {}
+        for r_, h_ in zip(roots, in_head):
+            t_ = share.setdefault(r_, [0, 0])
+            t_[0] += int(h_)
+            t_[1] += 1
+        head_roots = {r_ for r_, (h_, n_) in share.items() if h_ > 0.5 * n_}
+        pivot = None
+        for f, r_ in zip(bm_.faces, roots):
+            if r_ in head_roots:
+                for lp in f.loops:
+                    uv = lp[uvl].uv
+                    if pivot is None:
+                        pivot = uv.copy()
+                    lp[uvl].uv = pivot + (uv - pivot) * a.head_texels
+        bmesh.update_edit_mesh(twin.data)
+        head_islands = len(head_roots)
+        pack_all()
+        ov, bm_ = overlapping(twin)
     bpy.ops.object.mode_set(mode="OBJECT")
+    if head_islands:
+        print(f"[retopo] UVs: {head_islands} head islands given {a.head_texels:g}x the texels across", flush=True)
     if not low.data.uv_layers:
         low.data.uv_layers.new(name="UVMap")
     src_uv, dst_uv = twin.data.uv_layers.active.data, low.data.uv_layers.active.data
@@ -570,6 +856,18 @@ def main():
                 comb.inputs[chan].default_value = float(s.default_value)
         return comb.outputs[0]
 
+    if a.source_albedo and os.path.exists(a.source_albedo):
+        simg = bpy.data.images.load(a.source_albedo)
+        swapped = 0
+        for m in high.data.materials:
+            if not m or not m.use_nodes:
+                continue
+            pb = next((n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+            lk = pb.inputs["Base Color"].links if pb else []
+            if lk and lk[0].from_node.type == "TEX_IMAGE":
+                lk[0].from_node.image = simg
+                swapped += 1
+        print(f"[retopo] base colour baked from {os.path.basename(a.source_albedo)} ({swapped} material(s))", flush=True)
     emit_bake("base_color", base_colour)
     emit_bake("rm", rough_metal)
 

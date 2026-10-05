@@ -51,6 +51,7 @@ ap.add_argument("--min-piece", type=float, default=0.002,
 ap.add_argument("--min-escapes", type=int, default=3,
                 help="a voxel is outside if it sees out along at least this many of 26 directions")
 ap.add_argument("--smooth", type=float, default=0.8, help="Gaussian sigma on the distance, voxels")
+ap.add_argument("--eyes", default=None, help="blender/eye_fill.py's report: rebuild each eye region as lids and a ball")
 a = ap.parse_args()
 
 d = np.load(a.sdf)
@@ -190,6 +191,44 @@ del lbl
 print(f"[solidify] closing added {added:,} voxels; {dropped:,} loose pieces dropped "
       f"({dropped_vox:,} voxels), {int(keep.sum())} kept", flush=True)
 
+# ---- the eyes -----------------------------------------------------------------------------------
+# The generator's eye is an opening with shards inside it; the solid kept them as streaks and the decimation
+# crumpled them into a pit (E140). blender/eye_fill.py found each opening and the lids' depth round it: here the
+# opening is closed by a cap that follows the lids round the rim, bulges a little forward in the middle and sinks a
+# little just inside the rim - what lies in front of it goes, what lies behind it is filled. The region is smoothed
+# harder below and sdf_io.py does not put it back onto the generated surface.
+eye_regions = []
+if a.eyes:
+    E = json.load(open(a.eyes))
+    ii, jj, kk = np.indices(solid.shape, sparse=True)
+    X, Y, Z = (ii + o[0]) * v, (jj + o[1]) * v, (kk + o[2]) * v
+    for e in E.get("eyes", []):
+        if not e.get("used"):
+            continue
+        (mx, mz), (axx, axz) = e["centre_xz"], e["axis_xz"]
+        w, b, yl = e["width"], e["half_height"], e["lid_depth"]
+        ring = np.array(e["ring_depth"], np.float32)
+        ra, rb = e["ring_axes"]
+        uu = (X - mx) * axx + (Z - mz) * axz
+        vv = -(X - mx) * axz + (Z - mz) * axx
+        r = np.sqrt((uu / (0.5 * w)) ** 2 + (vv / (b + 0.04 * w)) ** 2)
+        inside = r < 1.12
+        # the lids' depth in this voxel's direction from the middle, between the 16 sampled round the ring
+        th = np.mod(np.arctan2(vv / rb, uu / ra), 2 * np.pi) / (2 * np.pi) * 16
+        k0 = np.floor(th).astype(int) % 16
+        f_ = th - np.floor(th)
+        rim = ring[k0] * (1 - f_) + ring[(k0 + 1) % 16] * f_
+        rr = np.minimum(r, 1.0)
+        cap = rim + w * (e.get("crease", 0.02) * rr ** 6 - e.get("bulge", 0.025) * (1 - rr ** 2))
+        band = inside & (Y > cap - 0.3 * w) & (Y < cap + 0.5 * w)
+        n_clear = int((band & solid & (Y < cap)).sum())
+        n_fill = int((band & ~solid & (Y >= cap)).sum())
+        solid = np.where(band, Y >= cap, solid)
+        eye_regions.append((mx, yl, mz, w, b, axx, axz))
+        print(f"[solidify] eye: a cap across the opening - {n_clear:,} voxels in front of it cleared, {n_fill:,} behind "
+              f"it filled", flush=True)
+    del ii, jj, kk
+
 # ---- back to a distance field -------------------------------------------------------------------
 # The source field is unsigned, so the signed one comes from the solid itself. Re-distancing a
 # binary volume quantises the surface to voxels; sdf_io.py then puts each vertex back on the
@@ -200,6 +239,36 @@ dist = np.where(solid, -(din - 0.5), dout - 0.5).astype(np.float32)
 del din, dout
 if a.smooth > 0:
     dist = ndimage.gaussian_filter(dist, a.smooth)
+for mx, yl, mz, w, b, axx, axz in eye_regions:
+    # the opening, its rim and the ball as one smooth surface: a wider blur over the opening and a little round
+    # it (the generator's lids end in pleated flaps), feathered out
+    c = np.array([mx, yl, mz]) / v - o
+    r = 1.0 * w / v
+    sl = tuple(slice(max(0, int(c[d_] - 1.5 * r)), min(dist.shape[d_], int(c[d_] + 1.5 * r) + 1)) for d_ in range(3))
+    sub = dist[sl]
+    g = ndimage.gaussian_filter(sub, 2.5)
+    ii, jj, kk = np.indices(sub.shape)
+    dx_, dy_, dz_ = (ii + sl[0].start - c[0]) * v, (jj + sl[1].start - c[1]) * v, (kk + sl[2].start - c[2]) * v
+    uu = dx_ * axx + dz_ * axz
+    vv = -dx_ * axz + dz_ * axx
+    ell = np.sqrt((uu / (0.5 * w * 1.3)) ** 2 + (vv / ((b + 0.04 * w) * 1.7)) ** 2)
+    depth = np.clip((0.5 * w - np.abs(dy_ - 0.2 * w)) / (0.2 * w), 0, 1)
+    f = np.clip((1.7 - ell) / 0.9, 0, 1) * depth
+    dist[sl] = sub * (1 - f) + g * f
+import os  # noqa: E402
+stale = a.out.replace(".npz", "_eyes.json")
+if not eye_regions and os.path.exists(stale):
+    os.remove(stale)                     # a rebuild from an earlier run must not keep its regions out of this one
+if eye_regions:
+    # the opening and its rim, as an elliptic cylinder from a little in front of the lids to well behind them
+    # (the generated opening runs past the eye DWPose marks: put back at 1.35 x 1.5 of it, the upper lid's shards came
+    # back as pleats; the edge of the region is blended over as much again as its size - over a third of it, the
+    # blend left a ring of small bumps round each eye that read as spectacles in soft light)
+    json.dump({"keep_out": [{"centre": [mx, yl, mz], "axis_xz": [axx, axz], "a": 0.5 * w * 1.75,
+                             "b": ((b + 0.04 * w) * 1.5 + 0.05 * w) * 1.8, "feather": 1.0,
+                             "y": [yl - 0.3 * w, yl + 0.7 * w]}
+                            for mx, yl, mz, w, b, axx, axz in eye_regions]},
+              open(a.out.replace(".npz", "_eyes.json"), "w"))
 dist *= v
 band = 4 * v
 dist = np.clip(dist, -band * 3, band * 3)

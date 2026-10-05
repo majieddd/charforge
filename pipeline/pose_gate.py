@@ -23,7 +23,8 @@ def _pose():
         return _MODEL["run"]
     import torch
     from transformers import AutoProcessor, VitPoseForPoseEstimation
-    dev = "mps" if torch.backends.mps.is_available() else "cpu"
+    import os
+    dev = "mps" if torch.backends.mps.is_available() and not os.environ.get("CF_POSE_CPU") else "cpu"
     proc = AutoProcessor.from_pretrained("usyd-community/vitpose-base-simple")
     model = VitPoseForPoseEstimation.from_pretrained("usyd-community/vitpose-base-simple").to(dev).eval()
 

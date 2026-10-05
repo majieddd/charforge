@@ -61,6 +61,42 @@
    "name": "Cadet",
    "blurb": "stylised · space marine, moves from words",
    "released": false
+  },
+  {
+   "id": "boyscout",
+   "name": "Scout",
+   "blurb": "stylised · from a few words",
+   "released": false
+  },
+  {
+   "id": "gray",
+   "name": "Gray",
+   "blurb": "stylised · grey alien, bulky build",
+   "released": false
+  },
+  {
+   "id": "knight2",
+   "name": "Knight II",
+   "blurb": "stylised · plate armour",
+   "released": false
+  },
+  {
+   "id": "rivet",
+   "name": "Rivet",
+   "blurb": "stylised · mechanic, from a few words",
+   "released": false
+  },
+  {
+   "id": "hana",
+   "name": "Hana",
+   "blurb": "anime · archer, from a few words",
+   "released": false
+  },
+  {
+   "id": "ren",
+   "name": "Ren",
+   "blurb": "anime · swordsman, from a few words",
+   "released": false
   }
  ]
 }

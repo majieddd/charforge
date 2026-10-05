@@ -332,8 +332,152 @@ def cast():
                 save(tile(p, 400), f"cast_{n}_{part}.webp", 85)
 
 
+# ---- v0.12: toward a professionally made model (E132-E139) ---------------------------------------------------------
+Q = S / "polish"
+
+
+def rows_figure(rows, name, size=330, head=34, q=85):
+    """rows: [(title, [(label, path), ...]), ...]; every path must exist, or nothing is written."""
+    if not all(Path(pth).exists() for _, cells in rows for _, pth in cells):
+        missing = [str(pth) for _, cells in rows for _, pth in cells if not Path(pth).exists()]
+        print(f"{name}: skipped, missing {missing[:2]}")
+        return
+    ncol = max(len(c) for _, c in rows)
+    gap = 6
+    out = Image.new("RGB", (ncol * size + (ncol - 1) * gap, len(rows) * (size + head)), (255, 255, 255))
+    for r, (title, cells) in enumerate(rows):
+        y = r * (size + head)
+        ImageDraw.Draw(out).text((4, y + 7), title, fill=(20, 25, 32), font=FONT)
+        for c, (lab, pth) in enumerate(cells):
+            im = Image.open(pth).convert("RGB").resize((size, size), Image.LANCZOS)
+            if lab:
+                label(im, lab, font=SMALL)
+            out.paste(im, (c * (size + gap), y + head))
+    save(out, name, q)
+
+
+def q_rake():
+    """The shipped low-poly with its normal map under a raking light, v0.11 against the v0.12 rebuild (E135)."""
+    R = Q / "v012_rebuild" / "renders"
+    rows = [(f"{n.capitalize()}: v0.11 (200k faces) and v0.12 (1M faces, filtered surface)",
+             [("v0.11 front", R / f"{n}_before_rake_000.png"), ("v0.12 front", R / f"{n}_after_rake_000.png"),
+              ("v0.11 chest", R / f"{n}_before_chest_025.png"), ("v0.12 chest", R / f"{n}_after_chest_025.png")])
+            for n in ("knight2", "cadet", "gray")]
+    rows_figure(rows, "q_rake.webp")
+
+
+def q_rest():
+    """Cadet's shoulder with the T baked into the rest pose against the modelled pose kept (E137)."""
+    R = Q / "e137" / "run"
+    rows = [(f"{lab}: rest, idle, walk",
+             [(None, R / f"cpu_{b}_left_shoulder_{c}.png") for c in ("rest", "idle_030", "walk_025")])
+            for b, lab in (("cadet", "Baked to a T (v0.11)"), ("e137_cadet", "Kept as modelled (v0.12)"))]
+    rows_figure(rows, "q_rest.webp")
+
+
+def q_hands():
+    """Modelled hands shaded from the generated mesh's colour bake, and from their own occlusion (E138)."""
+    R = Q / "inventory" / "handfix"
+    rows_figure([("Cadet's hand: shaded from the generated mesh's bake, then from its own occlusion",
+                  [("before", R / "before_top_rest.png"), ("after", R / "after_top_rest.png"),
+                   ("before", R / "before_idle_idle_030.png"), ("after", R / "after_idle_idle_030.png")])], "q_hands.webp")
+
+
+def q_inventory():
+    """What close-ups of the v0.11 builds showed first (E138)."""
+    I = Q / "inventory"
+    rows_figure([("Close-ups of v0.11: blotched faces, torn armpits, a bell at the wrist, two-tone hands",
+                  [("Mara", I / "mara_v011" / "face34_rest.png"), ("Boyscout", I / "boyscout_v011" / "face34_rest.png"),
+                   ("Bo's back", I / "bo_v011" / "back_rest.png"), ("Pip's wrist", I / "pip_v011" / "lhand_top_rest.png"),
+                   ("Knight2's back", I / "knight2_v011" / "back_rest.png")])], "q_inventory.webp", size=300)
+
+
+def q_views():
+    """Hunyuan3D-Paint's sides and backs on the shipped meshes (E134): better on Pip, worse by eye on six of eight."""
+    T = Q / "e134" / "trial"
+    rows_figure([("Shipped against Hunyuan3D-Paint 2.1's views (unlit albedo)",
+                  [("Boyscout shipped", T / "boyscout_shipped_180.png"), ("Boyscout views", T / "boyscout_trial_180.png"),
+                   ("Bo shipped", T / "bo_shipped_090.png"), ("Bo views", T / "bo_trial_090.png"),
+                   ("Knight2 shipped", T / "knight2_shipped_180.png"), ("Knight2 views", T / "knight2_trial_180.png")])],
+                "q_views.webp", size=280)
+
+
+def q_head():
+    """The head from the whole figure against one made on its own (E139), shape under raking light."""
+    E = Q / "e139"
+    rows_figure([("Boyscout's head: from the whole figure (TRELLIS.2), and made on its own from a crop (Hunyuan3D 2.1)",
+                  [("whole figure", E / "rake_trellis_head_000.png"), ("whole figure", E / "rake_trellis_head_035.png"),
+                   ("on its own", E / "rake_hyhead_000.png"), ("on its own", E / "rake_hyhead_035.png")])], "q_head.webp")
+
+
+def q_debris():
+    """Knight2's back under a raking light, v0.11 against v0.12: the shards and the noise gone (E135, E138)."""
+    R = Q / "v012_rebuild" / "renders"
+    rows_figure([("Knight2's back: v0.11 (95 loose pieces) and v0.12 (one)",
+                  [("v0.11", R / "knight2_before_rake_180.png"), ("v0.12", R / "knight2_after_rake_180.png")])],
+                "q_debris.webp", size=420)
+
+
+def q_skin():
+    """One skin tone at the 7 mm scale (E138): the picture's shading out of the skin, its detail kept."""
+    K = Q / "inventory" / "skin"
+    rows_figure([("Faces as shipped and with one skin tone (three-quarter, lit)",
+                  [(f"{n} before", K / f"{n}_orig_face_rest.png") for n in ("mara", "boyscout")]
+                  + [(f"{n} after", K / f"{n}_fine_face_rest.png") for n in ("mara", "boyscout")])], "q_skin.webp")
+
+
+def q_eyes():
+    """Mara's eyes in grey at every stage, and rebuilt as lids over a ball (E140)."""
+    F = Q / "faces" / "e140" / "fig"
+    rows_figure([("Mara's eyes, the shape alone: generated, solid, v0.12's low-poly; rebuilt in the solid and decimated",
+                  [("generated", F / "eye_1_generated.png"), ("solid", F / "eye_2_solid.png"),
+                   ("v0.12 low-poly", F / "eye_3_v012.png"), ("rebuilt solid", F / "eye_4_rebuilt_solid.png"),
+                   ("v0.13 low-poly", F / "eye_5_rebuilt_low.png")])], "q_eyes.webp", size=300)
+
+
+def q_faceparts():
+    """Mara's face, one part at a time (E140): the picture, v0.12, the eyes rebuilt (face flow), the face laid on in
+    parts, and with the face left to the front view and out of the skin tone."""
+    F = Q / "faces" / "e140" / "fig"
+    rows_figure([("Mara's face, lit: the picture; v0.12; eyes rebuilt; laid on in parts; the face the picture's alone",
+                  [("picture", F / "face_0_picture.png"), ("v0.12", F / "face_1_v012.png"),
+                   ("eyes rebuilt, face flow", F / "face_2_flow.png"), ("in parts", F / "face_3_parts.png"),
+                   ("v0.13", F / "face_4_final.png")])], "q_faceparts.webp", size=300)
+
+
+def q_crackle():
+    """The generator's own colours on Knight's head: as generated, mended in the atlas, rebuilt through the mesh (E140)."""
+    src = Q / "faces" / "e140" / "fig" / "crackle_knight.png"
+    if src.exists():
+        im = Image.open(src).convert("RGB")
+        for i, lab in enumerate(("as generated", "mended in the atlas", "rebuilt through the mesh")):
+            label(im, lab, xy=(10 + i * im.width // 3, 8), font=SMALL)
+        save(im, "q_crackle.webp")
+
+
+def q_faces_bench():
+    """The benchmark set's faces before and after v0.13 (E140): front, soft light, from tools/face_review.sh."""
+    V = Q / "v013"
+    rows = []
+    for row in (("mara", "juno3", "rowan", "knight"), ("vex", "rivet", "pip", "cadet"), ("aoi", "hana", "kaito", "ren")):
+        cells = []
+        for n in row:
+            b = V / "faces_before" / "face_review_parts" / n / "az0_rest.png"
+            a = V / "faces" / "face_review_parts" / n / "az0_rest.png"
+            name = {"juno3": "Juno"}.get(n, n.capitalize())
+            if a.exists():
+                if b.exists():
+                    cells += [(f"{name} v0.12", b), (f"{name} v0.13", a)]
+                else:                            # new in this round: no v0.12 build, its picture instead
+                    cells += [(f"{name}: picture", ROOT / "work" / n / "texproj" / "face_src.png"), (f"{name} v0.13", a)]
+        if cells:
+            rows.append(("", cells))
+    rows_figure(rows, "q_faces_bench.webp", size=220, head=4)
+
+
 if __name__ == "__main__":
     M.mkdir(exist_ok=True)
     for f in (studio, wings, cheer, uv, aoi, hands, hem, bo, webs, loose, elbow, board, prompts, feet, angles, compares, cast,
-              e130_floor):
+              e130_floor, q_rake, q_rest, q_hands, q_inventory, q_views, q_head, q_skin, q_debris, q_eyes, q_faceparts,
+              q_faces_bench, q_crackle):
         f()

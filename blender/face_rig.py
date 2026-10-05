@@ -93,6 +93,12 @@ print(f"[face] eye and mouth regions subdivided twice: mesh now {len(me.vertices
 seam_w = np.array(F["mouth"].get("seam") or F["mouth"]["centre"])
 mcl_w, mcr_w = np.array(F["mouth"]["left"]), np.array(F["mouth"]["right"])
 mw_w = float(np.linalg.norm(mcl_w - mcr_w))
+# A drawn smile can run past the lips: Cadet's, Kaito's and Bo's corners were read 1.2 eye-spacings apart (the
+# realistic faces' 0.6-0.9), Cadet's 5.5 cm back on his cheeks, and the cut drew a line across the face. A mouth read
+# wider than the eyes are apart is the smile line, not the lips: it opens 0.6 of the eye spacing, a mouth's usual width;
+# any other is kept to 0.8 of it, and near the lips' depth (E140). Held to 0.8 alone, Cadet's misread 10.9 cm still cut
+# 7.3 cm across his face.
+mw_w = 0.6 * ied if mw_w > ied else min(mw_w, 0.8 * ied)
 n_w = np.cross(mcr_w - mcl_w, seam_w - mcl_w)
 if np.linalg.norm(n_w) < 1e-9 or abs(n_w[2]) < 0.5 * np.linalg.norm(n_w):
     n_w = np.array([0.0, 0.0, 1.0])                     # a degenerate or steep plane: cut level
@@ -105,7 +111,7 @@ sdist_w = lambda P: (P - seam_w) @ n_w
 bm = bmesh.new()
 bm.from_mesh(me)
 to_w = lambda co: Mw0[:3, :3] @ np.array(co) + Mw0[:3, 3]
-back_y = max(mcl_w[1], mcr_w[1]) + 0.15 * mw_w
+back_y = min(max(mcl_w[1], mcr_w[1]) + 0.15 * mw_w, seam_w[1] + 0.5 * mw_w)
 region = [f_ for f_ in bm.faces
           if (lambda c: abs(c[0] - seam_w[0]) < 0.5 * mw_w and abs(sdist_w(c)) < 0.3 * mw_w and c[1] < back_y)
           (to_w(f_.calc_center_median()))]

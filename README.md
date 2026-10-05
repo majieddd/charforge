@@ -27,17 +27,23 @@ Rebuild the paper with `python paper/collect.py && python paper/build.py`.
 <!--ROSTER-->
 | | style | made from | height | triangles (LOD0 / 1 / 2) | face | package |
 |---|---|---|---|---|---|---|
-| **Aoi** | anime | *"a young anime adventurer girl with a long high ponytail of silver-blue hair, a short fitted navy jacket with gold trim over a white shirt, fitted black trousers and knee-high brown leather boots"* | 1.62 m | 76,578 / 30,631 / 11,485 | jaw, blink, brows_up, pucker, smile | [aoi.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/aoi.zip) |
-| **Mara** | realistic | *"a young woman field researcher with a long dark brown braided ponytail, a fitted olive green field jacket with the sleeves rolled to the forearm, a grey t-shirt, tan cargo trousers and brown leather hiking boots"* | 1.68 m | 69,434 / 27,773 / 10,414 | jaw, blink, brows_up, pucker, smile | [mara.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/mara.zip) |
-| **Pip** | stylized | *"a cheerful cartoon courier with messy orange hair and freckles, a puffy yellow vest over a blue hoodie, baggy khaki cargo shorts, striped socks and chunky red sneakers"* | 1.55 m | 78,233 / 31,293 / 11,733 | jaw, blink, brows_up, pucker, smile | [pip.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/pip.zip) |
-| **Juno** | realistic | *"a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut"* | 1.70 m | 66,015 / 26,406 / 9,902 | jaw, blink, brows_up, pucker, smile | [juno3.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/juno3.zip) |
-| **Rowan** | realistic | *"a man in a green bomber jacket with medium-length wavy hair"* | 1.78 m | 67,217 / 26,886 / 10,082 | jaw, blink, brows_up, pucker, smile | [rowan.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/rowan.zip) |
-| **Wren** | realistic | *"a woman in a brown leather jacket with a satchel and a braid"* | 1.68 m | 64,617 / 25,846 / 9,692 | jaw, pucker, smile | [wren.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/wren.zip) |
-| **Vex** | stylized | made from a painted concept image, no prompt | 1.72 m | 63,979 / 25,591 / 9,596 | jaw, blink, brows_up, pucker, smile | [vex.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/vex.zip) |
-| **Knight** | realistic | *"a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots"* | 1.80 m | 67,380 / 26,951 / 10,107 | jaw, blink, brows_up, pucker, smile | not in a release yet |
-| **Kaito** | anime | *"an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots"* | 1.70 m | 72,646 / 29,057 / 10,896 | jaw, blink, brows_up, pucker, smile | not in a release yet |
-| **Bo** | stylized | *"a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs"* | 1.60 m | 59,981 / 23,991 / 8,997 | - | not in a release yet |
-| **Cadet** | stylized | *"a fresh-faced young space marine, about 19 years old, short messy brown hair, in chunky rounded sci-fi power armour: teal-blue armour plates with white trim, a dark grey flexible undersuit showing at the elbows, knees and waist, big rounded shoulder pads, sturdy armoured boots, plain smooth armour with no emblems, no insignia, no logos, no skulls and no markings"* | 1.75 m | 78,006 / 31,202 / 11,700 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Aoi** | anime | *"a young anime adventurer girl with a long high ponytail of silver-blue hair, a short fitted navy jacket with gold trim over a white shirt, fitted black trousers and knee-high brown leather boots"* | 1.62 m | 68,343 / 27,337 / 10,251 | jaw, blink, brows_up, pucker, smile | [aoi.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/aoi.zip) |
+| **Mara** | realistic | *"a young woman field researcher with a long dark brown braided ponytail, a fitted olive green field jacket with the sleeves rolled to the forearm, a grey t-shirt, tan cargo trousers and brown leather hiking boots"* | 1.68 m | 76,231 / 30,492 / 11,434 | jaw, blink, brows_up, pucker, smile | [mara.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/mara.zip) |
+| **Pip** | stylized | *"a cheerful cartoon courier with messy orange hair and freckles, a puffy yellow vest over a blue hoodie, baggy khaki cargo shorts, striped socks and chunky red sneakers"* | 1.55 m | 89,049 / 35,619 / 13,357 | jaw, blink, brows_up, pucker, smile | [pip.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/pip.zip) |
+| **Juno** | realistic | *"a woman in a red hooded windbreaker, grey cargo trousers and black hiking boots, with a short black bob haircut"* | 1.70 m | 73,658 / 29,463 / 11,048 | jaw, blink, brows_up, pucker, smile | [juno3.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/juno3.zip) |
+| **Rowan** | realistic | *"a man in a green bomber jacket with medium-length wavy hair"* | 1.78 m | 74,414 / 29,764 / 11,162 | jaw, blink, brows_up, pucker, smile | [rowan.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/rowan.zip) |
+| **Wren** | realistic | *"a woman in a brown leather jacket with a satchel and a braid"* | 1.68 m | 70,455 / 28,182 / 10,568 | jaw, blink, brows_up, pucker, smile | [wren.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/wren.zip) |
+| **Vex** | stylized | made from a painted concept image, no prompt | 1.72 m | 77,110 / 30,844 / 11,566 | jaw, blink, brows_up, pucker, smile | [vex.zip](https://github.com/majieddd/charforge/releases/download/v3.0.0/vex.zip) |
+| **Knight** | realistic | *"a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots"* | 1.80 m | 61,877 / 24,750 / 9,281 | jaw, pucker, smile | not in a release yet |
+| **Kaito** | anime | *"an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots"* | 1.70 m | 98,156 / 39,262 / 14,723 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Bo** | stylized | *"a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs"* | 1.60 m | 111,200 / 44,480 / 16,679 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Cadet** | stylized | *"a fresh-faced young space marine, about 19 years old, short messy brown hair, in chunky rounded sci-fi power armour: teal-blue armour plates with white trim, a dark grey flexible undersuit showing at the elbows, knees and waist, big rounded shoulder pads, sturdy armoured boots, plain smooth armour with no emblems, no insignia, no logos, no skulls and no markings"* | 1.75 m | 88,368 / 35,347 / 13,255 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Scout** | stylized | *"a boy scout"* | 1.20 m | 86,702 / 34,680 / 13,005 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Gray** | stylized | *"Gray Alien That is Extremely Muscular and looks like a gigachad"* | 1.76 m | 81,330 / 32,532 / 12,199 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Knight II** | stylized | *"a young knight in steel armor"* | 1.85 m | 77,019 / 30,806 / 11,552 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Rivet** | stylized | *"a cheerful young mechanic with grease-smudged blue overalls rolled up at the sleeves, aviator goggles pushed up on her head, a tool belt and work boots"* | 1.75 m | 79,638 / 31,855 / 11,945 | jaw, blink, brows_up, pucker, smile | not in a release yet |
+| **Hana** | anime | *"a cheerful young archer girl with a long brown ponytail, a red hooded jacket over a white top, a pleated grey skirt, black leggings and brown boots"* | 1.35 m | 72,903 / 29,160 / 10,935 | blink, brows_up | not in a release yet |
+| **Ren** | anime | *"a calm young swordsman with short silver hair, a long dark green coat with gold trim, a black shirt, fingerless gloves and tall boots"* | 1.75 m | 79,764 / 31,904 / 11,964 | jaw, blink, brows_up, pucker, smile | not in a release yet |
 <!--/ROSTER-->
 
 ## Three styles, one pipeline
@@ -71,9 +77,20 @@ hem stopped the leg tracer. Each of those is now a rule that holds for all seven
 | `reference.png` | the image the character was generated from |
 
 **Conventions**, as an engine expects them: metres, Y-up in glTF, facing +Z; origin on the floor
-under the pelvis; T-pose rest; bones named `mixamorig:*` (Unity's Humanoid mapper and every
-Mixamo preset recognise them, fingers included); clips baked at 60 fps **in place**, with the
-speed and direction to move the character recorded in the manifest.
+under the pelvis; the rest pose is the pose the character was modelled in (an A-pose, arms about
+45 degrees down; `--rest T` bakes a T-pose instead, see below); bones named `mixamorig:*` (Unity's
+Humanoid mapper and every Mixamo preset recognise them, fingers included); clips baked at 60 fps
+**in place**, with the speed and direction to move the character recorded in the manifest.
+
+**Why an A-pose rest.** Up to v0.11 every character was skinned up from its modelled pose to a
+T-pose and shipped in it. Skinning is linear blending, which cannot be undone exactly: armour
+fused to the arm (Cadet's pauldrons) sheared into shards on the way up and kept slivers on the
+way down. Keeping the modelled pose as the rest, with the T used only inside the retargeting
+maths, halved Cadet's crushed faces and self-intersections and took frames with a limb more than
+2 cm inside another from 40% to 28%, with the clips themselves unchanged (experiment E137). Engines
+take an A-pose bind as they take any other: Unity's Humanoid *Configure... > Pose > Enforce
+T-Pose*, Unreal's IK Retargeter *Auto Align* of the retarget pose, Godot's *Fix Silhouette* in the
+retarget options. The manifest's `skeleton.rest_pose` says which rest a build has.
 
 **The clips** (18): idle; walk, jog, run and sprint on one stride clock, so a controller blends
 them by speed; walk and jog backwards; strafe left and right; turn left, right and 180 in place;
@@ -126,9 +143,21 @@ says what is missing.
 ```bash
 python charforge.py make --name mara --height 1.68 --style realistic --prompt "a young woman field researcher"
 python charforge.py make --name vex  --height 1.72 --style stylized  --image concept_art.png
-python charforge.py make --name mara --from rig        # rerun from a stage; style, height, prompt are remembered
+python charforge.py make --name mara --from rig        # rerun from a stage; style, height, prompt and the opt-in options are remembered
 python charforge.py stages                            # what each stage does and writes
 ```
+
+The defaults are what measured best (each is an option in the Studio's **More options** too):
+
+| option | default | what it does |
+|---|---|---|
+| `--eyes rebuild` / `--eyes none` | rebuild | each eye the generator modelled as an opening full of shards becomes a smooth cap under the lids, found by DWPose on the model's own paint; eyes it cannot read (most anime) stay as generated (E140) |
+| `--head-share F` | 0.28 | the share of the triangle budget the head keeps (0: left to the decimation, which gave it 17% and crumpled eyes and lips; E140) |
+| `--rest A` / `--rest T` | A | the rest pose: the pose the model was generated in, the T kept only for retargeting (`T` bakes the T into the mesh, as up to v0.11; E137) |
+| `--trellis-faces N` | 1000000 | faces TRELLIS.2 keeps of its surface (200k left flat facets in the normal map; E135); `--no-denoise` skips the surface filtering after it |
+| `--texture-views hunyuan` | off | sides and back painted by Hunyuan3D-Paint 2.1 instead of the generator's own colours - cleaner where those are blotchy (Pip), worse by eye on 6 of 8 others; needs `tools/setup_hunyuan.sh` (E134) |
+| `--head hunyuan` | off | experimental: the head made again on its own from a close crop of the picture by Hunyuan3D 2.1's shape model - a sculpted face where the whole-figure model's has a few rough facets, about 8 more minutes; needs `tools/setup_hunyuan.sh` (E139) |
+| `--quality best` | off | a second TRELLIS pass on repainted side and back views (it drifted from the picture on 12 of 12; E106) |
 
 A short prompt is first written out (`pipeline/describe.py`): a local language model through
 Ollama - Gemma 4 e4b by default (of nine compared, with gemma2 9B the best at following the rules), `CF_DESCRIBE_MODEL` / `CF_DESCRIBE_URL` for another, or any server
@@ -145,8 +174,8 @@ used as given. Measured on six characters, same prompt and seed (`results/v3/ima
 drew one figure with no head or legs and cut one off at the edge, Qwen none; Qwen needs the A-pose
 angle spelled out (its hands otherwise hang 0.28-0.37 torso lengths from the hips, against Krea's
 0.61-0.72; with it, 0.58-0.70); about 6 minutes an image against Krea's 4-5 on the M5.
-Generation takes about 25 minutes on an M-series laptop (two TRELLIS passes and the image model),
-the rest 10-15. Every stage writes to `work/<name>/` and is skipped next time if that output
+A character takes about 25 minutes on an M-series laptop with the defaults (the image model and one
+TRELLIS pass at 1M faces about 15, the rest 10-15; `--head hunyuan` adds 8). Every stage writes to `work/<name>/` and is skipped next time if that output
 exists; `--from <stage>` reruns from any point and `--until <stage>` stops early.
 
 **Driving it, or checking a build**: [`.claude/skills/charforge/SKILL.md`](.claude/skills/charforge/SKILL.md)
@@ -158,17 +187,17 @@ in this repository.
 | stage | what happens | script |
 |---|---|---|
 | reference | a short prompt written out (age, build, skin, hair, each garment's colour), then a full-body reference image, or your image as is; drawn again (up to three times) when a pose model finds the hands against the body - they would fuse to it | `pipeline/describe.py`, `pipeline/comfy.py`, `pipeline/pose_gate.py` |
-| generate, multiview | TRELLIS.2 via MLX, one pass on the reference (with `--quality best`, side and back views repainted and fed back as stochastic multi-view conditioning - off by default since E106: it drifted from the picture on 12 of 12 characters and costs ~16 min); each pass checked from the front against the picture, and made again - through TRELLIS's background remover, then on a new seed - when it is not a match (the picture's backdrop built in as a board); retried in smaller GPU pieces if macOS stops a long one | `vendor/trellis2mlx`, [patch](patches/) |
+| generate, multiview | TRELLIS.2 via MLX at 1M faces (at 200k, flat facets and sawtooth plate edges reached the normal map; E135), its surface then filtered by bilateral normal filtering, which smooths facets a few degrees apart and keeps creases; one pass on the reference (with `--quality best`, side and back views repainted and fed back as stochastic multi-view conditioning - off by default since E106: it drifted from the picture on 12 of 12 characters and costs ~16 min); each pass checked from the front against the picture, and made again - through TRELLIS's background remover, then on a new seed - when it is not a match (the picture's backdrop built in as a board); retried in smaller GPU pieces if macOS stops a long one | `vendor/trellis2mlx`, [patch](patches/) |
 | views, parts | eight orbit renders; a human parser per view, back-projected to body / clothing / hair / accessory labels; hair the parser calls "hat" or "bag" relabelled by colour | `pipeline/parts.py` |
 | skeleton | joints from a pose model on the front and side views | `pipeline/skeleton.py` |
-| solidify | the generated shell becomes one solid: inside is what cannot see out along 3 of 26 directions; hair flakes closed where hair is nearest | `pipeline/solidify.py` |
+| solidify | the generated shell becomes one solid: inside is what cannot see out along 3 of 26 directions; hair flakes closed where hair is nearest; each eye opening found on the generator's paint and closed by a cap that follows the lids (E140) | `pipeline/solidify.py`, `blender/eye_fill.py`, `pipeline/eye_marks.py` |
 | joints | every limb traced through the solid to its tip; wrists where the palm rounds or enters a sleeve; elbows by proportion; midline from the legs | `pipeline/refine_joints.py` |
 | hands, arms | the generated hands cut off at the wrist, modelled hands with fingers joined on, one length for both; each arm cut free of whatever it was generated against below the armpit (a vest's side, a hip), thin webs the generator stretched between arm and body taken away, then checked slab by slab and cut again where it still reaches the body | `pipeline/cut_hands.py`, `pipeline/free_arms.py`, `blender/hands.py` |
-| retopo, labels, texclean | 60k-triangle mesh; UVs checked for islands folded onto themselves and those faces unwrapped again; albedo, normal, roughness/metallic and AO baked; skin painted onto clothing removed | `blender/retopo.py`, `pipeline/texture_cleanup.py` |
-| texture | the source images projected back onto the mesh (not beside the outline of anything nearer, in the generated views); the face read from a detailed close-up; the modelled hands in the face's skin tone; surfaces the arm cut opened coloured from the nearest old surface along the mesh | `pipeline/project_texture.py`, `pipeline/face_detail.py` |
+| retopo, labels, texclean | 60k-triangle mesh, the head keeping 28% of it, without the loose shards the cuts and the decimation leave (2-94 a character, E138); the generator's colour rebuilt through the mesh before it is baked, without the crackle its atlas leaves along its charts' edges (E140); UVs checked for islands folded onto themselves and those faces unwrapped again; albedo, normal, roughness/metallic and AO baked; skin painted onto clothing removed | `blender/retopo.py`, `pipeline/despeck_source.py`, `pipeline/texture_cleanup.py`, `blender/mesh_denoise.py` |
+| texture | the source images projected back onto the mesh (not beside the outline of anything nearer, in the generated views); the face read from a detailed close-up and laid on in parts - each brow, eye, the nose, mouth and jaw onto the model's own (E140) - painted by the picture alone; the modelled hands in the face's skin tone, shaded from their own ambient occlusion; surfaces the arm cut opened coloured from the nearest old surface along the mesh; then the skin away from the face brought to one tone at the 1-2 cm scale of the picture's shadows, its fine detail kept (no ring at a bare wrist), and non-metal colours kept inside the range real materials have (sRGB 30-240) - neither on anime, whose drawn shading is the style. `--texture-views hunyuan` paints the sides and back with Hunyuan3D-Paint 2.1 instead (opt-in: better on Pip, worse by eye on 6 of 8 others; E134) | `pipeline/project_texture.py`, `pipeline/face_detail.py`, `pipeline/skin_tone.py`, `pipeline/albedo_range.py` |
 | weights, rig | weights measured through the body; below the armpit the arm's weight only on the arm; a vest's armhole with the collarbone and a jacket's hem with the pelvis where their colours tell them from the sleeve and the trousers; loose pieces (a detached sole, a hair spike) ride with the body part they sit on; finger bones at the modelled knuckles; head rigid to the jaw line; rigid shoes; one leg each | `pipeline/geodesic_weights.py`, `blender/rig_build.py` |
 | springs | bone chains for what hangs free | `blender/springs.py` |
-| frame, tpose | metres, soles on the floor, origin under the pelvis; T rest pose, hands squared | `blender/normalize_frame.py`, `blender/tpose.py` |
+| frame, tpose | metres, soles on the floor, origin under the pelvis; the T the clips are retargeted to recorded, hands squared, the modelled pose kept as the rest (`--rest T` bakes the T in) | `blender/normalize_frame.py`, `blender/tpose.py` |
 | face | landmarks (chin, nose, mouth, eyes, checked), mouth cut open, jaw, five shapes | `pipeline/face_landmarks.py`, `blender/face_rig.py` |
 | animate | 18 clips retargeted: heading and travel direction, feet planted with leg IK; then held inside the character's own joint limits (how far each elbow, knee and arm can turn before one limb sinks more than 2 cm into another, measured on its mesh) | `blender/retarget.py`, `blender/joint_limits.py`, `blender/clearance.py` |
 | package, web | Mixamo names, glTF + FBX with LODs, engine texture variants, manifest; 2K WebP build | `blender/package.py`, `tools/optimize_glb.py` |
@@ -377,18 +406,18 @@ work/<name>/final.blend --report work/<name>/retarget.json`, metric v2). The sho
 is the shoe the viewer sees: every vertex below the ankle, posed by its own skin weights (E130).
 
 <!--FEET-->
-| contact slip, share of the gait's true ground speed (worse foot) | Aoi | Mara | Pip | Juno | Rowan | Wren | Vex | Knight | Kaito | Bo | Cadet |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| walk | 1.0% | 2.2% | 2.7% | 2.7% | 2.2% | 2.1% | 2.7% | 2.4% | 1.0% | 3.6% | 9.4% |
-| jog | 1.7% | 2.2% | 2.0% | 2.0% | 1.9% | 2.1% | 2.5% | 2.3% | 1.0% | 2.8% | 6.2% |
-| run | 0.7% | 2.6% | 3.0% | 2.2% | 3.6% | 2.2% | 2.4% | 1.7% | 0.6% | 3.7% | 11.5% |
-| sprint | 1.1% | 3.5% | 1.9% | 1.6% | 3.4% | 1.9% | 3.8% | 3.7% | 0.7% | 6.7% | 28.4% |
-| walk back | 4.2% | 7.3% | 10.4% | 6.0% | 8.2% | 6.8% | 5.3% | 5.6% | 6.6% | 10.0% | 11.4% |
-| jog back | 1.2% | 4.8% | 6.0% | 2.1% | 3.3% | 2.6% | 3.8% | 4.3% | 1.3% | 5.1% | 12.9% |
-| strafe left | 1.9% | 5.0% | 7.8% | 5.3% | 6.2% | 4.4% | 3.7% | 4.1% | 2.0% | 8.7% | 19.1% |
-| strafe right | 1.9% | 5.0% | 7.5% | 3.0% | 5.0% | 4.2% | 3.3% | 4.2% | 1.9% | 8.9% | 15.9% |
-| crouch walk | 1.7% | 2.0% | 3.4% | 1.8% | 1.8% | 2.1% | 3.2% | 2.5% | 1.9% | 3.7% | 7.6% |
-| soles through the floor, worst | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.3 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.6 cm |
+| contact slip, share of the gait's true ground speed (worse foot) | Aoi | Mara | Pip | Juno | Rowan | Wren | Vex | Knight | Kaito | Bo | Cadet | Scout | Gray | Knight II | Rivet | Ren |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| walk | 1.5% | 3.3% | 2.9% | 3.0% | 1.9% | 2.1% | 2.0% | 1.4% | 1.1% | 3.2% | 6.4% | 2.8% | 2.1% | 1.8% | 1.9% | 2.5% |
+| jog | 1.9% | 2.6% | 2.8% | 3.1% | 1.8% | 1.9% | 2.9% | 1.5% | 3.2% | 2.7% | 6.1% | 2.5% | 2.7% | 2.5% | 2.3% | 3.2% |
+| run | 2.2% | 4.0% | 3.1% | 3.5% | 2.5% | 2.6% | 2.7% | 1.0% | 1.3% | 3.3% | 11.0% | 4.1% | 1.3% | 3.0% | 1.6% | 1.6% |
+| sprint | 1.5% | 4.8% | 3.5% | 4.0% | 1.8% | 2.0% | 0.7% | 2.0% | 1.0% | 5.4% | 28.0% | 4.3% | 2.7% | 5.0% | 1.7% | 2.0% |
+| walk back | 3.2% | 6.7% | 6.7% | 6.2% | 8.0% | 6.9% | 3.7% | 7.9% | 6.7% | 11.8% | 11.2% | 8.2% | 7.5% | 9.5% | 7.9% | 5.7% |
+| jog back | 1.0% | 4.0% | 6.8% | 2.7% | 4.4% | 2.7% | 0.9% | 4.2% | 1.8% | 4.4% | 15.3% | 4.5% | 3.0% | 3.2% | 3.1% | 4.6% |
+| strafe left | 1.9% | 3.9% | 7.8% | 4.6% | 4.8% | 4.5% | 2.2% | 5.9% | 4.4% | 9.1% | 16.0% | 7.0% | 4.2% | 5.5% | 6.1% | 3.3% |
+| strafe right | 1.9% | 3.9% | 7.8% | 4.8% | 4.7% | 4.2% | 2.2% | 5.6% | 4.3% | 9.2% | 14.5% | 5.7% | 3.7% | 5.5% | 5.9% | 3.2% |
+| crouch walk | 1.3% | 2.2% | 3.0% | 2.5% | 1.8% | 1.6% | 1.7% | 1.8% | 2.7% | 4.2% | 7.9% | 2.7% | 1.9% | 2.0% | 2.2% | 3.1% |
+| soles through the floor, worst | 0.0 cm | 0.6 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.4 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.2 cm |
 <!--/FEET-->
 
 The table this replaced divided slip speed by `max(ground speed, 1 m/s)`, understating every

@@ -63,6 +63,33 @@ class DWPose:
         return kp, conf
 
 
+def upper(mask, frac):
+    """The figure in `mask` cut off below `frac` of its height."""
+    ys_ = np.nonzero(mask.any(1))[0]
+    m_ = mask.copy()
+    m_[int(ys_.min() + frac * (ys_.max() - ys_.min())):] = False
+    return m_
+
+
+def read_face(dw, rgb, mask):
+    """The 68 face points (COCO-WholeBody 23-90) and their confidences, in two passes: on the figure's top 45% (a
+    cartoon's head is a quarter of it and more - cut at a fifth, Pip's face read at 0.31), then on a portrait crop
+    round the face that found, the better kept (E140)."""
+    kp, sc = dw(rgb, upper(mask, 0.45))
+    best = (kp[23:91], sc[23:91])
+    f = kp[23:91][np.isfinite(kp[23:91]).all(1)]
+    if len(f) > 20:
+        (x0, y0), (x1, y1) = f.min(0), f.max(0)
+        w_, h_ = x1 - x0, y1 - y0
+        box = np.zeros_like(mask)
+        box[max(0, int(y0 - 0.9 * h_)):int(y1 + 0.5 * h_), max(0, int(x0 - 0.6 * w_)):int(x1 + 0.6 * w_)] = True
+        if (mask & box).sum() > 100:
+            kp2, sc2 = dw(rgb, mask & box)
+            if np.median(sc2[23:91]) > np.median(best[1]):
+                best = (kp2[23:91], sc2[23:91])
+    return best
+
+
 def video_frames(path):
     cap = cv2.VideoCapture(str(path))
     out = []

@@ -141,6 +141,9 @@ def detail(name):
     c["poses"] = [url(p) for p in sorted(pz.glob("*.png"), key=lambda p: (p.name.rsplit("_", 1)[0], p.name))] \
         if pz.exists() else []
     c["poses_at"] = max((p.stat().st_mtime for p in pz.glob("*.png")), default=None) if pz.exists() else None
+    cu = w / "qa" / "closeups.png"
+    c["closeups"] = url(cu) if cu.exists() else None
+    c["closeups_at"] = cu.stat().st_mtime if cu.exists() else None
     reel = w / "qa" / "reel.mp4"
     c["reel"] = url(reel) if reel.exists() else None
     # the same clip from several cameras at once (tools/make_angles.py), newest first
@@ -716,6 +719,14 @@ def make_job(b):
             cmd += ["--quality", b["quality"]]
         if b.get("seed") not in (None, ""):
             cmd += ["--seed", str(int(b["seed"]))]
+        if b.get("rest") in ("A", "T"):
+            cmd += ["--rest", b["rest"]]
+        if b.get("texture_views") in ("hunyuan", "none"):
+            cmd += ["--texture-views", b["texture_views"]]
+        if b.get("head") in ("hunyuan", "none"):
+            cmd += ["--head", b["head"]]
+        if b.get("eyes") in ("rebuild", "none"):
+            cmd += ["--eyes", b["eyes"]]
         title = f"make {name}" + (f": {b['prompt'].strip()[:60]}" if b.get("prompt") else "")
     elif kind == "rerun":
         st = b.get("from")
@@ -746,6 +757,13 @@ def make_job(b):
         cmd = [charforge.blender_bin(), "-b", "-noaudio", "--python", ROOT / "blender" / "render_poses.py", "--",
                "--blend", blend, "--shots", ",".join(shots), "--az", "30,210", "--res", "420", "--out", out]
         title = f"{name}: render the poses"
+    elif kind == "closeups":
+        # eight lit close-ups - face, three-quarter, hands, shoulder, back, foot - where the faults a person sees
+        # first show (tools/closeups.sh, E138), into work/<name>/qa/closeups.png
+        if not (ROOT / "work" / name / "final.blend").exists():
+            raise ValueError("no finished character to look at yet")
+        cmd = ["zsh", ROOT / "tools" / "closeups.sh", name]
+        title = f"{name}: close-ups"
     elif kind == "angles":
         if not (ROOT / "work" / name / "final.blend").exists():
             raise ValueError("no finished character to film yet")

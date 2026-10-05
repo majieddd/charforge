@@ -73,6 +73,22 @@
     closed smile, another haircut.</figcaption>
 </figure>
 
+<p><b>A finer surface.</b> TRELLIS.2 simplifies its surface before writing it. At the 200,000 faces this pipeline asked
+  for until version 0.11, gently curved armour became large flat facets with sawtooth edges, and every later stage kept
+  them: the solid's vertices are put back on the generated surface to keep its detail, so the facets reached the normal
+  map and showed as a triangle pattern under any grazing light ([#fig-rake]). The generator now keeps 1M faces, and its
+  surface is filtered before anything is built on it by bilateral normal filtering [@bnf]: each face normal is averaged
+  with its neighbours', weighted by their area, their distance and how alike the two normals are, so facets a few degrees
+  apart become one smooth surface while a plate's edge, tens of degrees sharp, stays; the vertices are then moved to agree
+  with the filtered normals [@sunnormal], a median 0.05 mm on a 1M-face model [E135]. A rebuild of the roster on it is
+  scored in [#sec-eval-quality]. Quad remeshing was tried as well and refused both the generated mesh and the solid
+  (QuadriFlow needs a manifold input).</p>
+<figure id="fig-rake">
+  <img src="media/q_rake.webp" width="1338" height="1092" alt="Knight2, Cadet and Gray as shipped, grey under a low raking light, version 0.11 beside version 0.12: at 200k faces Knight2's breastplate has a jagged slot and faceted plates and Cadet's chest a triangle pattern; at 1M faces with the surface filtered the plates are smooth with crisp edges">
+  <figcaption>The shipped low-poly with its normal map under a raking light, v0.11 (TRELLIS.2 at 200k faces) and v0.12
+    (1M faces, the surface filtered): front and a close-up of the chest.</figcaption>
+</figure>
+
 <h3 id="sec-m-geometry">Solid, joints, arms and hands</h3>
 <p>The generated mesh is closed into one solid (OpenVDB level sets [@openvdb]), its flakes, inner shells and shards
   removed. Orbit renders give per-vertex part labels from a SegFormer architecture [@segformer] using the FASHN human-parsing
@@ -99,29 +115,106 @@
 </figure>
 
 <h3 id="sec-m-texture">Mesh and texture</h3>
-<p>The solid is decimated to about 60,000 triangles, unwrapped, and its colour, normal, roughness/metal and ambient
-  occlusion baked from the generated model. Smart UV projection on a smoothed copy folded islands onto themselves
+<p>The solid is decimated to about 60,000 triangles [@qem], the head keeping {{f.summary.head_share_median|int}}% of them, unwrapped, and
+  its colour, normal, roughness/metal and ambient occlusion baked from the generated model. Collapse decimation spends
+  triangles where the surface turns and left the head 17% of the budget, too few for an eyelid or a lip; a vertex group
+  lets the head's vertices collapse less freely, its strength found by bisection until the share holds [E140]. The
+  generator's own colour is a 1024-px atlas of thousands of small charts for a million faces - most triangles smaller
+  than a texel - and along the charts' edges it leaves texels sampled off the surface; baked, they were a crackle of
+  short grey and dark lines over every surface the picture does not paint ([#fig-crackle]). They are not dark specks a
+  filter on the atlas can find, nor holes in the mesh; and an atlas texel cannot be mended from its neighbours there,
+  which belong to other charts. So the colour is rebuilt through the mesh: each triangle sampled at its centroid, each
+  vertex (its copies at the atlas's seams joined) given the median of its triangles' colours, a vertex far from its
+  neighbours' median along the mesh given that median, and the atlas painted again from the vertex colours at four times
+  its resolution, where nearly every triangle holds a texel of its own. New characters are generated at 2048 px. Smart UV projection on a smoothed copy folded islands onto themselves
   wherever the copy curls ({{b.uv_folds.before.0}}-{{b.uv_folds.before.1}} faces per character sharing texels with
   another surface - the backs of Pip's sleeves showed his vest's paint); the overlapping faces are unwrapped again as
   their own islands at one texel density, leaving {{b.uv_folds.after.0}}-{{b.uv_folds.after.1}} [E027].</p>
 <p>The bake is soft, so the reference is projected back onto the mesh, aligned to renders of the mesh by a similarity
-  transform on the silhouettes and then by optical flow [@dis], together with the repainted side and back views; the
-  reference sets the palette, colour-matched group by group. Like CharacterGen's back-projection [@charactergen] a view
-  only paints surfaces it sees face-on and unoccluded; unlike it, views are blended by weight rather than by Poisson
+  transform on the silhouettes and then by a smooth optical flow [@dis], together with the repainted side and back views;
+  the reference sets the palette, colour-matched group by group. Like CharacterGen's back-projection [@charactergen] a
+  view only paints surfaces it sees face-on and unoccluded; unlike it, views are blended by weight rather than by Poisson
   blending [@poisson] - comparing the two is [E105]. The face is painted from a detailed image: the reference's face
-  region enlarged 3-5x and re-detailed by the image model at low strength, laid on through a finer flow of its own.</p>
-<p>That face flow is refused when it would move features more than 2.5% of the figure's height, because on drawn faces
-  a larger warp painted a second pair of eyes. Knight's generated face sat 2.5% from his picture's: refused, the
-  picture went on unaligned, his fringe across one eye and every feature doubled; forced, the eyes smeared into bands.
-  For realistic characters whose face the flow refuses, the front view now leaves the face and fringe to the generator's
-  own texture, which is softer but lies on its geometry [E022] ([#fig-knight-face]). The face stage then found Knight's
-  eyes and mouth, and he has a face rig. The price is visible too: his fringe carries the generator's blotchier colour.
-  The modelled hands take the body's skin tone from warm, skin-coloured texels of the face; a grey alien has none, and
-  Gray's hands fell back to a fixed human peach until the face's own colour became the fallback [E020].</p>
-<figure id="fig-knight-face">
-  <img src="media/fix_knight_face.webp" width="1704" height="420" alt="Knight's face before and after, from the front and at 35 degrees: before, the fringe falls across one eye and the features are doubled; now, one face on the geometry, with blotchier hair at the fringe">
-  <figcaption>Knight's face, projected unaligned (left pair) and kept from the generator where the reference cannot be
-    laid on it (right pair).</figcaption>
+  region enlarged 3-5x and re-detailed by the image model at low strength.</p>
+<p><b>The face in parts.</b> Faces looked sloppy after version 0.12 - eyes hollow or smeared, features off the shape,
+  patches on the cheek - and taken one part at a time the faults had separate causes [E140]. The eyes were in the shape:
+  TRELLIS.2 models every eye as an almond opening with shards inside it, the solid filled it with streaks, and the
+  decimation crumpled it into a pit no texture reads as an eye ([#fig-eyes]). Each opening is found by DWPose [@dwpose]
+  on a front render of the generated model in its own colours - the generator paints its features where its geometry
+  has them, where on a grey render of a drawn face the pose model only guessed - and rebuilt in the solid as a cap
+  across the opening: it follows the lids' depth round the rim, bulges a little forward in the middle like an eyeball
+  under lids and sinks a little at the rim; what lies in front of it is cleared, the region smoothed and kept from being
+  put back onto the generated surface's shards. A ball set behind the opening instead left a slot whose hard ledges
+  rendered as dark rings round the eyes. The features were in the projection: the silhouette fit had put Mara's painted
+  face larger than her sculpted one, its eyes 10-30 pixels off. Each part - each brow, each eye, the nose, the mouth, the
+  jaw - is now moved by its own similarity [@umeyama] from where the projection puts the model's points (read on the
+  generator's paint) to the picture's, and the moves are spread by a thin-plate spline [@tps] that falls to nothing past
+  the face; this replaces the earlier face flow, which had squinted and smeared Mara's eyes. The face's ellipse is
+  painted by the front view alone - the generated side views, their faces drawn again a little elsewhere, put patches on
+  the cheek and skin on the hair - and left out of the skin tone below ([#fig-faceparts]). Anime faces are not laid on
+  in parts: a drawn face's shape does not say how big its eyes are, only the generator's paint does, and fitted to it
+  Kaito's eyes came out a fifth wider than his picture's. Where DWPose cannot read the
+  model's eyes ({{f.summary.n}} benchmark characters: {{f.summary.eyes_rebuilt_chars}} rebuilt; most anime faces are
+  not read) the eyes stay as generated, and where it cannot read both faces the face flow is used as before. A drawn
+  smile can run past the lips - Cadet's, Kaito's and Bo's corners read 1.2 eye spacings apart - so the jaw's cut is held
+  to 0.8 of the eye spacing.</p>
+<figure id="fig-crackle">
+  <img src="media/q_crackle.webp" width="1500" height="500" alt="Knight's generated head in its own colours, from the side: crackled with short grey and dark lines as generated; with the atlas's texels mended, fewer lines but dark flecks; rebuilt through the mesh, clean skin and hair">
+  <figcaption>The generator's own colours on Knight's head, unlit: as generated; mended in the atlas; rebuilt through
+    the mesh (v0.13).</figcaption>
+</figure>
+<figure id="fig-eyes">
+  <img src="media/q_eyes.webp" width="1524" height="334" alt="Mara's head in plain grey at five stages: the generated mesh with ragged almond eye openings, the solid with streaked slabs in them, v0.12's low-poly with crumpled pits, the solid with the eyes rebuilt, and v0.13's low-poly with smooth lids over the eyes">
+  <figcaption>Mara's eyes, the shape alone: as generated, in the solid, in v0.12's low-poly; rebuilt in the solid, and
+    decimated with the head's larger share.</figcaption>
+</figure>
+<figure id="fig-faceparts">
+  <img src="media/q_faceparts.webp" width="1524" height="334" alt="Mara's face lit from the front: the picture; v0.12 with hollow, smeared eyes and a dark nose; the eyes rebuilt but the old face flow squinting them; the face laid on in parts with dark patches on one cheek; and v0.13 with the picture's face, clean skin and clear eyes">
+  <figcaption>Mara's face, one part at a time: the picture; v0.12; the eyes rebuilt with the old face flow; laid on in
+    parts; and with the face left to the front view and out of the skin tone (v0.13).</figcaption>
+</figure>
+
+<p><b>No loose shards.</b> The solid is one piece, but the modelled hands are unioned onto it and the decimation's
+  repairs delete faces round non-manifold edges, so small shells survived into every low-poly: 2-94 a character, of
+  1-58 faces each and a few millimetres to 3 cm across, floating at Cadet's and Knight2's shoulders, and holding nearly
+  all of the model's open edges (Cadet 207 of 212). Pieces under 0.25% of the faces are dropped; a garment or a strand
+  kept apart by design is hundreds of faces or more [E138].</p>
+<p><b>Hands shaded by their own shape.</b> The modelled hands take the skin tone of the face, and took their light and
+  dark from the base colour bake - which comes from the generated mesh, where the old hand, or nothing, stands where the
+  modelled hand is - so every hand carried pale and dark patches. They now take it from the ambient occlusion baked on the
+  solid they are part of: soft shade in the creases between the fingers, nothing elsewhere ([#fig-hands-ao]) [E138].</p>
+<figure id="fig-hands-ao">
+  <img src="media/q_hands.webp" width="1338" height="364" alt="Cadet's left hand from above and hanging at his side, before and after: before, a pale patch across the back of the hand and the thumb; after, an even skin tone with soft shade between the fingers">
+  <figcaption>A modelled hand shaded from the generated mesh's colour bake (before) and from its own ambient occlusion (after).</figcaption>
+</figure>
+<p><b>One skin.</b> The skin's colour comes from three places - the picture, with its light and shadow, on the front; the
+  generator's colours on the sides and back; one tone on the modelled hands - so the same skin was three colours: a ring
+  at every bare wrist (Mara's forearm L* 50 against her hand's 69, CIEDE2000 16.6) and, on the face, the picture's shading
+  lying on a shape not quite the picture's. Skin texels - near the character's skin tone in hue and chroma, at a
+  lightness within a band of it so that shading counts and brows, lashes, lips and eyes do not, on the parts the parser
+  calls skin (brown boots and khaki are skin-coloured too) - have their colour at the 1-2 cm scale of shading replaced
+  by the tone, measured in 3D so a cheek's islands are not kept apart by the atlas, and keep their own detail at the
+  scale of freckles and pores. Mara's wrists go from dE 16.6 and 16.3 to 1.5 and 2.2 [E138]. Anime is left as drawn: its
+  painted shading is the style. So is the face, since version 0.13: its colour bands cut the picture's soft cheek shadow
+  into patches, some texels lifted and their neighbours not, and the face is now the picture's own [E140].</p>
+<p><b>Colours a renderer can light.</b> A physically based renderer multiplies the light by the base colour, and the PBR
+  guides keep a non-metal between sRGB 30-50 and 240 [@pbrguide]: a black jacket painted at sRGB 5-15 renders as a hole
+  without folds, and 17-38% of five characters' textures lay below 30. Every non-metal texel's lightness is eased into
+  that range by a smooth curve that leaves texels well inside it untouched and keeps a garment's own contrast, its hue and
+  chroma as painted; metals (the ORM map's metal channel) are left alone [E132].</p>
+<p><b>Painted sides and backs, on request.</b> Hunyuan3D-Paint 2.1 [@hunyuan3d21], run through its Apple Silicon port
+  [@hunyuanmac], paints six views of the mesh from its own normals and positions, consistent with the picture and each
+  other. Its own bake back onto the atlas covered a third of the surface on our meshes and filled the rest in UV space, a
+  patchwork, so only its views are kept, fitted onto our cameras by silhouette and projected like any view, with the
+  front delit by Hunyuan's delighting model and each garment's colour on the side and back views matched to the front's
+  [E133] [E134]. It cleaned Pip's blotchy back. On eight more characters, though, the texture audit scored it better while
+  it looked worse on six: generated at 256 px, the views paint what the picture does not show - a face-like pattern on
+  the back of the boy scout's head - and lose fine pattern ([#fig-views]). It is an option (<code>--texture-views
+  hunyuan</code>), used for Pip.</p>
+<figure id="fig-views">
+  <img src="media/q_views.webp" width="1710" height="314" alt="Unlit albedo renders, shipped beside Hunyuan3D-Paint's views: the boy scout's back with a face-like pattern on the back of his head in the views; Bo's side with the checks of his trousers turned to blotchy dots; Knight2's back plate darker with a pale patch">
+  <figcaption>The shipped texture beside Hunyuan3D-Paint 2.1's views on the same meshes: the boy scout's back, Bo's
+    side, Knight2's back.</figcaption>
 </figure>
 
 <h3 id="sec-m-rig">Weights and rig</h3>
@@ -139,6 +232,25 @@
 <figure id="fig-wings">
   <img src="media/polish_wings.webp" width="1224" height="486" alt="Pip in five poses before and after the garment rules: before, his yellow vest lifts into wings with his arms; after, it stays on his torso">
   <figcaption>Pip before and after the garment rules: the vest fused to his sleeves lifted into wings with his arms.</figcaption>
+</figure>
+
+<p><b>The pose it was modelled in, as its rest.</b> Retargeting turns each source bone by its change from its own
+  rest and applies that change to the target's rest, so the two rests must agree: Mixamo's is a T. Until version 0.11 the
+  rig was therefore skinned up from the A-pose the character was generated in to a T and saved in it - and skinning is
+  linear blending, which cannot be undone exactly: armour fused to the arm (Cadet's pauldrons) sheared into shards on the
+  way up, and arms-down frames, skinned back down from that T, kept slivers. The T is now recorded on the armature and
+  used only inside the retargeting maths; the rest pose stays the modelled one. The clips come out the same - foot slip
+  identical in all nine gaits - while on Cadet crushed faces went from {{q.e137_cadet.T.crushed_pct}}% to
+  {{q.e137_cadet.A.crushed_pct}}%, self-intersecting face pairs per frame from {{q.e137_cadet.T.intersecting_pairs_mean|int}} to
+  {{q.e137_cadet.A.intersecting_pairs_mean|int}}, and frames with a limb more than 2 cm inside another from
+  {{q.e137_cadet.T.deep_frames_pct|0}}% to {{q.e137_cadet.A.deep_frames_pct|0}}% ([#fig-rest]) [E137]. Arms raised above the shoulder
+  still stretch armour fused to the arm; that needs rigid shoulder pieces [E110]. Engines take an A-pose bind like any
+  other (Unity's Enforce T-Pose, Unreal's retarget pose, Godot's Fix Silhouette); <code>--rest T</code> bakes the T as
+  before, and the manifest says which a build has.</p>
+<figure id="fig-rest">
+  <img src="media/q_rest.webp" width="1002" height="728" alt="Cadet's left shoulder at rest, in idle and in a walk, grey: with the T baked into the rest pose, slivers and torn armour under the pauldron; with the modelled pose kept, the pauldron and the arm below it whole">
+  <figcaption>Cadet's shoulder with the T baked into the rest pose (top) and with the modelled pose kept (bottom): at rest,
+    in idle and in a walk.</figcaption>
 </figure>
 
 <h3 id="sec-m-face">Face rig</h3>
