@@ -399,6 +399,7 @@ async function newChar() {
         <div class="field"><label for="rest">Rest pose</label><select id="rest"><option value="A">As modelled (A-pose) - cleaner shoulders and armpits (recommended)</option><option value="T">T-pose - for tools that insist on one; armour fused to the arm can tear at the shoulders</option></select></div>
         <div class="field"><label for="tviews">Sides and back</label><select id="tviews"><option value="none">The generator's own colours (recommended)</option><option value="hunyuan">Painted by Hunyuan3D-Paint - cleaner where the generator's back is blotchy, but it can invent what the picture does not show; needs tools/setup_hunyuan.sh</option></select></div>
         <div class="field"><label for="eyes">Eyes</label><select id="eyes"><option value="rebuild">Rebuilt as lids over an eyeball where the generator left shards (recommended)</option><option value="none">As generated</option></select></div>
+        <div class="field"><label for="contact">Arms in motion</label><select id="contact"><option value="on">Kept out of the torso and thighs, frame by frame (recommended)</option><option value="off">Joint limits only</option></select></div>
         <div class="field"><label for="head">Head</label><select id="head"><option value="none">As generated with the body (recommended)</option><option value="hunyuan">Made again on its own from a close crop - a sculpted face, about 8 minutes more; experimental, needs tools/setup_hunyuan.sh</option></select></div>
         <div class="field"><label for="seed">Seed</label><input type="number" id="seed" value="7"></div>
       </details>
@@ -476,7 +477,7 @@ async function newChar() {
   $('#start').onclick = async () => {
     const body = { kind: 'make', name: $('#name').value.trim().toLowerCase(), style: view.querySelector('input[name=style]:checked').value,
       image_model: $('#imodel').value, quality: $('#quality').value, seed: $('#seed').value,
-      rest: $('#rest').value, texture_views: $('#tviews').value, head: $('#head').value, eyes: $('#eyes').value };
+      rest: $('#rest').value, texture_views: $('#tviews').value, head: $('#head').value, eyes: $('#eyes').value, contact: $('#contact').value };
     if (hset.checked) body.height = Number(h.value);
     else if (suggested) body.height = suggested;
     if (tab === 'prompt') {

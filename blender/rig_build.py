@@ -47,6 +47,9 @@ ap.add_argument("--out", required=True)
 ap.add_argument("--json", default=None)
 ap.add_argument("--max-influences", type=int, default=4)
 ap.add_argument("--labels", default=None, help="labels.json - accessories bind to the torso only")
+ap.add_argument("--loose-max-share", type=float, default=1.0,
+                help="a loose piece larger than this share of the vertices keeps its own weights instead of riding "
+                     "rigidly with the body part nearest it (1.0: every piece rides; a layered character, E149, 0.005)")
 a = ap.parse_args(argv)
 
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
@@ -419,6 +422,11 @@ if vlab is not None and len(leg_names) == 4 and all(b in J for b in ("left_hip",
                   flush=True)
 
 
+HAND_CLASS = None
+if a.labels and os.path.exists(a.labels):
+    _cls = np.asarray(json.load(open(a.labels)).get("classes", []))
+    if len(_cls) == len(V) and (_cls == 13).any():
+        HAND_CLASS = _cls == 13
 for side, hd in hands.items():
     C = (np.array(hd["wrist"]) - ctr) * k
     L = float(hd["length"]) * k
@@ -442,6 +450,10 @@ for side, hd in hands.items():
         region = np.zeros(n, bool)
         region[idx_[keep_]] = True
         along = (V - C) @ x
+    if "frame" not in hd and HAND_CLASS is not None:
+        # no modelled hand to measure against (a template's anatomical hands, E149): the labels say which vertices
+        # are hand, so a sleeve cuff or a bag near the wrist is not given finger weights
+        region &= HAND_CLASS
     if not region.any():
         continue
     Xr = V[region]
@@ -697,6 +709,8 @@ if len(body_v) and _nc > 1:
         piece = np.nonzero(lab_v == c_)[0]
         if not len(piece) or (finger_cols and W[np.ix_(piece, finger_cols)].sum() > 1e-3):
             continue                                                   # a modelled hand
+        if len(piece) > a.loose_max_share * len(V):
+            continue                                                   # a garment of its own (layered, E149)
         best_ = min((kd_.find(v_.tolist()) for v_ in V[piece]), key=lambda r_: r_[2])
         src_ = body_v[best_[1]]
         W[piece] = W[src_][None, :]

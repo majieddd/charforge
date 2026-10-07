@@ -162,11 +162,14 @@
   2 cm inside another ({{b.aberrations_before_clearance.mean.deep_frames_pct|int}}% counting arms through hair, which
   the head's region includes).</p>
 <p>Holding the clips inside each character's joint limits ([#sec-m-clearance]) brings that to
-  {{aberr.mean.deep_body_frames_pct|int}}% ({{aberr.mean.deep_frames_pct|int}}% with hair), and the deepest penetration
-  between body regions, averaged over clips, from
-  {{b.aberrations_before_clearance.mean.body_penetration_cm}} to {{aberr.mean.body_penetration_cm}} cm
+  {{b.aberrations_after_clearance.mean.deep_body_frames_pct|int}}%
+  ({{b.aberrations_after_clearance.mean.deep_frames_pct|int}}% with hair), and solving every frame against the
+  character's own surface ([#sec-m-contact]) then to {{aberr.mean.deep_body_frames_pct|int}}%
+  ({{aberr.mean.deep_frames_pct|int}}% with hair); the deepest penetration between body regions, averaged over clips,
+  goes from {{b.aberrations_before_clearance.mean.body_penetration_cm}} to
+  {{b.aberrations_after_clearance.mean.body_penetration_cm}} and then {{aberr.mean.body_penetration_cm}} cm
   ([#tab-aberrations]). No character's crushed, stretched or sheared share rises, and no pop is added (one hand pop
-  already in Wren's sprint now straddles two frames). The planted feet do not move: Bo's foot slip on walk, jog, run
+  already in Wren's sprint now straddles two frames). The contact solve, after it, changes those shares by at most 0.04 points - Rowan's sheared share goes from 1.71% to 1.75%, the one rise - and adds no pop. The planted feet do not move: Bo's foot slip on walk, jog, run
   and sprint is identical to the fourth decimal before and after. The largest single turn clearance makes is
   {{aberr.min.clearance_max_deg|int}}-{{aberr.max.clearance_max_deg|int}}° per character, and armour takes the most:
   Cadet's knee plates meet at {{aberr.cadet.knee_limit_deg|int}}° of bend, so his sprint's swinging knee, bent

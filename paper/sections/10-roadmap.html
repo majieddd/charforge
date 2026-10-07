@@ -3,6 +3,46 @@
 <p>The next phase aims at three things at once: more precise measurement, fewer visible aberrations, and less time per
   character. The new checks separate known truth, model-based proxies, human acceptance, and engine behavior. Each item is an
   experiment in the tracker with its metric fixed before it runs.</p>
+<p><b>Where the gaps come from.</b> A self-examination of every measurement over the 17 characters [E148] put the largest
+  gaps at the surface (noise and lumps 3.4-4.7 times a professional body's), the motion (27% of animation frames with a
+  body part more than 2 cm inside another - arms and hands in the torso and thighs) and realistic faces (likeness to
+  their picture 0.65), and traced most of the faults found since to one root: the generator makes a single fused
+  surface, and eleven of the pipeline's repairs exist to recover structure it never had, each with failures of its own
+  - missing hands, holes in backs, rings round eyes, lines across mouths. Two root-level changes follow, both from
+  published, openly licensed work. <i>A template body under every character</i> [E149]: Anny [@anny], a parametric body
+  with a professional topology, finger and eye joints, UVs and the 52 ARKit facial shapes, fitted under the character in
+  seconds; on Mara its body, wrapped onto her tight clothing, measures surface noise 0.65° and lumps 0.26 mm - in the
+  professional range - and its face, shaped through its own face changes by 68 landmarks, puts her features within
+  4.5 mm of her model's, where wrapping the face vertex by vertex copied the generated face's faults. What lies outside
+  the body becomes clothing and hair layers: the template fits all six characters tried, stylised and anime builds
+  included (joints within 1 cm, bare skin ~3 mm), takes the character's paint in its own UVs, and with the parser's labels the jacket, trousers, boots and hair come
+  away from the unclothed fit as one layer over the painted body ([#fig-template]), whose 52 facial actions and painted
+  eyes work on Mara's head ([#fig-template-face]). On her rig, with the template's weights folded onto
+  CharForge's bones, it animates worse than the shipped model (crushed faces 0.87% to 1.75%, deep frames 7.5% to 17% on
+  18 clips) - smooth, tuned weights matter more than topology; rigged by CharForge's own stages instead - garments
+  keeping their own weights, the body hidden wherever the layer covers it, and the contact solve run - and its hand bones taken from the template's own fingers - it
+  has the fewest intersecting surfaces of any version (189 a frame against the shipped 223) and as little stretch
+  (1.04% against 1.03%), with a few more crushed faces (0.90% against 0.86%), pops (5 against 3) and deep frames (5%
+  against 0.25%). On stylised Pip the same chain has fewer deep frames than the shipped Pip (9.0% against 11.2%) and, once its
+  hands are fitted to his modelled knuckles and fingertips, fewer intersecting surfaces (411 against 593), but hands
+  that still deform worse than his modelled ones (pops 31 against 13). It is not in the build yet. <i>Retargeting that sees the body</i>: MeshRet
+  [@meshret], which models the dense interactions between surfaces as it retargets, runs on the laptop but, measured on
+  six characters [E150], is no better than clearance and blind to hands in thighs; its idea, solved directly per clip
+  against the character's own surface [E151] ([#sec-m-contact]), took the roster's frames with a part more than 2 cm
+  inside another from 30% to 8.5% on average (Pip's from 59% to 11%), and now runs in every build.</p>
+<figure id="fig-template">
+  <img src="media/template_layers_mara.webp" width="1600" height="671" alt="Mara as shipped beside Mara rebuilt on a template body, from the front and three-quarter: the rebuilt one has the template's face, neck, forearms and hands painted with her colours, and her jacket, shirt, trousers, hair, braid and boots kept as one outer layer; one boot toe and the sleeve cuffs show specks">
+  <figcaption>Mara as shipped (left of each pair) and rebuilt on the Anny template [E149]: the template's face, neck,
+    forearms and hands painted from her model, and everything the parser calls clothing, hair or an accessory - or
+    that stands off the unclothed body - kept as one outer layer, with the body hidden beneath it. Not yet rigged;
+    one boot toe and the sleeve cuffs still show specks.</figcaption>
+</figure>
+<figure id="fig-template-face">
+  <img src="media/template_face_mara.webp" width="1600" height="420" alt="The template's head fitted to Mara and painted with her colours, in four expressions: neutral, smiling, jaw open and brows raised, with white eyes, dark brown irises and pupils">
+  <figcaption>The template's own face rig on Mara's fitted, painted head [E149]: neutral, smile, jaw open, brows up -
+    four of its 52 facial actions, against six shapes in CharForge's face rig. The eyeballs are painted as eyes
+    (sclera, the picture's iris colour, a pupil); the shipped model's eyes are a painted cap at the lids.</figcaption>
+</figure>
 <ol>
   <li><b>Shape and texture as clean as a professional's</b> [E132]: the audit and its baselines now exist, and this
     version spent the first round on it - the finer surface [E135], the loose shards, the hands and the skin [E138], the
@@ -24,10 +64,11 @@
     Blinded, randomised ratings of clips near each score's boundary, by at least two raters, before any score becomes a
     gate; dynamic-human quality studies seed the taxonomy, not a transferable scorer [@mate3d; @ddhqa; @dhqa4d]. Texture
     drift and face-morph deformation need their own measures.</li>
-  <li><b>What clearance cannot see</b> [E128]: limits that follow a moving limb, so a hand stays out of a thigh that is
-    itself swinging and legs pass each other in a strafe; colliders for the hair's spring chains, so arms push long hair
-    aside instead of through it [E125]; long coat hems that follow the thighs; and corrective shapes at elbows and
-    shoulders, scored by the same audit [E107].</li>
+  <li><b>What the contact solve does not reach</b> [E128, E151]: the arms are now solved against the torso and legs
+    every frame ([#sec-m-contact]); the legs are not - a thigh into a belly in a crouch, shins passing in a strafe - and
+    the moves made from video carry penetrations of 9-11 cm that small turns cannot undo; colliders for the hair's
+    spring chains, so arms push long hair aside instead of through it [E125]; long coat hems that follow the thighs;
+    and corrective shapes at elbows and shoulders, scored by the same audit [E107].</li>
   <li><b>Moves from words without a person choosing</b> [E129]: rank UniMate's samples by the audits (E102's
     aberrations, foot slip) and by how well a render reads as the sentence, so the best of three is picked
     automatically; write the user's words into the caption style itself; and use UniMate's other two abilities -

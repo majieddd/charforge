@@ -53,5 +53,29 @@
   "mean": {"crushed_pct": 2.72, "stretched_pct": 1.52, "sheared_pct": 2.71, "penetration_max_cm": 3.98, "body_penetration_cm": 3.89, "deep_frames_pct": 49.76, "deep_body_frames_pct": 48.44, "penetration_body_max_cm": 3.89, "popping_windows": 6.38}},
  "skinning_roster": {"_source": "tools/aberrations.py --skin dqs / --skin lbs on the same 13 characters before clearance, 2026-09-30 (surface measures only; the penetration measure changed after this run)", "n": 13,
   "dqs": {"crushed_pct": 2.72, "stretched_pct": 1.52, "sheared_pct": 2.71, "popping_windows": 6.38},
-  "lbs": {"crushed_pct": 3.51, "stretched_pct": 1.32, "sheared_pct": 2.72, "popping_windows": 3.69}}
+  "lbs": {"crushed_pct": 3.51, "stretched_pct": 1.32, "sheared_pct": 2.72, "popping_windows": 3.69}},
+ "aberrations_after_clearance": {
+  "_source": "tools/aberrations.py (DQS) on the shipped rigs after blender/clearance.py and before the contact solve (E151), 2026-10-07 (work/<n>/qa/aberrations.json as of v0.15). Penetration: clip maximum; body = without the head/hair region",
+  "characters": ["aoi", "bo", "boyscout", "cadet", "gray", "hana", "juno3", "kaito", "knight", "knight2", "mara", "pip", "ren", "rivet", "rowan", "vex", "wren"],
+  "mean": {"crushed_pct": 0.92, "stretched_pct": 1.53, "sheared_pct": 1.53, "penetration_max_cm": 2.82, "body_penetration_cm": 2.71, "deep_frames_pct": 29.82, "deep_body_frames_pct": 29.1, "penetration_body_max_cm": 2.71, "popping_windows": 5},
+  "per_character": {
+   "aoi": {"crushed_pct": 0.821, "stretched_pct": 1.083, "sheared_pct": 1.269, "penetration_max_cm": 3.356, "body_penetration_cm": 2.74, "deep_frames_pct": 29.763, "deep_body_frames_pct": 23.963, "penetration_body_max_cm": 2.739, "popping_windows": 5},
+   "bo": {"crushed_pct": 1.325, "stretched_pct": 1.859, "sheared_pct": 1.697, "penetration_max_cm": 1.646, "body_penetration_cm": 1.46, "deep_frames_pct": 10.989, "deep_body_frames_pct": 10.061, "penetration_body_max_cm": 1.46, "popping_windows": 2},
+   "boyscout": {"crushed_pct": 0.834, "stretched_pct": 1.213, "sheared_pct": 1.405, "penetration_max_cm": 1.399, "body_penetration_cm": 1.15, "deep_frames_pct": 5.578, "deep_body_frames_pct": 4.189, "penetration_body_max_cm": 1.147, "popping_windows": 3},
+   "cadet": {"crushed_pct": 1.07, "stretched_pct": 2.033, "sheared_pct": 1.598, "penetration_max_cm": 4.243, "body_penetration_cm": 4.24, "deep_frames_pct": 27.387, "deep_body_frames_pct": 27.387, "penetration_body_max_cm": 4.243, "popping_windows": 4},
+   "gray": {"crushed_pct": 0.685, "stretched_pct": 1.117, "sheared_pct": 1.141, "penetration_max_cm": 3.463, "body_penetration_cm": 3.46, "deep_frames_pct": 58.606, "deep_body_frames_pct": 58.606, "penetration_body_max_cm": 3.463, "popping_windows": 1},
+   "hana": {"crushed_pct": 0.717, "stretched_pct": 1.671, "sheared_pct": 1.822, "penetration_max_cm": 2.571, "body_penetration_cm": 2.15, "deep_frames_pct": 33.089, "deep_body_frames_pct": 30.644, "penetration_body_max_cm": 2.149, "popping_windows": 3},
+   "juno3": {"crushed_pct": 0.839, "stretched_pct": 1.288, "sheared_pct": 1.536, "penetration_max_cm": 2.336, "body_penetration_cm": 2.29, "deep_frames_pct": 18.567, "deep_body_frames_pct": 18.567, "penetration_body_max_cm": 2.294, "popping_windows": 4},
+   "kaito": {"crushed_pct": 0.871, "stretched_pct": 1.361, "sheared_pct": 1.501, "penetration_max_cm": 2.018, "body_penetration_cm": 2.01, "deep_frames_pct": 15.883, "deep_body_frames_pct": 15.628, "penetration_body_max_cm": 2.008, "popping_windows": 1},
+   "knight": {"crushed_pct": 1.035, "stretched_pct": 1.255, "sheared_pct": 1.744, "penetration_max_cm": 1.727, "body_penetration_cm": 1.73, "deep_frames_pct": 17.406, "deep_body_frames_pct": 17.406, "penetration_body_max_cm": 1.727, "popping_windows": 2},
+   "knight2": {"crushed_pct": 0.86, "stretched_pct": 1.791, "sheared_pct": 1.291, "penetration_max_cm": 1.467, "body_penetration_cm": 1.43, "deep_frames_pct": 4.917, "deep_body_frames_pct": 4.917, "penetration_body_max_cm": 1.429, "popping_windows": 1},
+   "mara": {"crushed_pct": 0.908, "stretched_pct": 1.079, "sheared_pct": 1.411, "penetration_max_cm": 2.445, "body_penetration_cm": 2.44, "deep_frames_pct": 11.375, "deep_body_frames_pct": 11.375, "penetration_body_max_cm": 2.445, "popping_windows": 25},
+   "pip": {"crushed_pct": 0.843, "stretched_pct": 2.01, "sheared_pct": 1.635, "penetration_max_cm": 4.216, "body_penetration_cm": 4.22, "deep_frames_pct": 59.174, "deep_body_frames_pct": 59.174, "penetration_body_max_cm": 4.216, "popping_windows": 9},
+   "ren": {"crushed_pct": 0.656, "stretched_pct": 0.745, "sheared_pct": 1.107, "penetration_max_cm": 2.256, "body_penetration_cm": 1.97, "deep_frames_pct": 18.75, "deep_body_frames_pct": 17.822, "penetration_body_max_cm": 1.971, "popping_windows": 2},
+   "rivet": {"crushed_pct": 1.09, "stretched_pct": 1.729, "sheared_pct": 1.555, "penetration_max_cm": 3.163, "body_penetration_cm": 3.16, "deep_frames_pct": 38.528, "deep_body_frames_pct": 38.528, "penetration_body_max_cm": 3.163, "popping_windows": 7},
+   "rowan": {"crushed_pct": 1.152, "stretched_pct": 1.539, "sheared_pct": 1.705, "penetration_max_cm": 2.47, "body_penetration_cm": 2.47, "deep_frames_pct": 31.778, "deep_body_frames_pct": 31.778, "penetration_body_max_cm": 2.47, "popping_windows": 4},
+   "vex": {"crushed_pct": 1.068, "stretched_pct": 2.286, "sheared_pct": 1.735, "penetration_max_cm": 4.008, "body_penetration_cm": 3.9, "deep_frames_pct": 54.039, "deep_body_frames_pct": 53.578, "penetration_body_max_cm": 3.898, "popping_windows": 5},
+   "wren": {"crushed_pct": 0.903, "stretched_pct": 1.901, "sheared_pct": 1.909, "penetration_max_cm": 5.213, "body_penetration_cm": 5.21, "deep_frames_pct": 71.089, "deep_body_frames_pct": 71.089, "penetration_body_max_cm": 5.213, "popping_windows": 7}
+  }
+ }
 }

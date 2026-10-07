@@ -3,11 +3,16 @@
  "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
  "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.15",
+ "version": "0.16",
  "date": "2026-10-07",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
   "changelog": [
+  {"version": "0.16", "date": "2026-10-07", "changes": [
+    "A self-examination (E148): every measure over the 17 characters, the gaps to a professional character ranked, and most faults since traced to one root - the generator's single fused surface, which eleven repair stages exist to undo. Published work and code searched for each root cause (charforge_notes/polish/e148). Roadmap rewritten around it.",
+    "Arms kept out of the body every frame (E151, new section 4.10): after clearance each clip is solved against the character's own surface - the least shoulder, elbow and wrist turns that keep the arms out of the torso, thighs and shins, tested both ways round. Frames with a part more than 2 cm inside another, over all 17 characters: 29.8% to 8.5% on average (median 27% to 3.8%), the deepest from 2.7 to 1.6 cm; Pip 59% to 11%, Vex 54% to 12%. Crushed, stretched and sheared faces and pops unchanged to within 0.04 points (Rowan's sheared share 1.71% to 1.75%, the one rise). A build option (--contact) and a Studio setting.",
+    "MeshRet (NeurIPS 2024) run on the laptop and measured on six characters (E150): no better than clearance (median deep frames 35% against 36%) and blind to hands in thighs; its idea, not its network, became E151.",
+    "A template body under the character (E149, research): the Anny body fitted under all six characters tried (stylised and anime too), painted from the character, its 52-action face rig and painted eyes on Mara's head, the clothing and hair split off as a layer, and rigged through CharForge's own stages - near the shipped Mara in motion, behind it on Pip's cartoon hands. Not in the build yet."]},
   {"version": "0.15", "date": "2026-10-07", "changes": [
     "Missing hands (E146): five characters (Mara, Rivet, Rowan, Bo, Wren) had shipped without a right hand - a hand's boolean union fell back to an overlapping shell, the next union on that body returned it unchanged, and the only check passed it. Every hand is now unioned onto the clean body and verified by its fingertips; tools/hands_check.py runs after retopology and stops a build with a missing hand. All 17 characters rebuilt with both hands.",
     "Two-faced heads (E145): TRELLIS.2 had sculpted a second face on the back of Vex's head; the generation gate now reads a face on the back of each candidate (pipeline/back_face.py) and makes it again on another seed. Vex rebuilt (seed 7 rejected at 0.96, seed 1007 at 0.47).",

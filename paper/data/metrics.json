@@ -493,35 +493,35 @@
    },
    "jog": {
     "slip_pct": 1.9,
-    "deepest_cm": -0.02
+    "deepest_cm": -0.03
    },
    "run": {
-    "slip_pct": 2.2,
-    "deepest_cm": -0.01
+    "slip_pct": 1.7,
+    "deepest_cm": -0.02
    },
    "sprint": {
-    "slip_pct": 1.5,
+    "slip_pct": 0.8,
     "deepest_cm": -0.02
    },
    "walk_back": {
-    "slip_pct": 3.2,
+    "slip_pct": 3.4,
     "deepest_cm": -0.02
    },
    "jog_back": {
-    "slip_pct": 1.0,
-    "deepest_cm": 0.0
+    "slip_pct": 1.1,
+    "deepest_cm": -0.02
    },
    "strafe_left": {
     "slip_pct": 1.9,
-    "deepest_cm": -0.01
+    "deepest_cm": -0.02
    },
    "strafe_right": {
     "slip_pct": 1.9,
-    "deepest_cm": 0.0
+    "deepest_cm": -0.01
    },
    "crouch_walk": {
-    "slip_pct": 1.3,
-    "deepest_cm": -0.01
+    "slip_pct": 1.1,
+    "deepest_cm": -0.02
    }
   },
   "bo": {
@@ -538,7 +538,7 @@
     "deepest_cm": 0.0
    },
    "sprint": {
-    "slip_pct": 5.4,
+    "slip_pct": 5.0,
     "deepest_cm": -0.0
    },
    "walk_back": {
@@ -554,18 +554,18 @@
     "deepest_cm": -0.0
    },
    "strafe_right": {
-    "slip_pct": 9.2,
+    "slip_pct": 9.1,
     "deepest_cm": -0.01
    },
    "crouch_walk": {
-    "slip_pct": 4.2,
+    "slip_pct": 4.1,
     "deepest_cm": -0.0
    }
   },
   "boyscout": {
    "walk": {
     "slip_pct": 2.8,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "jog": {
     "slip_pct": 2.5,
@@ -580,7 +580,7 @@
     "deepest_cm": 0.0
    },
    "walk_back": {
-    "slip_pct": 8.2,
+    "slip_pct": 8.3,
     "deepest_cm": 0.0
    },
    "jog_back": {
@@ -596,8 +596,8 @@
     "deepest_cm": 0.0
    },
    "crouch_walk": {
-    "slip_pct": 2.7,
-    "deepest_cm": 0.0
+    "slip_pct": 2.8,
+    "deepest_cm": -0.0
    }
   },
   "cadet": {
@@ -614,7 +614,7 @@
     "deepest_cm": -0.4
    },
    "sprint": {
-    "slip_pct": 28.0,
+    "slip_pct": 28.3,
     "deepest_cm": -0.44
    },
    "walk_back": {
@@ -622,7 +622,7 @@
     "deepest_cm": 0.0
    },
    "jog_back": {
-    "slip_pct": 15.3,
+    "slip_pct": 15.4,
     "deepest_cm": -0.02
    },
    "strafe_left": {
@@ -634,7 +634,7 @@
     "deepest_cm": -0.13
    },
    "crouch_walk": {
-    "slip_pct": 7.9,
+    "slip_pct": 8.0,
     "deepest_cm": -0.0
    }
   },
@@ -644,7 +644,7 @@
     "deepest_cm": 0.0
    },
    "jog": {
-    "slip_pct": 2.7,
+    "slip_pct": 2.8,
     "deepest_cm": 0.0
    },
    "run": {
@@ -664,7 +664,7 @@
     "deepest_cm": 0.0
    },
    "strafe_left": {
-    "slip_pct": 4.2,
+    "slip_pct": 4.3,
     "deepest_cm": 0.0
    },
    "strafe_right": {
@@ -673,45 +673,83 @@
    },
    "crouch_walk": {
     "slip_pct": 1.9,
+    "deepest_cm": -0.0
+   }
+  },
+  "hana": {
+   "walk": {
+    "slip_pct": 1.5,
     "deepest_cm": 0.0
+   },
+   "jog": {
+    "slip_pct": 2.1,
+    "deepest_cm": 0.0
+   },
+   "run": {
+    "slip_pct": 1.6,
+    "deepest_cm": 0.0
+   },
+   "sprint": {
+    "slip_pct": 1.9,
+    "deepest_cm": 0.0
+   },
+   "walk_back": {
+    "slip_pct": 4.4,
+    "deepest_cm": 0.0
+   },
+   "jog_back": {
+    "slip_pct": 4.7,
+    "deepest_cm": 0.0
+   },
+   "strafe_left": {
+    "slip_pct": 2.3,
+    "deepest_cm": 0.0
+   },
+   "strafe_right": {
+    "slip_pct": 2.4,
+    "deepest_cm": 0.0
+   },
+   "crouch_walk": {
+    "slip_pct": 1.4,
+    "deepest_cm": -0.0
    }
   },
   "juno3": {
    "walk": {
     "slip_pct": 3.0,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "jog": {
     "slip_pct": 3.1,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "run": {
     "slip_pct": 3.5,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "sprint": {
     "slip_pct": 4.0,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "walk_back": {
-    "slip_pct": 6.2,
-    "deepest_cm": -0.0
+    "slip_pct": 6.3,
+    "deepest_cm": 0.0
    },
    "jog_back": {
-    "slip_pct": 2.7,
-    "deepest_cm": -0.0
+    "slip_pct": 2.6,
+    "deepest_cm": 0.0
    },
    "strafe_left": {
     "slip_pct": 4.6,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "strafe_right": {
     "slip_pct": 4.8,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "crouch_walk": {
     "slip_pct": 2.5,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    }
   },
   "kaito": {
@@ -762,7 +800,7 @@
     "deepest_cm": -0.0
    },
    "run": {
-    "slip_pct": 1.0,
+    "slip_pct": 0.9,
     "deepest_cm": -0.0
    },
    "sprint": {
@@ -774,7 +812,7 @@
     "deepest_cm": -0.0
    },
    "jog_back": {
-    "slip_pct": 4.2,
+    "slip_pct": 4.4,
     "deepest_cm": -0.0
    },
    "strafe_left": {
@@ -786,8 +824,8 @@
     "deepest_cm": -0.0
    },
    "crouch_walk": {
-    "slip_pct": 1.8,
-    "deepest_cm": -0.0
+    "slip_pct": 1.7,
+    "deepest_cm": 0.0
    }
   },
   "knight2": {
@@ -796,46 +834,46 @@
     "deepest_cm": 0.0
    },
    "jog": {
-    "slip_pct": 2.5,
+    "slip_pct": 2.6,
     "deepest_cm": 0.0
    },
    "run": {
-    "slip_pct": 3.0,
+    "slip_pct": 3.4,
     "deepest_cm": 0.0
    },
    "sprint": {
-    "slip_pct": 5.0,
+    "slip_pct": 5.5,
     "deepest_cm": 0.0
    },
    "walk_back": {
-    "slip_pct": 9.5,
-    "deepest_cm": 0.0
+    "slip_pct": 9.6,
+    "deepest_cm": -0.0
    },
    "jog_back": {
-    "slip_pct": 3.2,
-    "deepest_cm": 0.0
+    "slip_pct": 2.7,
+    "deepest_cm": -0.0
    },
    "strafe_left": {
     "slip_pct": 5.5,
-    "deepest_cm": 0.0
+    "deepest_cm": -0.0
    },
    "strafe_right": {
     "slip_pct": 5.5,
-    "deepest_cm": 0.0
+    "deepest_cm": -0.0
    },
    "crouch_walk": {
-    "slip_pct": 2.0,
+    "slip_pct": 2.1,
     "deepest_cm": 0.0
    }
   },
   "mara": {
    "walk": {
     "slip_pct": 3.3,
-    "deepest_cm": -0.62
+    "deepest_cm": -0.71
    },
    "jog": {
     "slip_pct": 2.6,
-    "deepest_cm": -0.24
+    "deepest_cm": -0.25
    },
    "run": {
     "slip_pct": 4.0,
@@ -851,7 +889,7 @@
    },
    "jog_back": {
     "slip_pct": 4.0,
-    "deepest_cm": -0.31
+    "deepest_cm": -0.32
    },
    "strafe_left": {
     "slip_pct": 3.9,
@@ -863,7 +901,7 @@
    },
    "crouch_walk": {
     "slip_pct": 2.2,
-    "deepest_cm": -0.61
+    "deepest_cm": -0.66
    }
   },
   "pip": {
@@ -901,7 +939,7 @@
    },
    "crouch_walk": {
     "slip_pct": 3.0,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    }
   },
   "ren": {
@@ -944,45 +982,45 @@
   },
   "rivet": {
    "walk": {
-    "slip_pct": 1.9,
-    "deepest_cm": -0.0
+    "slip_pct": 1.8,
+    "deepest_cm": 0.0
    },
    "jog": {
     "slip_pct": 2.3,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "run": {
     "slip_pct": 1.6,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "sprint": {
-    "slip_pct": 1.7,
-    "deepest_cm": -0.0
+    "slip_pct": 1.6,
+    "deepest_cm": 0.0
    },
    "walk_back": {
     "slip_pct": 7.9,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "jog_back": {
     "slip_pct": 3.1,
-    "deepest_cm": -0.0
+    "deepest_cm": 0.0
    },
    "strafe_left": {
-    "slip_pct": 6.1,
-    "deepest_cm": -0.0
+    "slip_pct": 6.3,
+    "deepest_cm": 0.0
    },
    "strafe_right": {
     "slip_pct": 5.9,
     "deepest_cm": -0.0
    },
    "crouch_walk": {
-    "slip_pct": 2.2,
+    "slip_pct": 2.1,
     "deepest_cm": -0.0
    }
   },
   "rowan": {
    "walk": {
-    "slip_pct": 1.9,
+    "slip_pct": 2.0,
     "deepest_cm": 0.0
    },
    "jog": {
@@ -999,7 +1037,7 @@
    },
    "walk_back": {
     "slip_pct": 8.0,
-    "deepest_cm": -0.01
+    "deepest_cm": 0.0
    },
    "jog_back": {
     "slip_pct": 4.4,
@@ -1007,52 +1045,52 @@
    },
    "strafe_left": {
     "slip_pct": 4.8,
-    "deepest_cm": -0.01
+    "deepest_cm": 0.0
    },
    "strafe_right": {
     "slip_pct": 4.7,
     "deepest_cm": 0.0
    },
    "crouch_walk": {
-    "slip_pct": 1.8,
-    "deepest_cm": -0.0
+    "slip_pct": 1.7,
+    "deepest_cm": 0.0
    }
   },
   "vex": {
    "walk": {
-    "slip_pct": 2.0,
-    "deepest_cm": 0.0
+    "slip_pct": 2.7,
+    "deepest_cm": -0.0
    },
    "jog": {
-    "slip_pct": 2.9,
-    "deepest_cm": 0.0
+    "slip_pct": 2.4,
+    "deepest_cm": -0.0
    },
    "run": {
-    "slip_pct": 2.7,
-    "deepest_cm": 0.0
+    "slip_pct": 1.4,
+    "deepest_cm": -0.0
    },
    "sprint": {
-    "slip_pct": 0.7,
-    "deepest_cm": 0.0
+    "slip_pct": 2.8,
+    "deepest_cm": -0.0
    },
    "walk_back": {
-    "slip_pct": 3.7,
-    "deepest_cm": 0.0
+    "slip_pct": 3.8,
+    "deepest_cm": -0.0
    },
    "jog_back": {
-    "slip_pct": 0.9,
-    "deepest_cm": 0.0
+    "slip_pct": 2.9,
+    "deepest_cm": -0.0
    },
    "strafe_left": {
-    "slip_pct": 2.2,
-    "deepest_cm": 0.0
+    "slip_pct": 3.4,
+    "deepest_cm": -0.0
    },
    "strafe_right": {
-    "slip_pct": 2.2,
-    "deepest_cm": 0.0
+    "slip_pct": 3.2,
+    "deepest_cm": -0.0
    },
    "crouch_walk": {
-    "slip_pct": 1.7,
+    "slip_pct": 2.7,
     "deepest_cm": -0.0
    }
   },
@@ -1062,7 +1100,7 @@
     "deepest_cm": -0.0
    },
    "jog": {
-    "slip_pct": 1.9,
+    "slip_pct": 2.1,
     "deepest_cm": -0.0
    },
    "run": {
@@ -1074,7 +1112,7 @@
     "deepest_cm": -0.0
    },
    "walk_back": {
-    "slip_pct": 6.9,
+    "slip_pct": 6.8,
     "deepest_cm": -0.0
    },
    "jog_back": {
@@ -1098,9 +1136,9 @@
  "feet_summary": {
   "median_slip_pct": 3.2,
   "mean_slip_pct": 4.2,
-  "max_slip_pct": 28.0,
-  "n": 144,
-  "characters": 16
+  "max_slip_pct": 28.3,
+  "n": 153,
+  "characters": 17
  },
  "feet_e029": {
   "_about": "E029's foot-slip table as the paper showed it up to v0.10, frozen here (paper/collect.py read it from work/<name>/foot_audit.json, blender/foot_audit.py before metric v2, run 2026-09-25). Slip is the worse foot's contact speed divided by max(manifest speed, 1 m/s): understated below 1 m/s, so entries below 1 m/s were left out. Superseded by the v2 audit (true ground speed) in research/data/e130_planting.json.",
@@ -1479,8 +1517,8 @@
    "misread_frames": [],
    "joints_trusted": 0.05,
    "roundtrip_cm": 2.86,
-   "iou_refine_clip": 0.813,
-   "iou_refine_refined": 0.87,
+   "iou_refine_clip": 0.809,
+   "iou_refine_refined": 0.869,
    "worst_elbow_deg": 149.3,
    "worst_knee_deg": 63.3
   },
@@ -1516,7 +1554,7 @@
    ],
    "joints_trusted": 0.049,
    "roundtrip_cm": 3.94,
-   "iou_refine_clip": 0.779,
+   "iou_refine_clip": 0.778,
    "iou_refine_refined": 0.865,
    "worst_elbow_deg": 150.2,
    "worst_knee_deg": 119.3
@@ -1546,7 +1584,7 @@
    "joints_trusted": 0.122,
    "roundtrip_cm": 5.11,
    "iou_refine_clip": 0.717,
-   "iou_refine_refined": 0.833,
+   "iou_refine_refined": 0.832,
    "worst_elbow_deg": 150.6,
    "worst_knee_deg": 59.2
   },
@@ -1574,7 +1612,7 @@
    "misread_frames": [],
    "joints_trusted": 0.07,
    "roundtrip_cm": 3.97,
-   "iou_refine_clip": 0.784,
+   "iou_refine_clip": 0.773,
    "iou_refine_refined": 0.853,
    "worst_elbow_deg": 130.3,
    "worst_knee_deg": 90.1
@@ -1977,16 +2015,16 @@
   "aoi": {
    "skin": "dqs",
    "clips": 19,
-   "crushed_pct": 0.821,
+   "crushed_pct": 0.822,
    "stretched_pct": 1.083,
-   "sheared_pct": 1.269,
-   "penetration_max_cm": 3.356,
-   "body_penetration_cm": 2.74,
-   "deep_frames_pct": 29.763,
-   "deep_body_frames_pct": 23.963,
-   "penetration_body_max_cm": 2.739,
-   "popping_windows": 5,
-   "exposed_crushed_pct": 41.94,
+   "sheared_pct": 1.273,
+   "penetration_max_cm": 2.132,
+   "body_penetration_cm": 1.38,
+   "deep_frames_pct": 10.284,
+   "deep_body_frames_pct": 4.484,
+   "penetration_body_max_cm": 1.384,
+   "popping_windows": 4,
+   "exposed_crushed_pct": 42.145,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2007,19 +2045,19 @@
   "bo": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 1.325,
-   "stretched_pct": 1.859,
-   "sheared_pct": 1.697,
-   "penetration_max_cm": 1.646,
-   "body_penetration_cm": 1.46,
-   "deep_frames_pct": 10.989,
-   "deep_body_frames_pct": 10.061,
-   "penetration_body_max_cm": 1.46,
+   "crushed_pct": 1.293,
+   "stretched_pct": 1.861,
+   "sheared_pct": 1.677,
+   "penetration_max_cm": 0.91,
+   "body_penetration_cm": 0.72,
+   "deep_frames_pct": 1.894,
+   "deep_body_frames_pct": 0.967,
+   "penetration_body_max_cm": 0.724,
    "popping_windows": 2,
-   "exposed_crushed_pct": 31.185,
+   "exposed_crushed_pct": 31.748,
    "worst_clips": [
     "crouch_walk",
-    "strafe_left"
+    "fall"
    ],
    "clearance_max_deg": 13.9,
    "clearance_clips": 13,
@@ -2037,16 +2075,16 @@
   "boyscout": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.834,
-   "stretched_pct": 1.213,
-   "sheared_pct": 1.405,
-   "penetration_max_cm": 1.399,
-   "body_penetration_cm": 1.15,
-   "deep_frames_pct": 5.578,
-   "deep_body_frames_pct": 4.189,
-   "penetration_body_max_cm": 1.147,
+   "crushed_pct": 0.828,
+   "stretched_pct": 1.201,
+   "sheared_pct": 1.38,
+   "penetration_max_cm": 0.837,
+   "body_penetration_cm": 0.58,
+   "deep_frames_pct": 1.389,
+   "deep_body_frames_pct": 0.0,
+   "penetration_body_max_cm": 0.582,
    "popping_windows": 3,
-   "exposed_crushed_pct": 42.76,
+   "exposed_crushed_pct": 43.253,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2067,19 +2105,19 @@
   "cadet": {
    "skin": "dqs",
    "clips": 24,
-   "crushed_pct": 1.07,
-   "stretched_pct": 2.033,
-   "sheared_pct": 1.598,
-   "penetration_max_cm": 4.243,
-   "body_penetration_cm": 4.24,
-   "deep_frames_pct": 27.387,
-   "deep_body_frames_pct": 27.387,
-   "penetration_body_max_cm": 4.243,
+   "crushed_pct": 1.052,
+   "stretched_pct": 2.031,
+   "sheared_pct": 1.58,
+   "penetration_max_cm": 3.736,
+   "body_penetration_cm": 3.74,
+   "deep_frames_pct": 10.046,
+   "deep_body_frames_pct": 10.046,
+   "penetration_body_max_cm": 3.736,
    "popping_windows": 4,
-   "exposed_crushed_pct": 24.046,
+   "exposed_crushed_pct": 24.295,
    "worst_clips": [
     "crouch_walk",
-    "strafe_left"
+    "fall"
    ],
    "clearance_max_deg": 54.4,
    "clearance_clips": 24,
@@ -2097,16 +2135,16 @@
   "gray": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.685,
-   "stretched_pct": 1.117,
-   "sheared_pct": 1.141,
-   "penetration_max_cm": 3.463,
-   "body_penetration_cm": 3.46,
-   "deep_frames_pct": 58.606,
-   "deep_body_frames_pct": 58.606,
-   "penetration_body_max_cm": 3.463,
+   "crushed_pct": 0.678,
+   "stretched_pct": 1.11,
+   "sheared_pct": 1.131,
+   "penetration_max_cm": 2.501,
+   "body_penetration_cm": 2.5,
+   "deep_frames_pct": 33.8,
+   "deep_body_frames_pct": 33.8,
+   "penetration_body_max_cm": 2.501,
    "popping_windows": 1,
-   "exposed_crushed_pct": 39.85,
+   "exposed_crushed_pct": 40.787,
    "worst_clips": [
     "crouch_walk",
     "strafe_right"
@@ -2127,16 +2165,16 @@
   "hana": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.717,
-   "stretched_pct": 1.671,
-   "sheared_pct": 1.822,
-   "penetration_max_cm": 2.571,
-   "body_penetration_cm": 2.15,
-   "deep_frames_pct": 33.089,
-   "deep_body_frames_pct": 30.644,
-   "penetration_body_max_cm": 2.149,
+   "crushed_pct": 0.713,
+   "stretched_pct": 1.663,
+   "sheared_pct": 1.818,
+   "penetration_max_cm": 1.683,
+   "body_penetration_cm": 1.18,
+   "deep_frames_pct": 6.761,
+   "deep_body_frames_pct": 4.317,
+   "penetration_body_max_cm": 1.178,
    "popping_windows": 3,
-   "exposed_crushed_pct": 35.444,
+   "exposed_crushed_pct": 35.765,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2157,16 +2195,16 @@
   "juno3": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.839,
-   "stretched_pct": 1.288,
-   "sheared_pct": 1.536,
-   "penetration_max_cm": 2.336,
-   "body_penetration_cm": 2.29,
-   "deep_frames_pct": 18.567,
-   "deep_body_frames_pct": 18.567,
-   "penetration_body_max_cm": 2.294,
+   "crushed_pct": 0.831,
+   "stretched_pct": 1.284,
+   "sheared_pct": 1.526,
+   "penetration_max_cm": 0.808,
+   "body_penetration_cm": 0.77,
+   "deep_frames_pct": 3.117,
+   "deep_body_frames_pct": 3.117,
+   "penetration_body_max_cm": 0.766,
    "popping_windows": 4,
-   "exposed_crushed_pct": 42.869,
+   "exposed_crushed_pct": 43.45,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2187,16 +2225,16 @@
   "kaito": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.871,
-   "stretched_pct": 1.361,
-   "sheared_pct": 1.501,
-   "penetration_max_cm": 2.018,
-   "body_penetration_cm": 2.01,
-   "deep_frames_pct": 15.883,
-   "deep_body_frames_pct": 15.628,
-   "penetration_body_max_cm": 2.008,
+   "crushed_pct": 0.868,
+   "stretched_pct": 1.358,
+   "sheared_pct": 1.496,
+   "penetration_max_cm": 0.464,
+   "body_penetration_cm": 0.45,
+   "deep_frames_pct": 0.25,
+   "deep_body_frames_pct": 0.25,
+   "penetration_body_max_cm": 0.454,
    "popping_windows": 1,
-   "exposed_crushed_pct": 45.69,
+   "exposed_crushed_pct": 45.702,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2217,16 +2255,16 @@
   "knight": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 1.035,
-   "stretched_pct": 1.255,
-   "sheared_pct": 1.744,
-   "penetration_max_cm": 1.727,
-   "body_penetration_cm": 1.73,
-   "deep_frames_pct": 17.406,
-   "deep_body_frames_pct": 17.406,
-   "penetration_body_max_cm": 1.727,
+   "crushed_pct": 1.03,
+   "stretched_pct": 1.253,
+   "sheared_pct": 1.733,
+   "penetration_max_cm": 0.749,
+   "body_penetration_cm": 0.75,
+   "deep_frames_pct": 0.578,
+   "deep_body_frames_pct": 0.578,
+   "penetration_body_max_cm": 0.749,
    "popping_windows": 2,
-   "exposed_crushed_pct": 34.828,
+   "exposed_crushed_pct": 34.975,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2247,16 +2285,16 @@
   "knight2": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.86,
-   "stretched_pct": 1.791,
-   "sheared_pct": 1.291,
-   "penetration_max_cm": 1.467,
-   "body_penetration_cm": 1.43,
-   "deep_frames_pct": 4.917,
-   "deep_body_frames_pct": 4.917,
-   "penetration_body_max_cm": 1.429,
+   "crushed_pct": 0.854,
+   "stretched_pct": 1.789,
+   "sheared_pct": 1.278,
+   "penetration_max_cm": 0.596,
+   "body_penetration_cm": 0.56,
+   "deep_frames_pct": 0.756,
+   "deep_body_frames_pct": 0.756,
+   "penetration_body_max_cm": 0.558,
    "popping_windows": 1,
-   "exposed_crushed_pct": 32.718,
+   "exposed_crushed_pct": 32.902,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2277,16 +2315,16 @@
   "mara": {
    "skin": "dqs",
    "clips": 20,
-   "crushed_pct": 0.908,
-   "stretched_pct": 1.079,
-   "sheared_pct": 1.411,
-   "penetration_max_cm": 2.445,
-   "body_penetration_cm": 2.44,
-   "deep_frames_pct": 11.375,
-   "deep_body_frames_pct": 11.375,
-   "penetration_body_max_cm": 2.445,
+   "crushed_pct": 0.902,
+   "stretched_pct": 1.074,
+   "sheared_pct": 1.405,
+   "penetration_max_cm": 1.62,
+   "body_penetration_cm": 1.62,
+   "deep_frames_pct": 3.785,
+   "deep_body_frames_pct": 3.785,
+   "penetration_body_max_cm": 1.62,
    "popping_windows": 25,
-   "exposed_crushed_pct": 43.289,
+   "exposed_crushed_pct": 43.45,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2307,16 +2345,16 @@
   "pip": {
    "skin": "dqs",
    "clips": 19,
-   "crushed_pct": 0.843,
-   "stretched_pct": 2.01,
-   "sheared_pct": 1.635,
-   "penetration_max_cm": 4.216,
-   "body_penetration_cm": 4.22,
-   "deep_frames_pct": 59.174,
-   "deep_body_frames_pct": 59.174,
-   "penetration_body_max_cm": 4.216,
+   "crushed_pct": 0.833,
+   "stretched_pct": 2.018,
+   "sheared_pct": 1.626,
+   "penetration_max_cm": 1.814,
+   "body_penetration_cm": 1.76,
+   "deep_frames_pct": 11.195,
+   "deep_body_frames_pct": 11.195,
+   "penetration_body_max_cm": 1.759,
    "popping_windows": 9,
-   "exposed_crushed_pct": 41.31,
+   "exposed_crushed_pct": 42.572,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2337,16 +2375,16 @@
   "ren": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.656,
-   "stretched_pct": 0.745,
-   "sheared_pct": 1.107,
-   "penetration_max_cm": 2.256,
-   "body_penetration_cm": 1.97,
-   "deep_frames_pct": 18.75,
-   "deep_body_frames_pct": 17.822,
-   "penetration_body_max_cm": 1.971,
+   "crushed_pct": 0.658,
+   "stretched_pct": 0.747,
+   "sheared_pct": 1.111,
+   "penetration_max_cm": 1.332,
+   "body_penetration_cm": 1.1,
+   "deep_frames_pct": 1.994,
+   "deep_body_frames_pct": 1.067,
+   "penetration_body_max_cm": 1.099,
    "popping_windows": 2,
-   "exposed_crushed_pct": 40.236,
+   "exposed_crushed_pct": 40.147,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2367,16 +2405,16 @@
   "rivet": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 1.09,
-   "stretched_pct": 1.729,
-   "sheared_pct": 1.555,
-   "penetration_max_cm": 3.163,
-   "body_penetration_cm": 3.16,
-   "deep_frames_pct": 38.528,
-   "deep_body_frames_pct": 38.528,
-   "penetration_body_max_cm": 3.163,
+   "crushed_pct": 1.06,
+   "stretched_pct": 1.72,
+   "sheared_pct": 1.517,
+   "penetration_max_cm": 2.236,
+   "body_penetration_cm": 2.24,
+   "deep_frames_pct": 7.011,
+   "deep_body_frames_pct": 7.011,
+   "penetration_body_max_cm": 2.236,
    "popping_windows": 7,
-   "exposed_crushed_pct": 42.436,
+   "exposed_crushed_pct": 43.571,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2397,16 +2435,16 @@
   "rowan": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 1.152,
-   "stretched_pct": 1.539,
-   "sheared_pct": 1.705,
-   "penetration_max_cm": 2.47,
-   "body_penetration_cm": 2.47,
-   "deep_frames_pct": 31.778,
-   "deep_body_frames_pct": 31.778,
-   "penetration_body_max_cm": 2.47,
+   "crushed_pct": 1.176,
+   "stretched_pct": 1.545,
+   "sheared_pct": 1.752,
+   "penetration_max_cm": 1.558,
+   "body_penetration_cm": 1.56,
+   "deep_frames_pct": 3.594,
+   "deep_body_frames_pct": 3.594,
+   "penetration_body_max_cm": 1.558,
    "popping_windows": 4,
-   "exposed_crushed_pct": 29.899,
+   "exposed_crushed_pct": 29.417,
    "worst_clips": [
     "fall",
     "crouch_walk"
@@ -2427,16 +2465,16 @@
   "vex": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 1.068,
-   "stretched_pct": 2.286,
-   "sheared_pct": 1.735,
-   "penetration_max_cm": 4.008,
-   "body_penetration_cm": 3.9,
-   "deep_frames_pct": 54.039,
-   "deep_body_frames_pct": 53.578,
-   "penetration_body_max_cm": 3.898,
+   "crushed_pct": 1.032,
+   "stretched_pct": 2.334,
+   "sheared_pct": 1.728,
+   "penetration_max_cm": 2.464,
+   "body_penetration_cm": 2.25,
+   "deep_frames_pct": 11.833,
+   "deep_body_frames_pct": 11.372,
+   "penetration_body_max_cm": 2.247,
    "popping_windows": 5,
-   "exposed_crushed_pct": 23.477,
+   "exposed_crushed_pct": 24.603,
    "worst_clips": [
     "fall",
     "sprint"
@@ -2457,16 +2495,16 @@
   "wren": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.903,
-   "stretched_pct": 1.901,
-   "sheared_pct": 1.909,
-   "penetration_max_cm": 5.213,
-   "body_penetration_cm": 5.21,
-   "deep_frames_pct": 71.089,
-   "deep_body_frames_pct": 71.089,
-   "penetration_body_max_cm": 5.213,
+   "crushed_pct": 0.87,
+   "stretched_pct": 1.886,
+   "sheared_pct": 1.895,
+   "penetration_max_cm": 3.985,
+   "body_penetration_cm": 3.9,
+   "deep_frames_pct": 36.878,
+   "deep_body_frames_pct": 36.878,
+   "penetration_body_max_cm": 3.905,
    "popping_windows": 7,
-   "exposed_crushed_pct": 31.107,
+   "exposed_crushed_pct": 32.514,
    "worst_clips": [
     "crouch_walk",
     "sprint"
