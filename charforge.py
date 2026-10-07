@@ -1036,6 +1036,14 @@ def s_animate(r: Run):
          keep=("limit",))
     r.bl("clearance", "clearance.py", "--blend", r.path("final.blend"), "--limits", r.work / "joint_limits.json",
          "--json", r.work / "clearance.json", keep=("[clearance]",))
+    # limits were measured with each limb beside the body; a hand still goes into a thigh that is itself swinging,
+    # and a forearm into a bulky torso mid-turn. Test every frame against the character's own surface and turn
+    # shoulder, elbow and wrist by the least that keeps the arm out (experiment E151, after MeshRet's idea [E150])
+    if option_of(r, "contact", "on") == "on":
+        cd = r.work / "contact"
+        r.bl("contact_export", "export_pose.py", "--blend", r.path("final.blend"), "--out", cd, keep=("[export_pose]",))
+        r.py("contact", "contact_solve.py", "--dir", cd, keep=("[contact]",))
+        r.bl("contact_apply", "apply_contact.py", "--blend", r.path("final.blend"), "--dir", cd, keep=("[contact]",))
 
 
 def ensure_hand_calib(r: Run):
@@ -1314,6 +1322,9 @@ def main():
                    help="hunyuan (needs tools/setup_hunyuan.sh): the head made again on its own from a close crop of the "
                         "reference by Hunyuan3D 2.1's shape model - a sculpted face where the whole-figure model's has a few "
                         "rough facets, ~8 more minutes (experiment E139); none: the head as generated with the body")
+    m.add_argument("--contact", choices=("on", "off"), default=None,
+                   help="on (default): after clearance, each clip is solved against the character's own surface so "
+                        "arms and hands stay out of the torso and thighs (experiment E151); off: clearance only")
     m.add_argument("--eyes", choices=("rebuild", "none"), default="rebuild",
                    help="rebuild (default): each eye the generator modelled as an opening full of shards becomes lids "
                         "over a ball - found by DWPose on the model's own paint, rebuilt in the solid; eyes it cannot "

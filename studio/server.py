@@ -727,6 +727,8 @@ def make_job(b):
             cmd += ["--head", b["head"]]
         if b.get("eyes") in ("rebuild", "none"):
             cmd += ["--eyes", b["eyes"]]
+        if b.get("contact") in ("on", "off"):
+            cmd += ["--contact", b["contact"]]
         title = f"make {name}" + (f": {b['prompt'].strip()[:60]}" if b.get("prompt") else "")
     elif kind == "rerun":
         st = b.get("from")

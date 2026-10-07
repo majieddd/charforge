@@ -152,6 +152,7 @@ The defaults are what measured best (each is an option in the Studio's **More op
 | option | default | what it does |
 |---|---|---|
 | `--eyes rebuild` / `--eyes none` | rebuild | each eye the generator modelled as an opening full of shards becomes a smooth cap under the lids, found by DWPose on the model's own paint; eyes it cannot read (most anime) stay as generated (E140) |
+| `--contact on` / `--contact off` | on | after clearance, every clip is solved against the character's own surface: the least shoulder, elbow and wrist turns that keep arms and hands out of the torso, thighs and shins (E151; Pip's frames with a part >2 cm inside another 59% -> 11%) |
 | `--head-share F` | 0.28 | the share of the triangle budget the head keeps (0: left to the decimation, which gave it 17% and crumpled eyes and lips; E140) |
 | `--rest A` / `--rest T` | A | the rest pose: the pose the model was generated in, the T kept only for retargeting (`T` bakes the T into the mesh, as up to v0.11; E137) |
 | `--trellis-faces N` | 1000000 | faces TRELLIS.2 keeps of its surface (200k left flat facets in the normal map; E135); `--no-denoise` skips the surface filtering after it |
@@ -199,7 +200,7 @@ in this repository.
 | springs | bone chains for what hangs free | `blender/springs.py` |
 | frame, tpose | metres, soles on the floor, origin under the pelvis; the T the clips are retargeted to recorded, hands squared, the modelled pose kept as the rest (`--rest T` bakes the T in) | `blender/normalize_frame.py`, `blender/tpose.py` |
 | face | landmarks (chin, nose, mouth, eyes, checked), mouth cut open, jaw, five shapes | `pipeline/face_landmarks.py`, `blender/face_rig.py` |
-| animate | 18 clips retargeted: heading and travel direction, feet planted with leg IK; then held inside the character's own joint limits (how far each elbow, knee and arm can turn before one limb sinks more than 2 cm into another, measured on its mesh) | `blender/retarget.py`, `blender/joint_limits.py`, `blender/clearance.py` |
+| animate | 18 clips retargeted: heading and travel direction, feet planted with leg IK; then held inside the character's own joint limits (how far each elbow, knee and arm can turn before one limb sinks more than 2 cm into another, measured on its mesh), then each clip solved frame by frame against its own surface so the arms stay out of the torso and legs | `blender/retarget.py`, `blender/joint_limits.py`, `blender/clearance.py`, `blender/export_pose.py`, `pipeline/contact_solve.py`, `blender/apply_contact.py` |
 | package, web | Mixamo names, glTF + FBX with LODs, engine texture variants, manifest; 2K WebP build | `blender/package.py`, `tools/optimize_glb.py` |
 
 ## Moves from a video
@@ -406,18 +407,18 @@ work/<name>/final.blend --report work/<name>/retarget.json`, metric v2). The sho
 is the shoe the viewer sees: every vertex below the ankle, posed by its own skin weights (E130).
 
 <!--FEET-->
-| contact slip, share of the gait's true ground speed (worse foot) | Aoi | Mara | Pip | Juno | Rowan | Wren | Vex | Knight | Kaito | Bo | Cadet | Scout | Gray | Knight II | Rivet | Ren |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| walk | 1.5% | 3.3% | 2.9% | 3.0% | 1.9% | 2.1% | 2.0% | 1.4% | 1.1% | 3.2% | 6.4% | 2.8% | 2.1% | 1.8% | 1.9% | 2.5% |
-| jog | 1.9% | 2.6% | 2.8% | 3.1% | 1.8% | 1.9% | 2.9% | 1.5% | 3.2% | 2.7% | 6.1% | 2.5% | 2.7% | 2.5% | 2.3% | 3.2% |
-| run | 2.2% | 4.0% | 3.1% | 3.5% | 2.5% | 2.6% | 2.7% | 1.0% | 1.3% | 3.3% | 11.0% | 4.1% | 1.3% | 3.0% | 1.6% | 1.6% |
-| sprint | 1.5% | 4.8% | 3.5% | 4.0% | 1.8% | 2.0% | 0.7% | 2.0% | 1.0% | 5.4% | 28.0% | 4.3% | 2.7% | 5.0% | 1.7% | 2.0% |
-| walk back | 3.2% | 6.7% | 6.7% | 6.2% | 8.0% | 6.9% | 3.7% | 7.9% | 6.7% | 11.8% | 11.2% | 8.2% | 7.5% | 9.5% | 7.9% | 5.7% |
-| jog back | 1.0% | 4.0% | 6.8% | 2.7% | 4.4% | 2.7% | 0.9% | 4.2% | 1.8% | 4.4% | 15.3% | 4.5% | 3.0% | 3.2% | 3.1% | 4.6% |
-| strafe left | 1.9% | 3.9% | 7.8% | 4.6% | 4.8% | 4.5% | 2.2% | 5.9% | 4.4% | 9.1% | 16.0% | 7.0% | 4.2% | 5.5% | 6.1% | 3.3% |
-| strafe right | 1.9% | 3.9% | 7.8% | 4.8% | 4.7% | 4.2% | 2.2% | 5.6% | 4.3% | 9.2% | 14.5% | 5.7% | 3.7% | 5.5% | 5.9% | 3.2% |
-| crouch walk | 1.3% | 2.2% | 3.0% | 2.5% | 1.8% | 1.6% | 1.7% | 1.8% | 2.7% | 4.2% | 7.9% | 2.7% | 1.9% | 2.0% | 2.2% | 3.1% |
-| soles through the floor, worst | 0.0 cm | 0.6 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.4 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.2 cm |
+| contact slip, share of the gait's true ground speed (worse foot) | Aoi | Mara | Pip | Juno | Rowan | Wren | Vex | Knight | Kaito | Bo | Cadet | Scout | Gray | Knight II | Rivet | Hana | Ren |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| walk | 1.5% | 3.3% | 2.9% | 3.0% | 2.0% | 2.1% | 2.7% | 1.4% | 1.1% | 3.2% | 6.4% | 2.8% | 2.1% | 1.8% | 1.8% | 1.5% | 2.5% |
+| jog | 1.9% | 2.6% | 2.8% | 3.1% | 1.8% | 2.1% | 2.4% | 1.5% | 3.2% | 2.7% | 6.1% | 2.5% | 2.8% | 2.6% | 2.3% | 2.1% | 3.2% |
+| run | 1.7% | 4.0% | 3.1% | 3.5% | 2.5% | 2.6% | 1.4% | 0.9% | 1.3% | 3.3% | 11.0% | 4.1% | 1.3% | 3.4% | 1.6% | 1.6% | 1.6% |
+| sprint | 0.8% | 4.8% | 3.5% | 4.0% | 1.8% | 2.0% | 2.8% | 2.0% | 1.0% | 5.0% | 28.3% | 4.3% | 2.7% | 5.5% | 1.6% | 1.9% | 2.0% |
+| walk back | 3.4% | 6.7% | 6.7% | 6.3% | 8.0% | 6.8% | 3.8% | 7.9% | 6.7% | 11.8% | 11.2% | 8.3% | 7.5% | 9.6% | 7.9% | 4.4% | 5.7% |
+| jog back | 1.1% | 4.0% | 6.8% | 2.6% | 4.4% | 2.7% | 2.9% | 4.4% | 1.8% | 4.4% | 15.4% | 4.5% | 3.0% | 2.7% | 3.1% | 4.7% | 4.6% |
+| strafe left | 1.9% | 3.9% | 7.8% | 4.6% | 4.8% | 4.5% | 3.4% | 5.9% | 4.4% | 9.1% | 16.0% | 7.0% | 4.3% | 5.5% | 6.3% | 2.3% | 3.3% |
+| strafe right | 1.9% | 3.9% | 7.8% | 4.8% | 4.7% | 4.2% | 3.2% | 5.6% | 4.3% | 9.1% | 14.5% | 5.7% | 3.7% | 5.5% | 5.9% | 2.4% | 3.2% |
+| crouch walk | 1.1% | 2.2% | 3.0% | 2.5% | 1.7% | 1.6% | 2.7% | 1.7% | 2.7% | 4.1% | 8.0% | 2.8% | 1.9% | 2.1% | 2.1% | 1.4% | 3.1% |
+| soles through the floor, worst | 0.0 cm | 0.7 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.4 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.2 cm |
 <!--/FEET-->
 
 The table this replaced divided slip speed by `max(ground speed, 1 m/s)`, understating every

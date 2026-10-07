@@ -321,6 +321,35 @@
     unchanged.</figcaption>
 </figure>
 
+<h3 id="sec-m-contact">Every frame against the body</h3>
+<p>Limits are measured with each limb beside the body and held one joint at a time, so they cannot see a hand go into
+  a thigh that is itself swinging, or a forearm into a bulky jacket half-way through a turn - after clearance, those
+  pairs still carried most deep frames [E148]. The research answer is retargeting that models the meshes'
+  interaction: MeshRet [@meshret] learns a dense interaction field between body surfaces and runs on this laptop's CPU
+  in under a second a clip. Measured on six characters [E150], it removes arms from torsos but drives the hands into
+  the thighs, a pair its field does not include, and its median share of deep frames (35%) is no better than
+  clearance's (36%). We keep its idea and drop the network [E151]. After clearance, each clip is solved against the
+  character's own skinned surface: for every frame, the smallest and smoothest extra turn of each shoulder, elbow and
+  wrist (in the bone's own frame; the fingers ride the wrist) that keeps about 1,500 points of each arm's surface 1 cm
+  outside the torso, thighs and shins, posed from the clip by linear skinning. A point counts as inside when it lies
+  behind the normal of its nearest body vertex and within 2.5 cm of that normal's line, and the test runs both ways
+  round: Pip's puffy vest goes through his sleeves, which only a body vertex measured against the arm's surface
+  shows. Points with more than a tenth of their weight on the other part or a collar, or within 3 cm of it at rest,
+  are not tested - that is the fold at the armpit, where arm and torso are one surface - mirroring the audit's own
+  rule. The cost is the squared depth
+  of every inside point, plus the squared turns (a twist three times, an elbow's sideways turn five times dearer)
+  and twenty times their squared change from frame to frame, minimised over the whole clip at once (Adam, 300
+  steps, nearest vertices re-found every 25). A clip with nothing near a surface is left as it was. The turns are
+  written into the clip's own keys, so the planted feet and the pelvis are untouched. Contact-aware retargeting
+  [@contactretarget] optimises in a learned space for the same reason; here the space is the joints' own turns and
+  the measure is the mesh.</p>
+<figure id="fig-contact">
+  <img src="media/contact_pip.webp" width="1800" height="808" alt="Pip in idle, walk and a 180-degree turn, front and side, before and after the contact solve: before, his hands sink into the sides of his baggy shorts; after, they hang just outside them, and in the turn his arms swing clear of his puffy vest">
+  <figcaption>Pip before (top, version 0.15) and after (bottom) the contact solve, at the worst frame of idle, walk and the
+    180° turn, front and side. His hands no longer sink into his shorts; the turns that do it average a degree. Over all
+    his clips, frames with a part more than 2 cm inside another went from 59% to 11%.</figcaption>
+</figure>
+
 <h3 id="sec-m-motion">Moves from generated video</h3>
 <p><b>The video.</b> The character's reference image and a written move - timed beats: ready, the move, recovery - go to
   the community Ref2VA fine-tune [@h3] based on MiniMax H3 [@h3base], which returns 5.2 s at 24 fps of the character
