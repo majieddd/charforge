@@ -466,6 +466,23 @@ def front_iou(r: Run, glb, tag) -> float:
     return float(similarity(rm, im)[1]) if rm.any() and im.any() else 0.0
 
 
+BACK_FACE_MAX = 0.8     # DWPose's face score on the back of the head: ordinary heads 0.34-0.55, Vex's two-faced one 0.97
+
+
+def back_face(r: Run, glb, tag) -> float:
+    """How surely a face is read on the back of the model's head, in its own colours (pipeline/back_face.py; E145).
+    TRELLIS made Vex with a face on both sides of her head; 0 when the check cannot run."""
+    py = TRELLIS / ".venv" / "bin" / "python"
+    if not py.exists():
+        return 0.0
+    d = r.work / "gate" / tag
+    d.mkdir(parents=True, exist_ok=True)
+    r.bl("gate_back", "render_lit.py", "--mesh", glb, "--out", d / "back", "--az", "180", "--res", 1024, keep=())
+    r.sh("gate_back_face", [py, ROOT / "pipeline" / "back_face.py", "--render", d / "back_180.png",
+                            "--out", d / "back_face.json"], keep=("[back_face]",))
+    return float(json.load(open(d / "back_face.json"))["face"])
+
+
 def s_generate(r: Run):
     """TRELLIS on the reference, checked from the front: a model whose silhouette does not lie on the
     reference's (a board built in with the figure) is made again - first from the picture through
@@ -482,14 +499,35 @@ def s_generate(r: Run):
         iou = front_iou(r, cand, f"pass1_{route}_s{seed}")
         how = "the image model's cut-out" if route == "alpha" else "TRELLIS's background remover"
         print(f"      front silhouette on the reference: IoU {iou:.2f} ({how}, seed {seed})", flush=True)
-        if best is None or iou > best[1]:
-            best = (cand, iou, seed, route)
-        if iou >= FRONT_IOU_MIN:
+        bf = back_face(r, cand, f"pass1_{route}_s{seed}") if iou >= FRONT_IOU_MIN else 0.0
+        two_faced = bf > BACK_FACE_MAX
+        # the best so far: one face before a sound front, then the front's fit
+        rank = (not two_faced, iou)
+        if best is None or rank > best[4]:
+            best = (cand, iou, seed, route, rank)
+        if iou >= FRONT_IOU_MIN and not two_faced:
             break
         if k < len(tries) - 1:
-            print("      the model does not match the reference from the front (a board built in?) - "
-                  "generating it again", flush=True)
-    cand, iou, seed, route = best
+            print("      " + ("the model has a face on the back of its head too - generating it again" if two_faced else
+                         "the model does not match the reference from the front (a board built in?) - generating it again"),
+                  flush=True)
+    if best[4][0] is False and len(tries) < 5:
+        # every try two-faced: two more seeds
+        for seed in (r.a.seed + 2000, r.a.seed + 3000):
+            route = tries[-1][0]
+            cand = r.work / f"pass1_{route}_s{seed}.glb"
+            trellis(r, "generate", [reference_for_3d(r, route)], cand, seed=seed)
+            iou = front_iou(r, cand, f"pass1_{route}_s{seed}")
+            bf = back_face(r, cand, f"pass1_{route}_s{seed}")
+            print(f"      seed {seed}: front IoU {iou:.2f}, a face on the back {bf:.2f}", flush=True)
+            rank = (bf <= BACK_FACE_MAX, iou)
+            if rank > best[4]:
+                best = (cand, iou, seed, route, rank)
+            if rank[0] and iou >= FRONT_IOU_MIN:
+                break
+    cand, iou, seed, route, rank = best
+    if not rank[0]:
+        print("      every try had a face on the back of its head: keeping the closest from the front", flush=True)
     if iou < FRONT_IOU_MIN:
         print(f"      no try matches from the front: keeping the closest (IoU {iou:.2f}, seed {seed})", flush=True)
     shutil.copy(cand, out)
@@ -702,6 +740,15 @@ def s_retopo(r: Run):
          "--ray-distance", 0.014, "--joints", r.path("joints_refined.json"),
          "--head-share", getattr(r.a, "head_share", 0.28),
          keep=("source winding", "cage:", "head share", "baked from", "legs:", "UVs:", "AO mean", "AO bake", "normal map:", "ORM:"))
+    check_hands(r)
+
+
+def check_hands(r: Run):
+    """Both modelled hands on the low-poly, or the build stops (tools/hands_check.py): five characters once shipped
+    without a right hand and nothing noticed."""
+    if r.path("hands.json").exists():
+        (r.work / "qa").mkdir(exist_ok=True)
+        r.sh("hands_check", [sys.executable, ROOT / "tools" / "hands_check.py", r.a.name, "--strict"], keep=("[hands_check]",))
 
 
 def s_labels(r: Run):
@@ -815,6 +862,39 @@ def s_texture(r: Run):
              "--out", r.path("albedo.png"), keep=("[albedo]",))
 
 
+def reuse_face_detail(src, out, stamp, digest) -> bool:
+    """The detailed face made on an earlier run, re-aligned to this run's crop of the reference (an affine fit by ECC on
+    their lightness; the detail is the same crop re-detailed at low strength, so they agree closely). A rebuild moves the
+    face camera's crop by a few pixels, its stamp no longer matched, and without ComfyUI twelve characters fell back to
+    the full-body picture's face - blurred, with a dark veil on Juno's forehead. Kept only if the fit is close."""
+    import cv2
+    import numpy as np
+    from PIL import Image
+    new = np.asarray(Image.open(src).convert("RGB"), np.float32) / 255.0
+    old = np.asarray(Image.open(out).convert("RGB").resize(new.shape[1::-1], Image.LANCZOS), np.float32) / 255.0
+    g = lambda im: cv2.GaussianBlur(cv2.cvtColor(im, cv2.COLOR_RGB2GRAY), (0, 0), 2.0)   # noqa: E731
+    k = 512 / new.shape[1]
+    a, b = cv2.resize(g(new), None, fx=k, fy=k), cv2.resize(g(old), None, fx=k, fy=k)
+    W = np.eye(2, 3, dtype=np.float32)
+    try:
+        cc, W = cv2.findTransformECC(a, b, W, cv2.MOTION_AFFINE,
+                                     (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-6), None, 5)
+    except cv2.error:
+        return False
+    scale = float(np.sqrt(abs(np.linalg.det(W[:, :2]))))
+    # the strip the two crops do not share lowers the correlation: Vex's crop moved 30 px and fitted at 0.934
+    if cc < 0.92 or not 0.9 < scale < 1.1:
+        return False
+    W[:, 2] /= k
+    warped = cv2.warpAffine(old, W, new.shape[1::-1], flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
+                            borderMode=cv2.BORDER_REPLICATE)
+    Image.fromarray(np.clip(warped * 255 + 0.5, 0, 255).astype(np.uint8)).save(out)
+    prev = json.load(open(stamp)) if stamp.exists() else {}
+    prev.update({"source_md5": digest, "realigned": {"ecc": round(float(cc), 4), "shift_px": [round(float(x), 1) for x in W[:, 2]]}})
+    json.dump(prev, open(stamp, "w"))
+    return True
+
+
 def face_detail(r: Run, mask):
     """A detailed image of the reference's face region, for the projection (pipeline/face_detail.py).
     The reference's face region, enlarged to the camera's resolution, goes through image-to-image
@@ -840,6 +920,9 @@ def face_detail(r: Run, mask):
             import comfy  # noqa: E402
             comfy._get("/system_stats")
         except Exception as e:                                   # noqa: BLE001
+            if out.exists() and reuse_face_detail(src, out, stamp, digest):
+                print(f"      ComfyUI unavailable ({e}); the earlier detailed face re-aligned to this crop", flush=True)
+                return out
             print(f"      ComfyUI unavailable ({e}); face painted from the full-body reference", flush=True)
             return None
         from PIL import Image

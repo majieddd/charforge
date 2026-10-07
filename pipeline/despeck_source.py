@@ -109,7 +109,7 @@ for _ in range(2):
     fixed += int(out.sum())
 # the atlas painted again, at UP times its resolution so that nearly every triangle holds a texel's centre: each texel
 # from the triangle its centre lies in (at 1024 px most triangles held none and took a neighbouring chart's colour)
-UP = 4
+UP = max(1, 4096 // R)           # 4x a 1024 px atlas, 2x a 2048 px one: the bake that reads it is 4096 px
 RO = R * UP
 To = T * UP
 img = np.zeros((RO, RO, 3), np.float32)

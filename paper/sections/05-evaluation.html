@@ -244,9 +244,9 @@
   from {{f.summary.realistic_like_face_before|2}} to {{f.summary.realistic_like_face_after|2}}, where every part had been misplaced and the
   eyes were pits. Stylised faces held ({{f.summary.stylized_like_face_before|2}} and {{f.summary.stylized_like_face_after|2}}) and so did
   anime ({{f.summary.anime_like_face_before|2}} and {{f.summary.anime_like_face_after|2}}): drawn features were already roughly where the
-  generator sculpts them, two of the eight cannot be read on the model at all (Vex's fringe hides her eyes, Aoi's are
-  drawn too large), and the faces left wrong are wrong in shape - Vex's chin sunk in her collar, Ren's head longer than
-  his picture's. On the same characters
+  generator sculpts them, one of the eight cannot be read on the model at all (Aoi's eyes are drawn too large; Vex's
+  could not be until her model was made again without the second face on the back of her head, E145), and the faces
+  left wrong are wrong in shape - Ren's head longer than his picture's. On the same characters
   the rest of the model held: median surface noise {{f.summary.noise_deg_v012|2}}° in version 0.12 and
   {{f.summary.noise_deg_v013|2}}° now, asymmetry {{f.summary.symmetry_mm_v012|1}} and {{f.summary.symmetry_mm_v013|1}} mm, faces crushed during
   the clips {{f.summary.crushed_pct_v012|2}}% and {{f.summary.crushed_pct_v013|2}}%, foot slip {{f.summary.slip_v012|1}}% and
@@ -262,6 +262,22 @@
 <figure id="fig-faces-bench">
   <img src="media/q_faces_bench.webp" width="1802" height="672" alt="The twelve benchmark characters' faces from the front in soft light, each as version 0.12 built it and as rebuilt in version 0.13">
   <figcaption>The benchmark set from the front, version 0.12 beside version 0.13.</figcaption>
+</figure>
+
+<h3 id="sec-eval-checks">Checks a person would make</h3>
+<p>Two faults shipped that a person saw at a glance and no measure caught: five characters without a right hand, and
+  one with a face on the back of her head. Both are now measured - every modelled fingertip looked for on the low-poly,
+  and a face read on the back of the head [E145] [E146] - and close-ups of every character's hands, back and back of
+  head are rendered for review. Whether a local vision model can do the looking was measured on the user's own library
+  (LM Studio) [E144]. Every vision-capable 9B model there read a picture correctly (hair colour, 10 of 10) and told a
+  hand from a stump on 33-34 of 34 close-ups, the five missing hands among them; none picked a move's best sample better
+  than chance. Asked for any defect, the two best found every one labelled by eye - Vex's second face, the pits in three
+  characters' hair, the notches on eight backs - and flagged a third to all of the clean ones too [E147]. They are used
+  for triage, which close-ups to open first; the measured checks are the gates.</p>
+<figure id="fig-glance">
+  <img src="media/q_glance.webp" width="1882" height="264" alt="Before and after, eight close-ups: Mara's and Rivet's right arms ending in a stump, then with a modelled hand; the back of Vex's head with a sculpted face, then with hair; Bo's back with two rectangular holes, then with two thin lines">
+  <figcaption>What a glance found: two of the five missing right hands, the face on the back of Vex's head, the arm
+    cut's holes in Bo's back - before and after [E145] [E146].</figcaption>
 </figure>
 
 <h3 id="sec-eval-words">Moves from words</h3>

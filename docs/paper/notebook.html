@@ -268,7 +268,7 @@
       <a href="#archive">archive</a> at the end.</p>
 
     <div class="facts">
-      <div class="fact"><div class="v">48% → 28%</div><div class="k">of frames with one body part more than 2 cm inside another, on 13 characters: every clip now held inside joint limits measured on each character's own mesh</div></div>
+      <div class="fact"><div class="v">48% → 29%</div><div class="k">of frames with one body part more than 2 cm inside another, on 13 characters: every clip now held inside joint limits measured on each character's own mesh</div></div>
       <div class="fact"><div class="v">48% → 1%</div><div class="k">of Cadet's frames with a boot under the floor - the shoe the viewer sees is the one planted now, every vertex of it</div></div>
       <div class="fact"><div class="v">5 moves <small>from 5 sentences</small></div><div class="k">the motion library lacks, made for Cadet on his own skeleton by UniMate - about 25 s each on the GPU</div></div>
       <div class="fact"><div class="v">1,529 → 8 <small>faces</small></div><div class="k">of Pip's texture sharing texels with another surface - his vest's paint on his sleeves. Every character had 224–2,602; now 6–31</div></div>
@@ -514,17 +514,17 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
         Knight, stylised Vex, Rivet, Pip and Cadet, anime Aoi, Hana, Kaito and Ren - is scored before and after: landmark
         error against the picture, and how alike the face's parts look by a vision model's features, robust to lighting but
         not to a smeared eye. Over the 10 with a v0.12 build to compare, the eyes' likeness went
-        0.633 → 0.696, the mouth's 0.527 →
-        0.629. The gain is the realistic faces' (eyes 0.514 →
-        0.62), where every part had been misplaced and the eyes were pits; drawn faces held,
-        and those left wrong are wrong in shape - Vex's chin sunk in her collar, Ren's head longer than his picture's.</p>
+        0.633 → 0.688, the mouth's 0.527 →
+        0.637. The gain is the realistic faces' (eyes 0.514 →
+        0.628), where every part had been misplaced and the eyes were pits; drawn faces held,
+        and those left wrong are wrong in shape - Ren's head is longer than his picture's.</p>
     </div>
     <article class="fix">
       <img src="media/q_eyes.webp" alt="Mara's head in plain grey at five stages: ragged almond eye openings as generated, streaked slabs in the solid, crumpled pits in v0.12's low-poly, and smooth lids over the eyes once rebuilt" width="1524" height="334" loading="lazy">
       <div class="txt">
         <div class="tag">the shape</div>
         <h3>Eyes rebuilt as a smooth cap under the lids</h3>
-        <div class="num">17 → 28.6% <small>of the triangles on the head; eyes rebuilt on 10 of 12 benchmark characters</small></div>
+        <div class="num">17 → 28.35% <small>of the triangles on the head; eyes rebuilt on 11 of 12 benchmark characters</small></div>
         <p>The generator models every eye as an almond opening with shards inside it. The solid filled it with streaks, and
          the decimation, which gave the whole head 17% of 60,000 triangles, crumpled it into a pit - and no texture laid on a
          pit reads as an eye. More texels on the head changed nothing you could see. The openings are found by a pose model on
@@ -538,7 +538,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
       <div class="txt">
         <div class="tag">the texture</div>
         <h3>The face laid on in parts</h3>
-        <div class="num">7 of 12 <small>benchmark faces laid on in parts</small></div>
+        <div class="num">8 of 12 <small>benchmark faces laid on in parts</small></div>
         <p>The picture's face had been projected larger than the sculpted one, its eyes 10-30 pixels off, and the optical flow
          meant to line it up squinted and smeared them. Now each part - each brow, each eye, the nose, the mouth, the jaw - is
          moved by its own small fit onto the model's own features, and the moves are spread smoothly over the face. Two more
@@ -562,11 +562,27 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
       </div>
     </article>
     <article class="fix">
+      <img src="media/q_glance.webp" alt="Before and after: Mara's and Rivet's right arms ending in a stump, then with a hand; the back of Vex's head with a sculpted face, then with hair; Bo's back with two rectangular holes, then with thin lines" width="1882" height="264" loading="lazy">
+      <div class="txt">
+        <div class="tag">what a glance found</div>
+        <h3>A missing hand, a second face, holes in the back</h3>
+        <div class="num">5 <small>characters had shipped without a right hand; all 17 now have both, checked by fingertip</small></div>
+        <p>You saw it at once and no measure had: five characters had no right hand. When one hand's join to the arm failed, it
+         was attached as an overlapping shell, and the other hand's join, run on that tangled body, quietly returned it
+         unchanged - the only check was that the body did not shrink. Every hand is now joined to the clean body first and
+         checked by its fingertips, and a build with a missing hand stops. Vex had a second face sculpted on the back of her
+         head, which the generator invented; every new model is now looked at from behind and made again if a face is there.
+         And the cut that frees the arms from the body had run through eight characters' backs; what it took beyond the arm
+         now goes back. The vision models in the local library can tell a hand from a stump every time, but asked for any
+         defect they flag too much to be a gate - they say which close-ups to open first.</p>
+      </div>
+    </article>
+    <article class="fix">
       <img src="media/q_faces_bench.webp" alt="The twelve benchmark characters' faces from the front in soft light, v0.12 beside v0.13" width="1802" height="672" loading="lazy">
       <div class="txt">
         <div class="tag">the benchmark</div>
         <h3>Twelve faces, before and after</h3>
-        <div class="num">0.032 → 0.028 <small>landmark error against the picture, as a share of the eye spacing</small></div>
+        <div class="num">0.032 → 0.027 <small>landmark error against the picture, as a share of the eye spacing</small></div>
         <p>The same twelve characters from the front, v0.12 beside v0.13. Landmark error alone missed the improvement - a
          smeared eye is still where an eye should be - which is why the likeness of each part is measured too. Still open: the
          hairline (the hair shell's ragged edge), anime eyes, and the face from the side, where it is still the generator's
@@ -748,15 +764,15 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
     </div>
     <div class="facts">
       <div class="fact"><div class="v">2.72 · 1.52 · 2.71 <small>%</small></div><div class="k">of faces crushed, stretched and sheared, averaged over every clip of 13 characters - most of the crushed ones out of sight, under an arm</div></div>
-      <div class="fact"><div class="v">48% → 28%</div><div class="k">of frames with one body part more than 2 cm inside another - the commonest fault - before and after the joint limits</div></div>
-      <div class="fact"><div class="v">3.89 → 2.64 cm</div><div class="k">the deepest one part goes into another, averaged over clips; crushed, stretched and sheared shares unchanged</div></div>
+      <div class="fact"><div class="v">48% → 29%</div><div class="k">of frames with one body part more than 2 cm inside another - the commonest fault - before and after the joint limits</div></div>
+      <div class="fact"><div class="v">3.89 → 2.65 cm</div><div class="k">the deepest one part goes into another, averaged over clips; crushed, stretched and sheared shares unchanged</div></div>
     </div>
     <article class="fix">
       <img src="media/clearance_bo.webp" alt="Bo in idle, strafe and sprint before and after: before, his forearms sink into the sides of his chef's jacket and his raised heel folds into the back of his thigh; after, his arms hang just clear of the jacket and the raised leg bends less" width="1560" height="1096" loading="lazy">
       <div class="txt">
         <div class="tag">the clips</div>
         <h3>Limbs keep out of each other</h3>
-        <div class="num">9–59° <small>the largest single correction per character; armour takes the most - Cadet's sprint, his knee plates meeting at 100°</small></div>
+        <div class="num">9–54° <small>the largest single correction per character; armour takes the most - Cadet's sprint, his knee plates meeting at 105°</small></div>
         <p>A capture was performed by one person of one build. On a thicker character the same joint angles put a forearm
          inside a puffy sleeve and a heel into a thigh, and hang the arms inside a wide torso. Each character's elbows, knees
          and shoulders are now bent on its own mesh, 5° at a time, until one part goes 2 cm into another, and every clip
