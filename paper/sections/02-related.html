@@ -40,6 +40,13 @@
   self-occlusion, the same failure our arm cut addresses. Akman et al. [@akman2020] go from stick figures to 3D bodies
   with a variational autoencoder and animate by interpolating in its latent space.</p>
 
+<p><b>Unified models.</b> PixelUMM [@pixelumm] reads and writes raw pixels with one decoder-only Transformer - images as
+  patches, video as tubelets, no VAE or vision encoder - and both understands and generates images and video. Weighed
+  against each CharForge stage [E142], its released generation takes text only, at 256 px for an image and 176 x 320 for a
+  video, where the stages need a full-body character at about 1024 px, image-to-image for the face and the character
+  itself in its videos; its understanding scores are those of a 7-8B vision-language model, the level that could not
+  judge moves from words here [E143]; and it runs only on Linux with CUDA. It is not used.</p>
+
 <h3 id="sec-rw-rig">Rigging and skinning</h3>
 <p>Pinocchio [@pinocchio] embeds a template skeleton in a mesh and computes weights by heat diffusion; RigNet [@rignet]
   learns joints, connectivity and weights; UniRig [@unirig] predicts skeletons autoregressively with a skeleton-tree

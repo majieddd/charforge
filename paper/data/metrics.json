@@ -1,6 +1,6 @@
 {
  "_about": "Written by paper/collect.py from the pipeline's measurement files; read by paper/build.py.",
- "collected": "2026-10-05",
+ "collected": "2026-10-06",
  "roster": [
   {
    "id": "aoi",
@@ -149,9 +149,9 @@
   },
   {
    "id": "hana",
-   "name": "hana",
+   "name": "Hana",
    "style": "anime",
-   "in_playground": false,
+   "in_playground": true,
    "released": false,
    "prompt": "a cheerful young archer girl with a long brown ponytail, a red hooded jacket over a white top, a pleated grey skirt, black leggings and brown boots",
    "from_image": false,
@@ -347,9 +347,9 @@
   },
   {
    "id": "ren",
-   "name": "ren",
+   "name": "Ren",
    "style": "anime",
-   "in_playground": false,
+   "in_playground": true,
    "released": false,
    "prompt": "a calm young swordsman with short silver hair, a long dark green coat with gold trim, a black shirt, fingerless gloves and tall boots",
    "from_image": false,
@@ -376,9 +376,9 @@
   },
   {
    "id": "rivet",
-   "name": "rivet",
+   "name": "Rivet",
    "style": "stylized",
-   "in_playground": false,
+   "in_playground": true,
    "released": false,
    "prompt": "a cheerful young mechanic with grease-smudged blue overalls rolled up at the sleeves, aviator goggles pushed up on her head, a tool belt and work boots",
    "from_image": false,

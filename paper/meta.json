@@ -3,11 +3,14 @@
  "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
  "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.13",
- "date": "2026-10-04",
+ "version": "0.14",
+ "date": "2026-10-06",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
   "changelog": [
+  {"version": "0.14", "date": "2026-10-06", "changes": [
+    "PixelUMM (NVIDIA, 2026), a unified pixel-space image and video model, weighed against every stage (E142): not used - text-only generation at 256 px, Linux and CUDA only, its understanding at the level measured in E143. Related work and negative results.",
+    "Picking among a move's three samples automatically (E143): local vision-language models, a 9B vision model's descriptions judged by Jev, and the skeleton's motion as measured facts judged by Jev - none beat chance against the picks made by eye on Cadet's six moves; still picked by eye."]},
   {"version": "0.13", "date": "2026-10-04", "changes": [
     "Faces in parts (E140), on a benchmark set of two characters per style per gender instead of the whole roster (Mara, Juno, Rowan, Knight; Vex, Rivet, Pip, Cadet; Aoi, Hana, Kaito, Ren), scored by a new face measure: landmark error against the picture after one similarity and per-part DINOv3 likeness of face, eyes, nose and mouth (section 5.8, Table: faces).",
     "Eyes rebuilt as lids over an eyeball: TRELLIS.2 models every eye as an opening full of shards; each opening is found by DWPose on the generator's own paint and rebuilt in the solid, and the head keeps 28% of the triangle budget (Figure: eyes).",
