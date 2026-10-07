@@ -280,7 +280,12 @@
   the toe at every lift and landing, which planting a contact does not remove. Three of the five moves came out as asked
   on the first wording; the march and looking around needed the short, caption-like one. Generation takes about
   {{um.seconds.sample_gpu_per_move}} s per move on the GPU and {{um.seconds.export_per_move}} s to export, against half an
-  hour of video for a move from video; choosing among three samples is still done by eye.</p>
+  hour of video for a move from video; choosing among three samples is still done by eye. Three ways of
+  automating it were measured against the picks made by eye on Cadet's six moves, and none beat chance [E143]: local
+  vision-language models shown the samples side by side (6-7 of 18 trials, answering by a row's place, not its content);
+  a 9B vision model describing each sample and Jev judging the description (1 of 6); and the skeleton's own motion written
+  up as measured facts for Jev to judge (2 of 6) - exact where vision was not, but the samples differ too subtly for
+  six cases to show it.</p>
 
 <h3 id="sec-eval-validity">Validity of the measurements</h3>
 <p>Several of the largest errors we found were in the measuring, not the pipeline. We list them because each would
