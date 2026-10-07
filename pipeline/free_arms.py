@@ -44,6 +44,9 @@ ap.add_argument("--out", required=True)
 ap.add_argument("--report", default=None)
 ap.add_argument("--axilla", type=float, default=0.25, help="where the cut starts, as a fraction of the upper arm (where its section parts from the torso on Pip)")
 ap.add_argument("--gap", type=float, default=0.010, help="the cut's width, as a fraction of height")
+ap.add_argument("--keep-open", type=float, default=3,
+                help="after the arm is free, the voxels of air left round the arm's own solid; the rest of the cut goes back "
+                     "to the body (0: the whole cut stays open)")
 a = ap.parse_args()
 
 S = np.load(a.solid)
@@ -72,6 +75,7 @@ def spine_at(z):
 
 
 report = {"sides": {}}
+webbed = np.zeros(sdf.shape, bool)                # voxels taken away as webs: never given back
 total = 0
 # depth inside the solid, for finding each section's centre
 inside_all = sdf < 0
@@ -243,6 +247,9 @@ for side in ("left", "right"):
             flat = blk_w.reshape(-1).copy()
             flat[web] = 0.5 * v
             sdf[sl_w] = flat.reshape(blk_w.shape)
+            wb = webbed[sl_w].reshape(-1)
+            wb[web] = True
+            webbed[sl_w] = wb.reshape(blk_w.shape)
             print(f"[arms] {side}: {int(web.sum()):,} voxels of web between the arm and the body taken away",
                   flush=True)
         total += int(web.sum())
@@ -269,14 +276,45 @@ for side in ("left", "right"):
         n_cut += carve(glued)
         closed += len(bad)
     left_joined = still_joined() if closed else []
-    if closed:
-        print(f"[arms] {side}: {closed} stretch(es) of the arm still joined the body after the first cut - cut again"
-              + (f"; {len(left_joined)} still joined" if left_joined else "; now free"), flush=True)
-    total += n_cut
+    # The cut is a shell a gap wide at the arm's estimated radius, and at the armpit the estimate runs large: the shell
+    # went through the torso from front to back, and seen from behind Bo's and Rowan's backs had rectangular holes where
+    # it came out. Now that the arm is free, everything the cut took that lies more than KEEP voxels from the arm's own
+    # solid goes back to the body; a band of air KEEP voxels wide still parts them wherever they were glued (E146).
+    given = 0
+    if a.keep_open > 0:
+        KEEP = max(2, int(round(a.keep_open)))
+        rows_k = np.nonzero(glued.any(1))[0]
+        sl_k, ni_k, rho_k, phi_k = around(rows_k, 1.4 * float(r_dir[rows_k].max()) + gap + 4 * v)
+        shp = sdf[sl_k].shape
+        now_solid = (sdf[sl_k] < 0).reshape(-1)
+        in_span = span[ni_k]
+        core = now_solid & in_span & (rho_k < 0.8 * r_typ[ni_k])
+        reach = now_solid & in_span & (rho_k < 1.8 * r_typ[ni_k])
+        lab_k, _ = ndimage.label(reach.reshape(shp))
+        lab_k = lab_k.reshape(-1)
+        keep_lab = np.unique(lab_k[core & (lab_k > 0)])
+        arm = np.isin(lab_k, keep_lab) & (lab_k > 0)
+        dist = ndimage.distance_transform_edt(~arm.reshape(shp)).reshape(-1)
+        blk_k = sdf[sl_k].reshape(-1).copy()
+        orig_k = S["sdf"][sl_k].reshape(-1)
+        back = (blk_k >= 0) & (orig_k < 0) & (dist > KEEP) & ~webbed[sl_k].reshape(-1)
+        before_k = sdf[sl_k].copy()
+        blk_k[back] = orig_k[back]
+        sdf[sl_k] = blk_k.reshape(shp)
+        given = int(back.sum())
+        # and the arm must be as free as before: if the give-back joined it to the body anywhere, it is undone
+        if given and len(still_joined()) > len(left_joined):
+            sdf[sl_k] = before_k
+            print(f"[arms] {side}: giving the cut back would join the arm to the body again - left as cut", flush=True)
+            given = 0
+        if given:
+            print(f"[arms] {side}: {given:,} voxels of the cut given back to the body - {KEEP} voxels of air left "
+                  f"round the arm", flush=True)
+    total += n_cut - given
     along = s[glued.any(1)] / Lu
     report["sides"][side] = {"glued_from": round(float(along.min()), 2), "glued_to": round(float(along.max()), 2),
                              "arm_radius": round(float(np.median(r_typ) / H), 4), "carved_voxels": n_cut,
-                             "recut": closed, "still_joined": len(left_joined)}
+                             "recut": closed, "still_joined": len(left_joined), "given_back": given}
     print(f"[arms] {side}: glued to the body from {along.min():.2f} to {along.max():.2f} of the upper arm's length "
           f"down the arm; arm radius {np.median(r_typ) / H * 100:.1f}% of height; opened a {gap / H * 100:.1f}% gap - "
           f"{n_cut:,} voxels", flush=True)

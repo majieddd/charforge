@@ -101,40 +101,98 @@ def volume(ob):
     return v_
 
 
-for side, s in spec["sides"].items():
-    hand, joints, L = hand_mesh(side, s)
-    n_before = len(body.data.vertices)
-    vol_body, vol_hand = volume(body), volume(hand)
-    keep = body.data.copy()                         # to fall back to if the union misbehaves
+def tips_on(ob, joints, L):
+    """How many of the five fingertips lie on ob's surface (within 8% of the hand's length)."""
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    dg = bpy.context.evaluated_depsgraph_get()
+    tree = BVHTree.FromObject(ob, dg)
+    n = 0
+    for chain in joints.values():
+        hit = tree.find_nearest(Vector(chain[-1]))
+        n += hit[0] is not None and hit[3] < 0.08 * L
+    return n
+
+
+def nonmanifold(ob):
+    bm_ = bmesh.new()
+    bm_.from_mesh(ob.data)
+    n_ = sum(1 for e in bm_.edges if not e.is_manifold)
+    bm_.free()
+    return n_
+
+
+def try_union(hand, joints, L, how):
+    """One boolean union of hand onto body, kept only if it did what a union does. The hand's wrist stub reaches back
+    inside the arm, so the volume must grow by much of the hand's (at least a quarter) and by no more than all of it,
+    and the fingertips must end up on the surface. The old check - only that the volume did not shrink - passed a
+    union that returned the body unchanged: Mara, Rivet, Rowan, Bo and Wren shipped without a right hand."""
+    n_before, vol_body, vol_hand = len(body.data.vertices), volume(body), volume(hand)
+    nm_before = nonmanifold(body)
+    keep = body.data.copy()
     mod = body.modifiers.new("union", "BOOLEAN")
     mod.operation = "UNION"
     mod.solver = "EXACT"
     mod.use_hole_tolerant = True                    # the solid can carry a few non-manifold edges
+    mod.use_self = how == "self"
     mod.object = hand
     bpy.context.view_layer.objects.active = body
     bpy.ops.object.modifier_apply(modifier=mod.name)
-    # The union must keep the body. On Vex the exact boolean once returned only the hand and the
-    # shoes - 426k vertices down to 40k - and nothing downstream noticed; the character shipped
-    # as two hands and two shoes. So the result is checked against what a union can do: the
-    # volume grows by at most the hand's, and shrinks by nothing much.
     vol_after = volume(body)
-    ok = (0.97 * vol_body <= vol_after <= vol_body + 1.05 * vol_hand
-          and len(body.data.vertices) > 0.8 * n_before)
-    how = "unioned on"
+    tips = tips_on(body, joints, L)
+    nm_added = nonmanifold(body) - nm_before
+    # and it must not tear the surface: with self-intersection handling on, Mara's union added 6,732 non-manifold edges
+    ok = (vol_body + 0.25 * vol_hand <= vol_after <= vol_body + 1.05 * vol_hand
+          and len(body.data.vertices) > 0.8 * n_before and tips >= 4 and nm_added < 300)
     if not ok:
-        # Fall back to joining the hand as its own shell: its wrist stub reaches back inside the
-        # arm, so the overlap is hidden, and the skinning treats both alike.
         body.data = keep
-        bpy.ops.object.select_all(action="DESELECT")
-        hand.select_set(True)
-        body.select_set(True)
-        bpy.context.view_layer.objects.active = body
-        bpy.ops.object.join()
-        how = (f"JOINED as a separate shell (the boolean returned volume {vol_after / vol_body:.2f}x "
-               f"the body's and {len(body.data.vertices):,} vertices)")
-    else:
+    return ok, (f"volume +{(vol_after - vol_body) / max(vol_hand, 1e-12):.2f} of the hand's, "
+                f"{tips}/5 fingertips on the surface, {nm_added:+d} non-manifold edges")
+
+
+# Every hand is unioned onto the body as it came from the solid; a hand whose union fails is joined as its own shell
+# only after all the unions. A boolean run on a body already carrying an overlapping shell is what returned Mara's
+# body unchanged on her second hand.
+from mathutils import Vector  # noqa: E402
+deferred = []
+for side, s in spec["sides"].items():
+    hand, joints, L = hand_mesh(side, s)
+    n_before = len(body.data.vertices)
+    tried = []
+    ok = False
+    for how in ("exact", "nudged", "self"):
+        if how == "nudged":                         # a coplanar or degenerate contact: move the hand a tenth of a millimetre
+            hand.location += Vector((1e-4, -7e-5, 5e-5))
+            bpy.context.view_layer.update()
+        if how == "self":
+            hand.location = (0.0, 0.0, 0.0)
+            bpy.context.view_layer.update()
+        ok, why = try_union(hand, joints, L, how)
+        tried.append(f"{how}: {why}")
+        if ok:
+            break
+    if ok:
         bpy.data.objects.remove(hand, do_unlink=True)
-    # relax the crease where the stub meets the arm: vertices within a band of the cut plane
+        how_txt = "unioned on (" + "; ".join(tried) + ")"
+    else:
+        hand.location = (0.0, 0.0, 0.0)
+        deferred.append(hand)
+        how_txt = "to be JOINED as a separate shell - every union failed (" + "; ".join(tried) + ")"
+    out["sides"][side] = {"length": L, "wrist": s["cut_point"], "fingers": joints,
+                          "frame": {"x": s["x"], "y": s["y"], "z": s["z"], "mirror": s["mirror"]},
+                          "wrist_radius": list(wrist_of(s)), "bulk": float(s.get("bulk", 1.0)),
+                          "joined": not ok}
+    print(f"[hands] {side}: modelled hand {L:.4f} long {how_txt} ({n_before:,} -> {len(body.data.vertices):,} vertices)",
+          flush=True)
+for hand in deferred:
+    bpy.ops.object.select_all(action="DESELECT")
+    hand.select_set(True)
+    body.select_set(True)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.join()
+# relax the crease where each stub meets the arm: vertices within a band of the cut plane
+for side, s in spec["sides"].items():
+    L = out["sides"][side]["length"]
     C, x = np.array(s["cut_point"]), np.array(s["x"])
     bm = bmesh.new()
     bm.from_mesh(body.data)
@@ -144,11 +202,12 @@ for side, s in spec["sides"].items():
         bmesh.ops.smooth_vert(bm, verts=band, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
     bm.to_mesh(body.data)
     bm.free()
-    out["sides"][side] = {"length": L, "wrist": s["cut_point"], "fingers": joints,
-                          "frame": {"x": s["x"], "y": s["y"], "z": s["z"], "mirror": s["mirror"]},
-                          "wrist_radius": list(wrist_of(s)), "bulk": float(s.get("bulk", 1.0))}
-    print(f"[hands] {side}: modelled hand {L:.4f} long {how} ({n_before:,} -> "
-          f"{len(body.data.vertices):,} vertices, {len(band)} relaxed at the wrist)", flush=True)
+    print(f"[hands] {side}: {len(band)} vertices relaxed at the wrist", flush=True)
+# the last word: both hands' fingertips on the mesh that ships on, or the stage fails
+for side in spec["sides"]:
+    t_ = tips_on(body, out["sides"][side]["fingers"], out["sides"][side]["length"])
+    if t_ < 4:
+        raise SystemExit(f"[hands] {side}: only {t_}/5 fingertips on the final mesh - the hand is missing")
 
 bm = bmesh.new()
 bm.from_mesh(body.data)

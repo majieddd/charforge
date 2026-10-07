@@ -455,6 +455,17 @@ def q_crackle():
         save(im, "q_crackle.webp")
 
 
+def q_glance():
+    """What a glance found (E145, E146): a missing hand, a second face, the arm cut's notches - before and after."""
+    F = Q / "v014" / "fig"
+    rows_figure([("Before and after: Mara's and Rivet's right hands, the back of Vex's head, Bo's back",
+                  [("Mara before", F / "mara_hand_before.png"), ("Mara after", F / "mara_hand_after.png"),
+                   ("Rivet before", F / "rivet_hand_before.png"), ("Rivet after", F / "rivet_hand_after.png"),
+                   ("Vex before", F / "vex_head_before.png"), ("Vex after", F / "vex_head_after.png"),
+                   ("Bo before", F / "bo_back_before.png"), ("Bo after", F / "bo_back_after.png")])],
+                "q_glance.webp", size=230)
+
+
 def q_faces_bench():
     """The benchmark set's faces before and after v0.13 (E140): front, soft light, from tools/face_review.sh."""
     V = Q / "v013"
@@ -479,5 +490,5 @@ if __name__ == "__main__":
     M.mkdir(exist_ok=True)
     for f in (studio, wings, cheer, uv, aoi, hands, hem, bo, webs, loose, elbow, board, prompts, feet, angles, compares, cast,
               e130_floor, q_rake, q_rest, q_hands, q_inventory, q_views, q_head, q_skin, q_debris, q_eyes, q_faceparts,
-              q_faces_bench, q_crackle):
+              q_faces_bench, q_crackle, q_glance):
         f()

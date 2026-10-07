@@ -3,11 +3,17 @@
  "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
  "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.14",
- "date": "2026-10-06",
+ "version": "0.15",
+ "date": "2026-10-07",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
   "changelog": [
+  {"version": "0.15", "date": "2026-10-07", "changes": [
+    "Missing hands (E146): five characters (Mara, Rivet, Rowan, Bo, Wren) had shipped without a right hand - a hand's boolean union fell back to an overlapping shell, the next union on that body returned it unchanged, and the only check passed it. Every hand is now unioned onto the clean body and verified by its fingertips; tools/hands_check.py runs after retopology and stops a build with a missing hand. All 17 characters rebuilt with both hands.",
+    "Two-faced heads (E145): TRELLIS.2 had sculpted a second face on the back of Vex's head; the generation gate now reads a face on the back of each candidate (pipeline/back_face.py) and makes it again on another seed. Vex rebuilt (seed 7 rejected at 0.96, seed 1007 at 0.47).",
+    "The arm cut's notches (E146): on 8 of 17 characters the cut that frees the arms ran through the torso and showed as holes in the back; what it took beyond the arm's own solid now goes back to the body.",
+    "The user's LM Studio vision models qualified on CharForge jobs (E144): every 9B model reads pictures and tells a hand from a stump (33-34 of 34), none judges moves; as a defect finder they find everything and flag a third to all of the clean close-ups (E147) - triage, not a gate. New section 5.9.",
+    "Without ComfyUI a rebuild now re-aligns the earlier detailed face to the new crop instead of falling back to the full-body picture's face."]},
   {"version": "0.14", "date": "2026-10-06", "changes": [
     "PixelUMM (NVIDIA, 2026), a unified pixel-space image and video model, weighed against every stage (E142): not used - text-only generation at 256 px, Linux and CUDA only, its understanding at the level measured in E143. Related work and negative results.",
     "Picking among a move's three samples automatically (E143): local vision-language models, a 9B vision model's descriptions judged by Jev, and the skeleton's motion as measured facts judged by Jev - none beat chance against the picks made by eye on Cadet's six moves; still picked by eye."]},

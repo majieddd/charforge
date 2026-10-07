@@ -420,7 +420,7 @@ faces = "" if not FD else f"""<section id="faces">
         {FS.get('like_eyes_before')} → {FS.get('like_eyes_after_paired')}, the mouth's {FS.get('like_mouth_before')} →
         {FS.get('like_mouth_after_paired')}. The gain is the realistic faces' (eyes {FS.get('realistic_like_eyes_before')} →
         {FS.get('realistic_like_eyes_after')}), where every part had been misplaced and the eyes were pits; drawn faces held,
-        and those left wrong are wrong in shape - Vex's chin sunk in her collar, Ren's head longer than his picture's.</p>
+        and those left wrong are wrong in shape - Ren's head is longer than his picture's.</p>
     </div>
     {fix("the shape", "Eyes rebuilt as a smooth cap under the lids", "q_eyes.webp",
          "Mara's head in plain grey at five stages: ragged almond eye openings as generated, streaked slabs in the solid, crumpled pits in v0.12's low-poly, and smooth lids over the eyes once rebuilt",
@@ -449,6 +449,17 @@ faces = "" if not FD else f"""<section id="faces">
          from the atlas's neighbouring texels borrowed other charts' colours. Rebuilt through the mesh instead - each vertex
          given the median colour of its triangles, outliers given their neighbours', the atlas painted again at four times
          its size - the skin and hair come out clean.</p>''', 1500, 500)}
+    {fix("what a glance found", "A missing hand, a second face, holes in the back", "q_glance.webp",
+         "Before and after: Mara's and Rivet's right arms ending in a stump, then with a hand; the back of Vex's head with a sculpted face, then with hair; Bo's back with two rectangular holes, then with thin lines",
+         "5 <small>characters had shipped without a right hand; all 17 now have both, checked by fingertip</small>",
+         '''<p>You saw it at once and no measure had: five characters had no right hand. When one hand's join to the arm failed, it
+         was attached as an overlapping shell, and the other hand's join, run on that tangled body, quietly returned it
+         unchanged - the only check was that the body did not shrink. Every hand is now joined to the clean body first and
+         checked by its fingertips, and a build with a missing hand stops. Vex had a second face sculpted on the back of her
+         head, which the generator invented; every new model is now looked at from behind and made again if a face is there.
+         And the cut that frees the arms from the body had run through eight characters' backs; what it took beyond the arm
+         now goes back. The vision models in the local library can tell a hand from a stump every time, but asked for any
+         defect they flag too much to be a gate - they say which close-ups to open first.</p>''', 1882, 264)}
     {fix("the benchmark", "Twelve faces, before and after", "q_faces_bench.webp",
          "The twelve benchmark characters' faces from the front in soft light, v0.12 beside v0.13",
          f"{FS.get('nme_before')} → {FS.get('nme_after_paired')} <small>landmark error against the picture, as a share of the eye spacing</small>",

@@ -44,7 +44,10 @@
   is now checked from the front, and below 0.8 made again from the picture cut out by a salient-object model
   [@u2net], then on a new seed [E014]: Gray {{b.boards.gray.0}} → {{gray.front_iou}}, Knight {{b.boards.knight.0}} →
   {{knight.front_iou}}, Kaito {{b.boards.kaito.0}} → {{kaito.front_iou}}, the boy scout {{b.boards.boyscout.0}} →
-  {{boyscout.front_iou}}.</p>
+  {{boyscout.front_iou}}. It is also checked from behind: on Vex, made from a painting, TRELLIS.2 sculpted and painted a
+  second face on the back of her head, which nothing later looked at. DWPose [@dwpose] reads a face on the back of an
+  ordinary head at 0.34-0.55 - a ghost of one in any hair - and on hers at 0.97; above 0.8 the model is made again on
+  another seed [E145].</p>
 <figure id="fig-board">
   <img src="media/prompts_board.webp" width="1218" height="300" alt="TRELLIS's first pass from the front for four characters: Gray is a flat grey board hiding the figure, Knight has a board behind him, Kaito a board through his legs, Bo is clean">
   <figcaption>A backdrop built into the model: TRELLIS's first pass from the front, labelled with the silhouette IoU
@@ -100,7 +103,11 @@
   surface between moves with both, and a raised arm pulls the vest into wings. The arms are cut free below the armpit
   (T-pose faces stretched past 3x: 1,150 → 390 on Pip), thin webs opened first, and the cut checked slab by slab along
   the arm and repeated where a join survives: 3-9 joined slabs an arm after the first cut, 1-3 after the second
-  [E025] [E026].</p>
+  [E025] [E026]. The cut is a shell at the arm's estimated radius, and at the armpit the estimate runs large: on 8 of 17
+  characters the shell went through the torso from front to back and showed on the back as dark rectangular holes. Once
+  the arm is free, everything the cut took that lies more than 3 voxels (about 5 mm) from the arm's own solid now goes
+  back to the body; a band of air still parts them wherever they were glued, and the stage undoes the give-back if its
+  own joined test would fail [E146].</p>
 <p><b>Modelled hands.</b> Generated hands are paddles. They are carved off at the wrist and replaced by a modelled hand
   (a signed distance function with anatomical proportions, 15 finger bones) unioned onto the solid. The modelled wrist
   was a person's; on Gray, "extremely muscular", whose forearms measure 11-13 cm at the wrist, each arm ended in a flat
@@ -108,6 +115,15 @@
   so width cannot tell a bulky forearm from a sleeve - but the part labels can: the vertices just above the cut are
   labelled bare skin on 0.92-1.00 of a bare forearm and 0.13 or less under a sleeve or gauntlet. On a bare forearm the
   hand is now scaled across its width and thickness to meet it, up to 1.6x (Gray {{gray.hand_bulk|2}}x) [E021].</p>
+<p>The exact boolean that joins a hand to the arm fails now and then, and the fallback was to join the hand as an
+  overlapping shell. On five characters the left hand fell back, and the right hand's boolean, run on that
+  self-intersecting body, returned it unchanged; the only check, that the volume did not shrink, passed it, and they
+  shipped without a right hand. Every hand is now unioned onto the body as it came from the solid, and a failed one
+  joined only after all the unions; a union is kept only if the volume grows by at least a quarter of the hand's, four or
+  more fingertips lie on the result's surface and it adds few non-manifold edges (exact, then nudged a tenth of a
+  millimetre, then with self-intersection handling, which put hands on but tore the surface). The stage fails if a
+  hand's fingertips are not on the final mesh, and after retopology every fingertip the hand model recorded is looked
+  for on the low-poly [E146].</p>
 <figure id="fig-hands-bulk">
   <img src="media/fix_gray_hands.webp" width="1704" height="420" alt="Gray's hand before and after: before, the waving hand is a small hook and the resting hand thin under a cuff-like step; now, an open hand as broad as the forearm">
   <figcaption>A person's hand on a hulk's forearm (left of each pair) and a hand sized to the bare forearm it ends

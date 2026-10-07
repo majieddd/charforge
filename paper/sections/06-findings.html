@@ -41,6 +41,11 @@
       <tr><td>Let a local vision-language model pick among a move's three samples</td><td>chance (6-7 of 18) for qwen2.5vl and gemma4, and the answer followed the row's place, not what it showed</td><td>picked by eye [E143]</td></tr>
       <tr><td>A 9B vision model describes each sample, Jev judges the description</td><td>the descriptions were fluent and wrong about the hands - 1 of 6; the model's own 0-10 rating was 5 for everything</td><td>picked by eye; skeleton facts are the route worth more work [E143]</td></tr>
       <tr><td>PixelUMM, a unified pixel-space model, in any stage</td><td>text-only generation at 256 px and 176 x 320, Linux and CUDA only, 15B parameters; its understanding at the 7-8B level that failed above</td><td>the stages' current models [E142]</td></tr>
+      <tr><td>Check a hand's boolean union only by the volume not shrinking</td><td>a union that returned the body unchanged passed it: five characters shipped without a right hand</td><td>the volume must grow by a quarter of the hand's and the fingertips lie on the surface [E146]</td></tr>
+      <tr><td>Boolean union with self-intersection handling as the fallback</td><td>it put the hand on, and added 3,000-7,000 non-manifold edges</td><td>join the hand as a shell after all unions [E146]</td></tr>
+      <tr><td>Narrow the arm cut, measured from the arm's estimated radius</td><td>the notches stayed: the estimate itself lay inside the torso</td><td>give back what lies beyond the arm's own solid [E146]</td></tr>
+      <tr><td>Fill pits in the back of the hair by how few directions they see out along</td><td>at fewer than 8 of 26 hardly a change; at fewer than 12 the hair became blobs; closing the hair 2-3x wider changed nothing</td><td>open [E145]</td></tr>
+      <tr><td>A local vision model as a gate for defects</td><td>found all of them, and flagged a third to all of the clean close-ups</td><td>triage only; measured checks gate [E147]</td></tr>
       <tr><td>A vertex group at weight 0 to keep the head's triangles</td><td>weight 0 locks a vertex whatever the strength: the head kept all 137k and the body got 1.7k</td><td>weight 0.5 and a strength found by bisection [E140]</td></tr>
     </tbody></table></div>
   <figcaption>Negative results, with the measurement that decided each (REVIEW.md and the lab notebook).</figcaption>
