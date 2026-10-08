@@ -2054,6 +2054,35 @@
    "url": "https://app.cinevva.com/blog/2026-09-13-hair-that-keeps-its-shape",
    "note": "Joints placed along the connected hair surface outward from its root; the restoring pull aims at the hairstyle's original arc in the head's frame rather than at the direction an already-bent parent implies; sphere and capsule colliders. A blog post: no code or evaluation given.",
    "checked": "2026-10-07"
+  },
+  {
+   "key": "meshyapi",
+   "role": "compared",
+   "type": "documentation",
+   "authors": [
+    "Meshy"
+   ],
+   "title": "Meshy API reference: Image to 3D, Remesh and Rigging",
+   "venue": "docs.meshy.ai",
+   "year": 2026,
+   "url": "https://docs.meshy.ai/en/api/image-to-3d",
+   "note": "topology quad|triangle (default triangle), target_polycount 100-300,000 (default 30,000; smart topology 100-15,000, default 4,000), texture_resolution 2k|4k|8k (default 2k), enable_pbr, pose_mode a-pose|t-pose, remove_lighting (default true); remesh at /remesh; rigging needs a textured +Z-facing humanoid of at most 300,000 faces and returns rigged FBX/GLB with walking and running clips.",
+   "checked": "2026-10-08"
+  },
+  {
+   "key": "tripoapi",
+   "role": "compared",
+   "type": "documentation",
+   "authors": [
+    "Tripo AI",
+    "Comfy Org"
+   ],
+   "title": "Tripo image-to-model parameters (Comfy's Tripo node documentation and Tripo developer docs)",
+   "venue": "docs.comfy.org; developers.tripo3d.com",
+   "year": 2026,
+   "url": "https://docs.comfy.org/built-in-nodes/TripoImageToModelNodeV2.md",
+   "note": "texture_quality standard|detailed|extreme (8K); face_limit -1 adaptive (~1.4M faces v3 standard, 2M detailed); quad output as FBX up to 150,000 faces; smart_low_poly 500-20,000 faces (quad 500-10,000), may fail on complex subjects; auto_size to metres.",
+   "checked": "2026-10-08"
   }
  ]
 }

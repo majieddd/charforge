@@ -41,6 +41,16 @@
   neither foot planting, interpenetration nor measured motion quality - the layers this paper adds. They had two things
   CharForge lacked, and took from them: a licence record with each package (<code>PROVENANCE.json</code>) and an
   extreme-pose check on skinning ([#sec-eval-stress]).</p>
+<p><b>Commercial generators.</b> Meshy's API generates a mesh and texture from one picture, then optionally remeshes it to
+  quad-dominant or triangle topology at a target count (100-300,000, default 30,000) and textures it at 2K, 4K or 8K with
+  optional metallic, roughness and normal maps, delighting the base colour by default; its rigging step takes a textured
+  humanoid facing +Z and returns a rigged model with walking and running clips [@meshyapi]. Tripo adapts its face count
+  to the shape (about 1.4 million faces, two million at its detailed setting), offers quad output up to 150,000 faces, a
+  'smart low-poly' topology of 500-20,000 faces, and texture tiers up to 8K [@tripoapi]. Neither documents how its rig is
+  weighted or how its animations are cleaned. Against them [E162], CharForge's surface density is comparable (one
+  million faces), but it ends in triangles, not quads. Its 4096-pixel texture holds about one megapixel of real detail,
+  projected from an 832 x 1216 picture and 1024-pixel side and back views. Each clip carries the corrections we add to keep
+  limbs out of the body. The roadmap takes these one lane each ([#sec-roadmap]).</p>
 <p><b>Repair and representation quality.</b> ManifoldPlus [@manifoldplus] turns triangle soups into watertight manifolds while
   optimizing the result back toward the input; Metro [@metro] measures simplified-surface error by sampling the source and output
   surfaces. These works motivate two separate checks in [E116] and [E118]: topology repair success and geometric fidelity. They do
