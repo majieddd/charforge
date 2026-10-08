@@ -1,6 +1,6 @@
 """ARKit-named face shapes for the face rig: the names engines and face-capture apps drive.
 
-face_rig.py calls build() after its own six shapes, from the same landmarks, in the same units: the
+face_rig.py calls build() after its own five shapes, from the same landmarks, in the same units: the
 eye distance (ied) for the face and brows, the eye's height for the lids, the mouth's width for the
 mouth. build() returns {ARKit name: displacement (n, 3), world metres}; face_rig.py adds each as a
 shape key. Left and right are the subject's: the subject's left is +X (the landmarks' "left" eye and
@@ -16,7 +16,7 @@ lip motion - which, driven alone, pushes the lower lip through the upper. Shapes
 lip-to-lip contact are left to the engine's combination of jawOpen and the lips' own geometry.
 
 jawOpen is exact linear skinning of the jaw bone: the jaw-weighted vertices rotated about the bone's
-head and local X by the jaw's open angle (face_rig.py's jaw_open_deg), so the morph and the bone agree.
+head and local X by the jaw's open angle (18 degrees, written to face_rig.json as jaw_open_deg), so the morph and the bone agree.
 Driving both doubles the opening; a game drives one or the other.
 """
 import numpy as np

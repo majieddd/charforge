@@ -23,7 +23,7 @@ Input: the T-posed rig (metres) and pipeline/face_landmarks.py's landmarks. Outp
              eyeSquintLeft/Right, browDownLeft/Right, browInnerUp, browOuterUpLeft/Right, jawOpen (the
              jaw bone at its open angle, as a morph), mouthSmileLeft/Right, mouthFrownLeft/Right,
              mouthPucker (= pucker), mouthFunnel, mouthStretchLeft/Right, cheekPuff, noseSneerLeft/Right.
-             mouthClose is not built (face_arkit.py says why). The six shapes above keep their names.
+             mouthClose is not built (face_arkit.py says why). The five shapes above keep their names.
 
 Shapes are built from the landmarks, measured in units of the eye distance, so the same rule
 makes a realistic face and an anime one. They are glTF morph targets in the package; the clips
@@ -40,7 +40,7 @@ import numpy as np
 from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import face_arkit  # noqa: E402  the ARKit-named shapes (after the six below)
+import face_arkit  # noqa: E402  the ARKit-named shapes (after the five below)
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
