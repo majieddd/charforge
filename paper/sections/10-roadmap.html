@@ -59,6 +59,11 @@
     lane on it with that clip held out of the library, and measure the recovered clip in joint angles, positions,
     contacts and jitter. Then test independent real footage and subjects [E111]: TotalCapture and 3DPW supply different
     video/pose evidence; AMASS supplies varied motion for exact-GT renders, while AIST++ is a reconstructed-motion stress set.</li>
+  <li><b>Weights chosen by deformation and penetration together</b> [E154, E157, E159]: the extreme-pose battery chooses
+    each character's skin weights by how its faces stretch, shear and crush, and twice preferred weightings that held a
+    loose jacket's faces in shape while the arm sank into it in the clips (Vex: 7% of frames to 22% and 12%). A score that
+    counts both - the battery's penetration beside its deformation, or a few clips audited through the contact solve for
+    each candidate - would let the surface-relative weights take the fins out of raised arms where they do no harm.</li>
   <li><b>An aberration score, calibrated against people</b> [E102]: the audit now measures every frame of every clip and
     finds known-size defects to the millimetre ([#sec-eval-aberr]); what it lacks is agreement with human judgement.
     Blinded, randomised ratings of clips near each score's boundary, by at least two raters, before any score becomes a
@@ -66,8 +71,12 @@
     drift and face-morph deformation need their own measures.</li>
   <li><b>What the contact solve does not reach</b> [E128, E151]: the arms are now solved against the torso and legs
     every frame ([#sec-m-contact]); the legs are not - a thigh into a belly in a crouch, shins passing in a strafe - and
-    the moves made from video carry penetrations of 9-11 cm that small turns cannot undo; colliders for the hair's
-    spring chains, so arms push long hair aside instead of through it [E125]; long coat hems that follow the thighs;
+    the moves made from video carry penetrations of 9-11 cm that small turns cannot undo; a bag at the hip that the thigh
+    rises into in a crouch (Wren's satchel carries a third of her frames; re-weighting only moved it from one side of the
+    pair to the other, [E158] - it needs a collision response); colliders for the hair's
+    spring chains, so arms push long hair aside instead of through it [E125] - and, once hair gets chains, a restoring pull
+    toward the hairstyle's original arc in the head's frame rather than toward the bent parent's direction, as one
+    hair auto-rigger describes [@cinevvahair]; strand-based hair from one picture now exists (DiffLocks [@difflocks]: a diffusion transformer decoding one latent code per strand, trained on 40K synthetic styles), but its code needs CUDA kernels, so for now hair stays a rigid shell with spring chains for what hangs; long coat hems that follow the thighs;
     and corrective shapes at elbows and shoulders, scored by the same audit [E107].</li>
   <li><b>Moves from words without a person choosing</b> [E129]: rank UniMate's samples by the audits (E102's
     aberrations, foot slip) and by how well a render reads as the sentence, so the best of three is picked

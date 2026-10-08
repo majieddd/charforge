@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import html
 import json
+import statistics
 import re
 import shutil
 import sys
@@ -106,6 +107,21 @@ def values():
             v[f"aberr.max.{f}"] = max(xs)
             v[f"aberr.min.{f}"] = min(xs)
     v["aberr.n"] = len(AB)
+    ST = M.get("stress") or {}
+    nm_ = {c["id"]: c["name"] for c in M["roster"]}
+    v["stress.n"] = len(ST)
+    for pose in STRESS_POSES:
+        for f in ("crushed_pct", "stretched_pct", "sheared_pct", "penetration_max_cm"):
+            xs = [(d[pose][f], cid) for cid, d in ST.items() if pose in d]
+            if xs:
+                v[f"stress.{pose}.{f}.median"] = round(statistics.median(x for x, _ in xs), 2)
+                top = max(xs)
+                v[f"stress.{pose}.{f}.max"] = round(top[0], 2)
+                v[f"stress.{pose}.{f}.max_name"] = nm_.get(top[1], top[1])
+    WT = M.get("weights") or {}
+    v["weights.n"] = len(WT)
+    for k in ("sharp", "hybrid", "soft", "mia"):
+        v[f"weights.n_{k}"] = sum(1 for w in WT.values() if w.get("picked") == k)
     # the characters measured before clearance, alone: the before/after comparison is over the same ones
     base = (B.get("aberrations_before_clearance") or {}).get("characters", {})
     same = {cid: row for cid, row in AB.items() if cid in base}
@@ -371,6 +387,56 @@ def t_aberrations():
             + "".join(rows) + "</tbody></table>")
 
 
+STRESS_POSES = ["arms_overhead", "arms_forward", "arms_across", "arms_behind", "squat", "bend_twist", "kick", "head_turn", "tiptoe", "heel_strike"]
+STRESS_LABEL = {"arms_overhead": "arms overhead", "arms_forward": "arms forward", "arms_across": "forearms across the chest",
+                "arms_behind": "arms behind", "squat": "deep squat", "bend_twist": "bend and twist", "kick": "high kick",
+                "head_turn": "head turned hard", "tiptoe": "tiptoe", "heel_strike": "heel strike"}
+
+
+def t_stress():
+    """The extreme-pose battery over the roster (E153): per pose, the median character and the worst one."""
+    ST = M.get("stress") or {}
+    if not ST:
+        return "<p><i>(not measured yet)</i></p>"
+    nm = {c["id"]: c["name"] for c in M["roster"]}
+    rows = []
+    for pose in STRESS_POSES:
+        if not any(pose in d for d in ST.values()):
+            continue
+        cells = []
+        for f in ("stretched_pct", "sheared_pct", "crushed_pct"):
+            xs = sorted(((d[pose][f], cid) for cid, d in ST.items() if pose in d), reverse=True)
+            med = statistics.median(x for x, _ in xs)
+            cells.append(f"<td class='num'>{med:.2f}</td><td class='num'>{xs[0][0]:.2f} ({esc(nm.get(xs[0][1], xs[0][1]))})</td>")
+        pen = sorted(((d[pose]["penetration_max_cm"], cid) for cid, d in ST.items() if pose in d), reverse=True)
+        rows.append(f"<tr><td>{STRESS_LABEL[pose]}</td>{''.join(cells)}<td class='num'>{statistics.median(x for x, _ in pen):.1f}</td></tr>")
+    return ("<table><thead><tr><th rowspan='2'>pose</th><th colspan='2'>stretched faces %</th><th colspan='2'>sheared faces %</th>"
+            "<th colspan='2'>crushed faces %</th><th rowspan='2' class='num'>deepest penetration, median cm</th></tr>"
+            "<tr><th class='num'>median</th><th class='num'>worst</th><th class='num'>median</th><th class='num'>worst</th>"
+            "<th class='num'>median</th><th class='num'>worst</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
+
+
+def t_weights():
+    """Per character, the extreme-pose battery's mean (stretched + sheared + crushed faces, % of all faces, over the poses) for each
+    skin-weights candidate, and which one the build kept (E154); Make-It-Animatable's where it was measured (E157)."""
+    W = M.get("weights") or {}
+    if not W:
+        return "<p><i>(not measured yet)</i></p>"
+    nm = {c["id"]: c["name"] for c in M["roster"]}
+    has_mia = any("mia" in w for w in W.values())
+    rows = []
+    for cid, w in W.items():
+        def cell(k):
+            v = w.get(k)
+            if v is None:
+                return "<td class='num'>-</td>"
+            best = (k == w["picked"])
+            return f"<td class='num'>{'<b>' if best else ''}{v:.2f}{'</b>' if best else ''}</td>"
+        rows.append(f"<tr><td>{esc(nm.get(cid, cid))}</td>{cell('sharp')}{cell('hybrid')}{cell('mia') if has_mia else ''}<td>{esc(w['picked'])}</td></tr>")
+    head = "<th>character</th><th class='num'>default falloff</th><th class='num'>hybrid</th>" + ("<th class='num'>Make-It-Animatable</th>" if has_mia else "") + "<th>kept</th>"
+    return f"<table><thead><tr>{head}</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+
+
 def t_controls():
     """The aberration audit on a synthetic character with known aberrations (E102), both skinnings."""
     by = {}
@@ -449,7 +515,7 @@ def t_faces():
 TABLES = {"moves": t_moves, "stages": t_stages, "roster": t_roster, "feet": t_feet, "feet_e029": t_feet_e029, "prompts": t_prompts,
           "selftest": t_selftest, "times": t_times, "comparison": t_comparison, "tracker": t_tracker,
           "changelog": t_changelog, "cite": t_cite, "aberrations": t_aberrations, "controls": t_controls,
-          "quality": t_quality, "faces": t_faces}
+          "quality": t_quality, "faces": t_faces, "stress": t_stress, "weights": t_weights}
 
 
 # ---- assembly -------------------------------------------------------------------------------------

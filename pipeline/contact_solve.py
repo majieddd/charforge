@@ -37,9 +37,11 @@ ap.add_argument("--clips", default="")
 ap.add_argument("--margin", type=float, default=1.0, help="cm the arm is kept outside the surface")
 ap.add_argument("--iters", type=int, default=300)
 ap.add_argument("--lr", type=float, default=0.5, help="Adam step, degrees")
+ap.add_argument("--pen-weight", type=float, default=10.0, help="weight of the squared depth against the squared turns")
 ap.add_argument("--points", type=int, default=1500, help="arm surface points per side")
 ap.add_argument("--upper-gap", type=float, default=0.03, help="m an upper-arm point must be from the torso at rest")
 ap.add_argument("--shared", type=float, default=0.10, help="skin weight on the obstacle (or collar) that rules a point out")
+ap.add_argument("--shared-rev", type=float, default=0.10, help="the same, for body vertices tested against the arm (their arm and collar weight)")
 ap.add_argument("--tag", default="", help="suffix for the output files")
 ap.add_argument("--upper-legs", type=int, default=1, help="test the upper arm against the thighs too")
 ap.add_argument("--reverse", type=int, default=1, help="also test body vertices against the arm's surface")
@@ -98,7 +100,7 @@ for o, oi in obst_idx.items():
 ARM_BONES = [ix[n] for s in SIDES for n in (f"{s}_collar", f"{s}_shoulder", f"{s}_elbow", f"{s}_wrist") + tuple(FINGERS[s])]
 REV = ("torso", "thigh.L", "thigh.R")
 REV_N = 6000                                                  # body vertices per region tested this way (all of them)
-rev_ok = {o: W[obst_idx[o][:REV_N]][:, ARM_BONES].sum(1) < a.shared for o in REV}
+rev_ok = {o: W[obst_idx[o][:REV_N]][:, ARM_BONES].sum(1) < a.shared_rev for o in REV}
 
 inv_rest = np.linalg.inv(REST)
 chain_ix = [ix[n] for n in CHAIN]
@@ -308,7 +310,7 @@ for clip in clips:
                 qn = skin_c(arm_matrices(M, d)).numpy()
                 nn, rm = match(qn), (match_rev(qn) if a.reverse else None)
         s_ = depths(arm_matrices(M, d), nn, rm)
-        pen = torch.relu(a.margin - s_).pow(2).sum()
+        pen = a.pen_weight * torch.relu(a.margin - s_).pow(2).sum()
         reg = (wts * d.pow(2)).sum()
         smooth = (d[1:] - d[:-1]).pow(2).sum() * 20.0
         loss = pen + reg + smooth

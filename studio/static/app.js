@@ -163,6 +163,13 @@ async function charPage(name) {
         </div>
         <div class="panel"><h2>Stages</h2><div class="stages">${c.stage_list.map((s) => `<div class="stage ${s.done ? 'done' : ''}" title="${esc(s.why)}">${esc(s.name)}</div>`).join('')}</div>
           ${c.logs.length ? `<p class="sub" style="margin-top:10px">Logs: ${c.logs.slice(0, 40).map((l) => `<a href="#" data-log="${esc(l)}">${esc(l.replace('.log', ''))}</a>`).join(', ')}</p>` : ''}</div>
+        ${c.provenance ? `<div class="panel"><h2>Licences</h2>
+          <p class="sub" style="margin:4px 0 10px">${esc(c.provenance.summary)}</p>
+          ${c.provenance.components.map((k) => `<details style="margin:6px 0"><summary><b>${esc(k.name)}</b> - ${esc(k.role)}</summary>
+            <p class="sub" style="margin:6px 0 4px">${esc(k.terms)}</p>
+            <p class="sub" style="margin:0">${k.evidence ? 'Evidence: ' + esc(k.evidence) + '. ' : ''}${k.source && k.source.startsWith('http') ? `<a href="${esc(k.source)}" target="_blank" rel="noopener">Source</a>` : esc(k.source || '')}${k.checked ? ' (checked ' + esc(k.checked) + ')' : ''}</p></details>`).join('')}
+          <details style="margin:6px 0"><summary>Not assessed</summary><ul class="sub" style="margin:6px 0 0 18px">${c.provenance.not_assessed.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>
+          <p class="sub" style="margin-top:8px">${esc(c.provenance.note)}</p></div>` : ''}
         ${c.reference ? `<div class="panel"><h2>Reference image</h2><img src="${c.reference}" alt="The image ${esc(c.name)} was generated from" style="width:100%;border-radius:8px;display:block"></div>` : ''}
       </div>
     </div>
@@ -394,11 +401,12 @@ async function newChar() {
         <div class="range"><input type="range" id="height" min="1.0" max="2.3" step="0.01" value="1.75" disabled><output id="hout">from the description</output></div>
         <span class="hint">Left alone, the height follows the description: a child 1.2-1.5 m, an adult about 1.75.</span></div>
       <details class="adv"><summary>More options</summary>
-        <div class="field"><label for="imodel">Image model (for a description)</label><select id="imodel"><option value="qwen21">Qwen-Image 2.1 - best cut-outs; research-only licence</option><option value="krea2">Krea 2 - commercial use</option></select></div>
+        <div class="field"><label for="imodel">Image model (for a description)</label><select id="imodel"><option value="qwen21">Qwen-Image 2.1 - best cut-outs; research-only licence</option><option value="krea2">Krea 2 - commercial use only below US$1M annual revenue</option></select></div>
         <div class="field"><label for="quality">Quality</label><select id="quality"><option value="fast">One 3D pass - follows the picture (recommended)</option><option value="best">Two passes - repaints the sides and back first; more plausible backs, drifts from the picture, about 16 min longer</option></select></div>
         <div class="field"><label for="rest">Rest pose</label><select id="rest"><option value="A">As modelled (A-pose) - cleaner shoulders and armpits (recommended)</option><option value="T">T-pose - for tools that insist on one; armour fused to the arm can tear at the shoulders</option></select></div>
         <div class="field"><label for="tviews">Sides and back</label><select id="tviews"><option value="none">The generator's own colours (recommended)</option><option value="hunyuan">Painted by Hunyuan3D-Paint - cleaner where the generator's back is blotchy, but it can invent what the picture does not show; needs tools/setup_hunyuan.sh</option></select></div>
         <div class="field"><label for="eyes">Eyes</label><select id="eyes"><option value="rebuild">Rebuilt as lids over an eyeball where the generator left shards (recommended)</option><option value="none">As generated</option></select></div>
+        <div class="field"><label for="skinw">Skin weights</label><select id="skinw"><option value="auto">Each way made, the one that holds up best at extreme poses kept (recommended)</option><option value="sharp">Distance through the body, default falloff</option><option value="soft">Softer falloff, more smoothing - looser jackets stretch less</option><option value="mia">Learned (Make-It-Animatable) - needs tools/setup_mia.sh; experimental</option></select></div>
         <div class="field"><label for="contact">Arms in motion</label><select id="contact"><option value="on">Kept out of the torso and thighs, frame by frame (recommended)</option><option value="off">Joint limits only</option></select></div>
         <div class="field"><label for="head">Head</label><select id="head"><option value="none">As generated with the body (recommended)</option><option value="hunyuan">Made again on its own from a close crop - a sculpted face, about 8 minutes more; experimental, needs tools/setup_hunyuan.sh</option></select></div>
         <div class="field"><label for="seed">Seed</label><input type="number" id="seed" value="7"></div>
@@ -477,7 +485,7 @@ async function newChar() {
   $('#start').onclick = async () => {
     const body = { kind: 'make', name: $('#name').value.trim().toLowerCase(), style: view.querySelector('input[name=style]:checked').value,
       image_model: $('#imodel').value, quality: $('#quality').value, seed: $('#seed').value,
-      rest: $('#rest').value, texture_views: $('#tviews').value, head: $('#head').value, eyes: $('#eyes').value, contact: $('#contact').value };
+      rest: $('#rest').value, texture_views: $('#tviews').value, head: $('#head').value, eyes: $('#eyes').value, contact: $('#contact').value, skin_weights: $('#skinw').value };
     if (hset.checked) body.height = Number(h.value);
     else if (suggested) body.height = suggested;
     if (tab === 'prompt') {

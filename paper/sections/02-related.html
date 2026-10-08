@@ -27,6 +27,20 @@
   animation. Template methods get rigging and faces for free but not the look of an arbitrary character; generation
   methods get the look but inherit the generator's topology. CharForge generates the character (like CharacterGen) and
   then builds the rig from the generated solid itself.</p>
+<p><b>Decomposed and product-ready generators, and open peers.</b> StdGEN [@stdgen] and StdGEN++ [@stdgenpp] generate a
+  character as separate body, clothes and hair meshes from a canonical A-pose, the second adding a video-diffusion
+  texture decomposition into editable layers; DreamCharacter-1 [@dreamcharacter] post-trains a 3D foundation model for
+  characters with geometry preference optimisation, two-stage texturing and distillation; and Pixal3D [@pixal3d]
+  conditions the TRELLIS.2 backbone by back-projecting image features along camera rays, so the shape is aligned pixel
+  for pixel with the input view. Code is released for StdGEN and Pixal3D (CUDA; Pixal3D also through a third-party
+  Apple Silicon port) and, as far as we could find, not for DreamCharacter-1 [E153]. Two open projects do the whole task
+  on one machine: OpenMeshy [@openmeshy] chains TRELLIS.2, Hunyuan3D and Pixal3D backends with retopology, a pass that
+  copies the source picture's pixels onto the surface, SkinTokens rigging and Unity Humanoid export, and writes a record of
+  the licences behind each output; reference-asset-compiler [@refassetcompiler] gates every stage on recorded evidence,
+  including a five-pose deformation suite for the rig, and never retries a crashed model run. The pages we read describe
+  neither foot planting, interpenetration nor measured motion quality - the layers this paper adds. They had two things
+  CharForge lacked, and took from them: a licence record with each package (<code>PROVENANCE.json</code>) and an
+  extreme-pose check on skinning ([#sec-eval-stress]).</p>
 <p><b>Repair and representation quality.</b> ManifoldPlus [@manifoldplus] turns triangle soups into watertight manifolds while
   optimizing the result back toward the input; Metro [@metro] measures simplified-surface error by sampling the source and output
   surfaces. These works motivate two separate checks in [E116] and [E118]: topology repair success and geometric fidelity. They do
@@ -58,6 +72,22 @@
   which dual quaternion skinning [@dqs] can reduce, but not eliminate, by blending rotations as rotations. Our weights follow the idea of geodesic voxel binding
   [@geodesicvoxel] - distance measured
   through the voxelised body rather than through the air - so a vest glued to an arm is not near the arm's bone.</p>
+<p>Learned rigging has moved on since: Puppeteer [@puppeteer] adds attention-based skinning with topology-aware joint
+  attention and an optimisation that animates the rig from video, and SkinTokens [@skintokens] encodes skinning weights as
+  discrete tokens and predicts skeleton and skin as one sequence, reporting 98-133% better skinning accuracy than earlier
+  methods. Both need an NVIDIA GPU (SkinTokens: 14 GB, CUDA 12.1 and flash-attn), so they are out of reach on this
+  laptop; the geodesic binding we keep runs here, and the extreme-pose battery ([#sec-eval-stress]) now measures it.
+  Make-It-Animatable [@mia] is the learned skinning model that does run here: from a mesh it predicts a Mixamo skeleton,
+  blend weights and a rest-pose reset with a transformer trained on Mixamo characters, and of its CUDA requirements it uses
+  only farthest point sampling and PyTorch3D's transforms, both plain PyTorch - 48 seconds a character on a CPU. Its weights
+  on our skeleton are measured in [#sec-eval-stress] [E157]. AniGen [@anigen] generates shape, skeleton and skin together
+  from one image, the route that would remove the fused surface's rigging problems at the root; a third party's run on an
+  Apple laptop rigged a simple mascot and produced no faces for a clothed character with thin limbs, so it is not tried.
+  For faces, OmniFaceRig [@omnifacerig] registers a template to the character's dense face keypoints, builds the inner
+  mouth procedurally (teeth, gums and tongue, their texture baked) and transfers up to 155 FACS shapes with collision
+  awareness, on an A100 in 20-30 seconds; the template route of [E149] follows the same recipe with the Anny body's 52
+  ARKit-named facial actions [@anny]. Single-photo face reconstruction has a strong 2026 prior in Pixel3DMM [@pixel3dmm]
+  (per-pixel normals and UV from DINO features constraining a FLAME fit), which needs CUDA and a non-commercial licence.</p>
 <p>Expressive hands and faces are often modelled together with the body: SMPL-X [@smplx] extends a body model with articulated hands
   and an expressive face, while MANO [@mano] learns pose-dependent hand shape corrections from scans. These works motivate testing
   hand and face deformation as well as landmark placement; their research models are not drop-in templates for arbitrary generated

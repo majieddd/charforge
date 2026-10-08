@@ -1,82 +1,179 @@
 {
  "title": "CharForge: rigged, animated game characters from a few words or one image, on a laptop",
  "subtitle": "A living research paper - method, measurements and open problems, revised as the experiments run",
- "authors": [{"name": "CharForge contributors", "affiliation": "github.com/majieddd/charforge"}],
+ "authors": [
+  {
+   "name": "CharForge contributors",
+   "affiliation": "github.com/majieddd/charforge"
+  }
+ ],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.16",
+ "version": "0.17",
  "date": "2026-10-07",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
-  "changelog": [
-  {"version": "0.16", "date": "2026-10-07", "changes": [
+ "changelog": [
+  {
+   "version": "0.17",
+   "date": "2026-10-07",
+   "changes": [
+    "Skin weights chosen per character at ten extreme poses (E154, E160): the default falloff and a hybrid - soft on the body and arms, default on the legs, neck and head - are rigged and posed each build (tiptoe and heel strike added to the battery for boots), and the hybrid is kept when it is 0.1 points better on average and no pose is 0.3 worse: 11 of 17 characters keep it. Vex's raised arms stretch a fifth less (13.3% -> 10.5% of faces overhead, 10.4% -> 7.1% forward).",
+    "What the extreme poses cannot judge (E154, E157, E159): a first rebuild let plain soft weights be chosen and the clips showed what the battery had not (Knight 2 -> 6 pops, Juno's and Mara's thighs stretched more) - corrected before this version. Make-It-Animatable's learned weights (CVPR 2025), run on the laptop's CPU, and distance measured from each body part's surface both ranked first at the extreme poses; in Vex's clips both let her arms sink into her jacket two to three times as often (7% of frames -> 22% and 12%), while the second improved every clip measure of Pip's. Both stay options; letting the clips choose is next (E161).",
+    "The contact solve's second look is kept clip by clip (E156): Cadet 11.5% -> 10.3% of frames with a part more than 2 cm inside another, Pip 7.6% -> 6.8%, Rivet 7.7% -> 6.3%. Judging the surface with dual quaternions instead of linear skinning was tried and not kept. The penalty weight and the audit-gated relaxed solve of E152 and the second pass over clips made from video are described with the method.",
+    "Over the roster against version 0.16: frames with a part more than 2 cm inside another 8.5% -> 5.7% on average (median 3.8% -> 2.0%), the deepest 1.59 -> 1.39 cm, crushed faces 0.91% -> 0.76%, stretched 1.53% -> 1.47%, sheared 1.53% -> 1.49%, pops 4.9 -> 5.1 per character. Worse than in 0.16: a pop more for Aoi, the scout and Knight, six more for Rivet (two clips, not traced yet), and Juno's stretched faces 1.28% -> 1.40%. Wren stays the worst (her satchel against her thigh, E158: not a weighting problem).",
+    "Pixal3D, a pixel-aligned TRELLIS.2, installed through its Apple Silicon port and compared on our references (E155, preliminary): a better front silhouette and less face on the back of the head for Mara, Rowan and Pip, and likelier eyes on the realistic two; its single-view output faces away from our cameras and, for Hana, stands on a wedge it makes under the feet.",
+    "A second round of outside reading (AniGen, Make-It-Animatable, AnimoFlow, a hair auto-rigger), an extreme-pose battery and a PROVENANCE.json with every package (E153); the Studio gains a Skin weights option and the playground a Licences panel; tools/setup_mia.sh sets up the learned weights."
+   ]
+  },
+  {
+   "version": "0.16",
+   "date": "2026-10-07",
+   "changes": [
     "A self-examination (E148): every measure over the 17 characters, the gaps to a professional character ranked, and most faults since traced to one root - the generator's single fused surface, which eleven repair stages exist to undo. Published work and code searched for each root cause (charforge_notes/polish/e148). Roadmap rewritten around it.",
     "Arms kept out of the body every frame (E151, new section 4.10): after clearance each clip is solved against the character's own surface - the least shoulder, elbow and wrist turns that keep the arms out of the torso, thighs and shins, tested both ways round. Frames with a part more than 2 cm inside another, over all 17 characters: 29.8% to 8.5% on average (median 27% to 3.8%), the deepest from 2.7 to 1.6 cm; Pip 59% to 11%, Vex 54% to 12%. Crushed, stretched and sheared faces and pops unchanged to within 0.04 points (Rowan's sheared share 1.71% to 1.75%, the one rise). A build option (--contact) and a Studio setting.",
     "MeshRet (NeurIPS 2024) run on the laptop and measured on six characters (E150): no better than clearance (median deep frames 35% against 36%) and blind to hands in thighs; its idea, not its network, became E151.",
-    "A template body under the character (E149, research): the Anny body fitted under all six characters tried (stylised and anime too), painted from the character, its 52-action face rig and painted eyes on Mara's head, the clothing and hair split off as a layer, and rigged through CharForge's own stages - near the shipped Mara in motion, behind it on Pip's cartoon hands. Not in the build yet."]},
-  {"version": "0.15", "date": "2026-10-07", "changes": [
+    "A template body under the character (E149, research): the Anny body fitted under all six characters tried (stylised and anime too), painted from the character, its 52-action face rig and painted eyes on Mara's head, the clothing and hair split off as a layer, and rigged through CharForge's own stages - near the shipped Mara in motion, behind it on Pip's cartoon hands. Not in the build yet."
+   ]
+  },
+  {
+   "version": "0.15",
+   "date": "2026-10-07",
+   "changes": [
     "Missing hands (E146): five characters (Mara, Rivet, Rowan, Bo, Wren) had shipped without a right hand - a hand's boolean union fell back to an overlapping shell, the next union on that body returned it unchanged, and the only check passed it. Every hand is now unioned onto the clean body and verified by its fingertips; tools/hands_check.py runs after retopology and stops a build with a missing hand. All 17 characters rebuilt with both hands.",
     "Two-faced heads (E145): TRELLIS.2 had sculpted a second face on the back of Vex's head; the generation gate now reads a face on the back of each candidate (pipeline/back_face.py) and makes it again on another seed. Vex rebuilt (seed 7 rejected at 0.96, seed 1007 at 0.47).",
     "The arm cut's notches (E146): on 8 of 17 characters the cut that frees the arms ran through the torso and showed as holes in the back; what it took beyond the arm's own solid now goes back to the body.",
     "The user's LM Studio vision models qualified on CharForge jobs (E144): every 9B model reads pictures and tells a hand from a stump (33-34 of 34), none judges moves; as a defect finder they find everything and flag a third to all of the clean close-ups (E147) - triage, not a gate. New section 5.9.",
-    "Without ComfyUI a rebuild now re-aligns the earlier detailed face to the new crop instead of falling back to the full-body picture's face."]},
-  {"version": "0.14", "date": "2026-10-06", "changes": [
+    "Without ComfyUI a rebuild now re-aligns the earlier detailed face to the new crop instead of falling back to the full-body picture's face."
+   ]
+  },
+  {
+   "version": "0.14",
+   "date": "2026-10-06",
+   "changes": [
     "PixelUMM (NVIDIA, 2026), a unified pixel-space image and video model, weighed against every stage (E142): not used - text-only generation at 256 px, Linux and CUDA only, its understanding at the level measured in E143. Related work and negative results.",
-    "Picking among a move's three samples automatically (E143): local vision-language models, a 9B vision model's descriptions judged by Jev, and the skeleton's motion as measured facts judged by Jev - none beat chance against the picks made by eye on Cadet's six moves; still picked by eye."]},
-  {"version": "0.13", "date": "2026-10-04", "changes": [
+    "Picking among a move's three samples automatically (E143): local vision-language models, a 9B vision model's descriptions judged by Jev, and the skeleton's motion as measured facts judged by Jev - none beat chance against the picks made by eye on Cadet's six moves; still picked by eye."
+   ]
+  },
+  {
+   "version": "0.13",
+   "date": "2026-10-04",
+   "changes": [
     "Faces in parts (E140), on a benchmark set of two characters per style per gender instead of the whole roster (Mara, Juno, Rowan, Knight; Vex, Rivet, Pip, Cadet; Aoi, Hana, Kaito, Ren), scored by a new face measure: landmark error against the picture after one similarity and per-part DINOv3 likeness of face, eyes, nose and mouth (section 5.8, Table: faces).",
     "Eyes rebuilt as lids over an eyeball: TRELLIS.2 models every eye as an opening full of shards; each opening is found by DWPose on the generator's own paint and rebuilt in the solid, and the head keeps 28% of the triangle budget (Figure: eyes).",
     "The face laid on in parts - each brow, eye, the nose, mouth and jaw moved by its own similarity onto the model's own points, spread by a thin-plate spline - replacing the face flow; the face's ellipse painted by the front view alone and left out of the skin tone (Figure: face in parts). The face flow, keeping the generator's face, and the skin tone over the face moved to the archive.",
     "The generator's black chart-edge specks taken out before the bake; new characters generated with a 2048 px texture; the jaw's cut held to 0.8 of the eye spacing.",
     "New negative results: more head texels, landmarks on grey renders, an eyeball in the mesh, eyes found from the picture or as depth pits, a vertex group at weight 0.",
-    "References: Umeyama 1991, Bookstein 1989, Garland and Heckbert 1997."]},
-  {"version": "0.12", "date": "2026-10-03", "changes": [
+    "References: Umeyama 1991, Bookstein 1989, Garland and Heckbert 1997."
+   ]
+  },
+  {
+   "version": "0.12",
+   "date": "2026-10-03",
+   "changes": [
     "Toward a professionally made model: a model-quality audit (E132) - surface noise and lumps, triangle tilt, asymmetry about the best mirror plane, open edges and loose pieces, lighting left in the albedo, front/back colour, seams, the PBR range - run on every character and on professionally made meshes (Blender Studio's Human Base Meshes and Ellie from Sprite Fright), and eight lit close-ups of every character (E138). New section 5.7 and Table 10; the roster was rebuilt on what they found.",
     "A finer surface (E135): TRELLIS.2 keeps 1M faces instead of 200k, and the generated surface is filtered by bilateral normal filtering before anything is built on it - the triangle pattern the facets left in the normal map is gone (Figure: raking light, v0.11 against v0.12).",
     "The pose it was modelled in, as the rest pose (E137): the T is recorded for the retargeting maths instead of being baked into the mesh by skinning; on Cadet crushed faces 3.44% -> 1.45%, self-intersecting face pairs 1,093 -> 502 a frame, frames with a limb 2 cm inside another 40% -> 28%, foot slip unchanged. --rest T keeps the old way; the manifest says which.",
     "Close-up faults mended (E138): loose shards dropped from every low-poly (2-94 a character); modelled hands shaded from their own ambient occlusion instead of a colour bake of the generated mesh (two-tone patches gone); one skin tone at the 1-2 cm scale of shading (Mara's wrist ring dE 16.6 -> 1.5); non-metal colours kept in the PBR range (sRGB 30-240); the face flow on realistic faces only - on the finer mesh it dragged Pip's drawn eye into a second one.",
     "Faces (E139): a head made again on its own from a crop of the picture by Hunyuan3D 2.1's shape model has the picture's shape where the whole-figure model's is a few facets; it is joined to the body above the neck and painted from the front - an option (--head hunyuan), not yet the default.",
     "Measured and set aside: Hunyuan3D-Paint 2.1's own bake on Apple Silicon and its views as every character's sides and back (better on Pip, worse by eye on 6 of 8; an option, --texture-views hunyuan) (E134); delighting the reference on its own (E133); delighting the face close-up; quad remeshing (refused our meshes); the head generated alone by TRELLIS.2 (over 30 minutes) - in the negative results.",
-    "Archive: the 200k-face surface, the T baked into the rest pose and the hands shaded from the colour bake moved to Appendix D. The Studio gained Rest pose, Sides and back and Head options; the playground shows all fourteen characters."]},
-  {"version": "0.11", "date": "2026-10-02", "changes": [
+    "Archive: the 200k-face surface, the T baked into the rest pose and the hands shaded from the colour bake moved to Appendix D. The Studio gained Rest pose, Sides and back and Head options; the playground shows all fourteen characters."
+   ]
+  },
+  {
+   "version": "0.11",
+   "date": "2026-10-02",
+   "changes": [
     "Moves from words (E129): UniMate generates a move from a sentence on the character's own skeleton - flow matching conditioned on its topology and T-pose - in about 25 s on Apple's GPU with a fixed Euler grid; three samples, one chosen by eye, then retargeted, planted and held inside the joint limits like any clip. Cadet has five, and a bow made from the Studio's new Moves from words panel; on the surface they fall inside his captured clips' range. tools/setup_unimate.sh installs it.",
     "The shoe the viewer sees is the one planted (E130): every vertex of the shoe below the ankle, posed by its own skin weights with dual quaternions, replaces a rigid copy of the sole on the ankle bone. Cadet's frames with a boot more than 1 cm under the floor 48.3% -> 1.28%; on 13 characters x 9 gaits the worse foot's median slip 4.01% -> 2.89%. Thinning the shoe to 400 points made 12 gaits worse by more than a point (the pivot jumped between samples) and is not used.",
     "Foot slip is reported from the true-speed audit (metric v2) on all 14 characters: median 3.2%, worst 28.4% - Cadet's sprint, whose flared greaves are planted as if they were the sole (E131); 2.89% without him. The old table, which divided by at least 1 m/s, moved to a new Appendix D, Archive, with the rigid sole it measured.",
     "A new character, Cadet (stylised, a young space marine without emblems), made with the pipeline as it stands; the prompt writer had read 'about 19 years old' as elderly - fixed. The system overview gains the words lane, the abstract the aberration audit, and armour's large joint-limit corrections are attributed to Cadet's knees.",
     "The lab notebook leads with the aberration audit, the planted shoe, moves from words and Cadet, and archives the methods they replaced: the second 3D pass, the rigid sole and the old foot-slip table.",
-    "A programme for shape and texture as clean as a professional's, registered before it runs: a model-quality audit against professional baselines (Blender Studio's CC0 Human Base Meshes, Ellie from Sprite Fright) (E132), then the reference's lighting removed before projection (E133), sides and back painted by a multi-view PBR model (E134), quad remeshing with baked detail (E135) and detail from estimated normals (E136); E131 plants the shoe's contact patch."]},
-  {"version": "0.10", "date": "2026-09-30", "changes": [
+    "A programme for shape and texture as clean as a professional's, registered before it runs: a model-quality audit against professional baselines (Blender Studio's CC0 Human Base Meshes, Ellie from Sprite Fright) (E132), then the reference's lighting removed before projection (E133), sides and back painted by a multi-view PBR model (E134), quad remeshing with baked detail (E135) and detail from estimated normals (E136); E131 plants the shoe's contact patch."
+   ]
+  },
+  {
+   "version": "0.10",
+   "date": "2026-09-30",
+   "changes": [
     "The aberration audit runs and is validated (E102): 22 of 22 checks on a synthetic character with known-size aberrations pass under both skinnings, penetration to the millimetre; the checks exposed three measuring errors (quads re-split by pose, depth capped at 3 cm, false inside readings at open rims and between layers), now fixed. Blender's BVH overlap is a triangle-triangle test, so intersections are real; depth tells contact from penetration.",
     "The roster measured on every frame of every clip: crushed 2.72%, stretched 1.52%, sheared 2.71% of faces; dual quaternion against linear skinning; frames with a body region more than 2 cm inside another 48.44%.",
     "Joint limits measured on each character's own mesh, and every clip held inside them (E128): frames with deep penetration 48.44% -> 34.28%, surface measures and foot slip unchanged. New related work: contact-aware retargeting.",
-    "Time (E106 pilot): the multi-view second 3D pass fitted the reference's front worse on 12 of 12 characters and drifted from the picture where its repainted views invented detail; it is now off by default, saving a median 16 of 41 minutes. The end-to-end comparison is still to run."]},
-  {"version": "0.9", "date": "2026-09-26", "changes": [
+    "Time (E106 pilot): the multi-view second 3D pass fitted the reference's front worse on 12 of 12 characters and drifted from the picture where its repainted views invented detail; it is now off by default, saving a median 16 of 41 minutes. The end-to-end comparison is still to run."
+   ]
+  },
+  {
+   "version": "0.9",
+   "date": "2026-09-26",
+   "changes": [
     "Audited legacy citations against primary sources: separated the pinned Mixamo mirror count from Adobe's product page, corrected hand-deformation and skinning citations, distinguished Qwen-Image 2.1's checkpoint/license from earlier papers, and narrowed vendor claims.",
     "Recorded TRELLIS.2 research-only materials, the unresolved H3 fine-tune/base-license conflict, and Mixamo mirror access/redistribution uncertainty; added primary license sources and corrected method, limitations, README, and E115 provenance language.",
-    "Reconciled E102 prose with current code safeguards (topology/order assertion, centered pop metric, default no-clobber); no Blender runtime validation or new experiment result was performed."]},
-  {"version": "0.8", "date": "2026-09-26", "changes": [
+    "Reconciled E102 prose with current code safeguards (topology/order assertion, centered pop metric, default no-clobber); no Blender runtime validation or new experiment result was performed."
+   ]
+  },
+  {
+   "version": "0.8",
+   "date": "2026-09-26",
+   "changes": [
     "Added primary-source references for stylized AU controls, segmentation reliability, and footskate perception; explicitly limit transfer claims and thresholds.",
     "Tightened planned metric definitions and acceptance protocols for motion truth, dense aberration sampling, scan/retopo distance, part-label calibration, hand pose, runtime delivery, foot-contact parity, provenance/cache validity, and Studio workflows.",
-    "Recorded that the browser footAudit still uses a 1 m/s denominator floor and differs in contact sampling from the corrected Blender v2 path; historical results remain unchanged and E122 remains required."]},
-  {"version": "0.7", "date": "2026-09-26", "changes": [
-    "Added the user-requested fast-classifier investigation as E127 at the end of the queue. Model identity, architecture and license remain unverified; discovery and benchmarking are explicitly gated behind earlier queued work."]},
-  {"version": "0.6", "date": "2026-09-26", "changes": [
+    "Recorded that the browser footAudit still uses a 1 m/s denominator floor and differs in contact sampling from the corrected Blender v2 path; historical results remain unchanged and E122 remains required."
+   ]
+  },
+  {
+   "version": "0.7",
+   "date": "2026-09-26",
+   "changes": [
+    "Added the user-requested fast-classifier investigation as E127 at the end of the queue. Model identity, architecture and license remain unverified; discovery and benchmarking are explicitly gated behind earlier queued work."
+   ]
+  },
+  {
+   "version": "0.6",
+   "date": "2026-09-26",
+   "changes": [
     "Research-gap audit across prompt fidelity, geometry repair, part labels, retopology, UVs, runtime texture sampling, deformation, motion truth, engine delivery, provenance and evaluation; added primary-source references and planned experiments E116-E126.",
     "Reopened E029 after finding its legacy max(speed, 1 m/s) denominator understated sub-1 m/s ratios; preserved historical measurements and specified a corrected rerun. E102's candidate-only BVH and cadence-specific pop measures are documented; code changes remain pending Blender runtime validation.",
-    "Clarified that the paper build validates references and structure but does not yet link every manually maintained empirical claim to an artifact; E121 tracks that work."]},
-  {"version": "0.5", "date": "2026-09-26", "changes": [
+    "Clarified that the paper build validates references and structure but does not yet link every manually maintained empirical claim to an artifact; E121 tracks that work."
+   ]
+  },
+  {
+   "version": "0.5",
+   "date": "2026-09-26",
+   "changes": [
     "The lab book became this paper: method, evaluation with every number collected from the measurement files (paper/collect.py), related work with verified references, limitations and a roadmap; the chronological lab notebook kept beside it.",
     "Experiment tracker (research/experiments.json, rendered as research/TRACKER.md and Appendix A).",
     "Multi-angle verification (E009) found an elbow folded through the arm (E007), feet off the floor (E008), a comparison video running 25% fast (E010), and showed the kick's score dip was the scorer (E011).",
-    "Characters from a few words (E014-E016); hands that meet a bare forearm (E021) and take the face's colour (E020); a realistic face kept from the generator when the reference cannot be laid on it (E022); face positions read at 0.5 mm (E019)."]},
-  {"version": "0.4", "date": "2026-09-25", "changes": [
+    "Characters from a few words (E014-E016); hands that meet a bare forearm (E021) and take the face's colour (E020); a realistic face kept from the generator when the reference cannot be laid on it (E022); face positions read at 0.5 mm (E019)."
+   ]
+  },
+  {
+   "version": "0.4",
+   "date": "2026-09-25",
+   "changes": [
     "The polish pass: garments fused to the body (E025), folded UV islands (E027), references in the wrong pose (E028), joins left by the arm cut (E026, open).",
-    "Hands follow DWPose (E006); the Studio, a local interface to make characters without the command line."]},
-  {"version": "0.3", "date": "2026-09-24", "changes": [
+    "Hands follow DWPose (E006); the Studio, a local interface to make characters without the command line."
+   ]
+  },
+  {
+   "version": "0.3",
+   "date": "2026-09-24",
+   "changes": [
     "Moves from generated video: retrieval (E001), the fit (E002, E003), aimed limbs (E004), the refine stage (E005); H3 on 24 GB (E030).",
-    "Qwen-Image 2.1 as the reference model (E013); three styles, seven characters, the v3.0.0 site."]},
-  {"version": "0.2", "date": "2026-09-23", "changes": [
-    "One entry point, engine conventions (origin, capsule, LODs), real PBR; locomotion that plants its feet (E029)."]},
-  {"version": "0.1", "date": "2026-09-20", "changes": [
-    "A local text-to-rigged-character pipeline with its first measurements; dual quaternion skinning in the viewer (E024)."]}
+    "Qwen-Image 2.1 as the reference model (E013); three styles, seven characters, the v3.0.0 site."
+   ]
+  },
+  {
+   "version": "0.2",
+   "date": "2026-09-23",
+   "changes": [
+    "One entry point, engine conventions (origin, capsule, LODs), real PBR; locomotion that plants its feet (E029)."
+   ]
+  },
+  {
+   "version": "0.1",
+   "date": "2026-09-20",
+   "changes": [
+    "A local text-to-rigged-character pipeline with its first measurements; dual quaternion skinning in the viewer (E024)."
+   ]
+  }
  ]
 }

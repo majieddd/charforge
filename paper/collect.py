@@ -155,6 +155,35 @@ def aberrations(ids):
     return out
 
 
+def stress(ids):
+    """Each character's extreme-pose battery (tools/deform_suite.py: eight held poses, audited like clips; E153), per pose."""
+    out = {}
+    for cid in ids:
+        a = load(ROOT / "work" / cid / "qa" / "stress.json")
+        if not a:
+            continue
+        out[cid] = {k[len("stress_"):]: {m: v[m] for m in ("crushed_pct", "stretched_pct", "sheared_pct", "penetration_max_cm")}
+                    for k, v in a["clips"].items() if k.startswith("stress_")}
+    return out
+
+
+def weights(ids):
+    """Which skin weights each build kept and how the candidates scored on the extreme-pose battery (E154, E157): the pipeline's
+    own work/<id>/weights_choice.json, plus Make-It-Animatable's battery scores where they were measured (data/e157_mia.json)."""
+    mia = load(ROOT / "paper" / "data" / "e157_mia.json") or {}
+    out = {}
+    for cid in ids:
+        c = load(ROOT / "work" / cid / "weights_choice.json")
+        if not c or "per_pose" not in c:
+            continue
+        row = {"picked": c["picked"], "sharp": r(c["scores"]["sharp"], 2), "hybrid": r(c["scores"].get("hybrid"), 2) if c["scores"].get("hybrid") is not None else None,
+               "soft": r(c["scores"].get("soft"), 2) if c["scores"].get("soft") is not None else None}
+        if cid in mia:
+            row["mia"] = r(mia[cid]["mean"], 2)
+        out[cid] = row
+    return out
+
+
 def multiview():
     d = load(ROOT / "research" / "data" / "e106_multiview.json")
     return d["characters"] if d else {}
@@ -260,6 +289,8 @@ def main():
         "moves": moves(), "fit_selftest": selftest(), "image_models": image_models(),
         "prompt_models": prompt_models(), "turntable": turntable(), "stage_times": stage_times(),
         "aberrations": aberrations([c["id"] for c in ros if c["id"] not in SUPERSEDED]), "aberration_controls": controls(),
+        "stress": stress([c["id"] for c in ros if c["id"] not in SUPERSEDED]),
+        "weights": weights([c["id"] for c in ros if c["id"] not in SUPERSEDED]),
         "multiview": multiview(),
         "unimate": load(ROOT / "research" / "data" / "e129_unimate.json"),
         "planting": load(ROOT / "research" / "data" / "e130_planting.json"),
