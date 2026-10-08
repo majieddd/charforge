@@ -66,10 +66,10 @@ def _lower(v):
     return ss((-0.2 - v) / 0.9) * ss((v + 1.9) / 0.9)
 
 
-def _band(V, E, h, ied):
-    """The band a brow lies in, above an eye, peaking 0.3 ied above the eye's centre line."""
+def _band(V, E, h, ied, reach=0.55, width=0.4):
+    """The band a brow lies in, above an eye: 1 at its middle, falling to 0 at reach (units of 0.75 ied in height)."""
     t = (V[:, 2] - (E[2] + 0.45 * h)) / (0.75 * ied)
-    return ss((0.55 - np.abs(t - 0.45)) / 0.4)
+    return ss((reach - np.abs(t - 0.45)) / width)
 
 
 def _rot(P, axis, t):
@@ -115,9 +115,8 @@ def build(V, N, Whead, F, ied, wj, hinge, axis, deg, eyes_ok, mouth_ok, blink=No
         hm = 0.5 * (max(float(F["eyes"]["left"]["height_m"]), 0.28 * float(F["eyes"]["left"]["width_m"]))
                     + max(float(F["eyes"]["right"]["height_m"]), 0.28 * float(F["eyes"]["right"]["width_m"])))
         Em = 0.5 * (EL + ER)
-        Bm = _band(V, Em, hm, ied) * ff * ss((0.5 * ied - np.abs(V[:, 1] - Em[1])) / (0.2 * ied))
         Xi = ss((0.3 * ied - np.abs(V[:, 0] - 0.5 * (EL[0] + ER[0]))) / (0.2 * ied))  # between the brows
-        Bw = ss((0.8 - np.abs((V[:, 2] - (Em[2] + 0.45 * hm)) / (0.75 * ied) - 0.45)) / 0.5) * ff * ss((0.5 * ied - np.abs(V[:, 1] - Em[1])) / (0.2 * ied))
+        Bw = _band(V, Em, hm, ied, reach=0.8, width=0.5) * ff * ss((0.5 * ied - np.abs(V[:, 1] - Em[1])) / (0.2 * ied))
         out["browInnerUp"] = _vec(n, z=0.09 * ied * Bw * Xi)
         for s, tag, sg in SIDES:
             E = np.asarray(F["eyes"][s]["centre"], float)
