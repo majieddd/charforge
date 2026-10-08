@@ -16,6 +16,9 @@ import sys
 import bpy
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import quad_remesh  # noqa: E402  (join_quads, E-lane topology)
+
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
 ap.add_argument("--mesh", required=True, help="textured mesh - albedo source and fallback normal source")
@@ -61,6 +64,15 @@ ap.add_argument("--relax", type=int, default=0,
 ap.add_argument("--taubin", type=int, default=0,
                 help="instead, smooth the decimated cage with this many Taubin steps (no shrinking, no projection): "
                      "the low-poly a smooth approximation, the normal map all the detail (E135)")
+ap.add_argument("--quads", action="store_true",
+                help="with --cage: join neighbouring triangle pairs of the decimated cage into quads (quad_remesh.py, E118); "
+                     "--tris is then the triangle budget before joining: 60000 gives ~21k quads of ~38k faces")
+ap.add_argument("--quad-face-angle", type=float, default=60.0,
+                help="with --quads: the largest bend across a joined pair's shared edge, degrees (E118: 40 joins 15.9k "
+                     "pairs, 60 joins 21.5k)")
+ap.add_argument("--quad-shape-angle", type=float, default=60.0,
+                help="with --quads: the largest corner deviation from square, degrees (E118: 40 keeps the quads squarer "
+                     "but leaves 36% of faces quads, 60 gives 56%)")
 a = ap.parse_args(argv)
 
 
@@ -420,6 +432,15 @@ def main():
             relax_onto(low, dense, a.relax)
         if a.taubin:
             taubin(low, a.taubin)
+        if a.quads:
+            qbm = bmesh.new()
+            qbm.from_mesh(low.data)
+            n_quads = quad_remesh.join_quads(qbm, a.quad_face_angle, a.quad_shape_angle)
+            qbm.to_mesh(low.data)
+            qbm.free()
+            low.data.update()
+            print(f"[retopo] quads: {n_quads:,} triangle pairs joined; {len(low.data.polygons):,} faces, "
+                  f"{sum(1 for p_ in low.data.polygons if len(p_.vertices) == 4):,} quads", flush=True)
         method = "solid_decimate"
         print(f"[retopo] cage: {tris0:,} triangles of clean solid -> {len(low.data.polygons):,} "
               f"({nm} non-manifold edges left)", flush=True)
@@ -1049,12 +1070,18 @@ def main():
                 pass
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(filepath=a.out, export_format="GLB", use_selection=True)
+    # The glTF is triangulated: the polygons as modelled (quads kept) go beside it for tools/topology_audit.py
+    # and tools/model_quality.py.
+    polys_path = os.path.splitext(a.out)[0] + "_polys.obj"
+    bpy.ops.wm.obj_export(filepath=polys_path, export_selected_objects=True, export_triangulated_mesh=False,
+                          export_uv=True, export_normals=False, export_materials=False)
 
     quads = sum(1 for p in low.data.polygons if len(p.vertices) == 4)
     info = {"method": method, "high_tris": hi_tris, "low_polys": len(low.data.polygons),
             "quads": quads, "quad_fraction": round(quads / max(1, len(low.data.polygons)), 3),
             "vertices": len(low.data.vertices), "bake_res": a.bake_res,
-            "reduction": round(1 - len(low.data.polygons) / max(1, hi_tris), 3)}
+            "reduction": round(1 - len(low.data.polygons) / max(1, hi_tris), 3),
+            "quads_joined": bool(a.quads), "polys_obj": os.path.basename(polys_path)}
     json.dump(info, open(os.path.splitext(a.out)[0] + "_retopo.json", "w"), indent=2)
     print("[retopo] " + json.dumps(info))
 
