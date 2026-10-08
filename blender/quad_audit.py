@@ -111,9 +111,28 @@ def triangle_min_angles(f):
     return out
 
 
+def quad_convexity(f):
+    """'convex', 'concave' (one corner turns against the others), or 'bowtie' (two corners do), by the sign of
+    each corner's turn about the quad's own normal."""
+    p = [v.co for v in f.verts]
+    n = (p[2] - p[0]).cross(p[3] - p[1])
+    if n.length < 1e-14:
+        return "degenerate"
+    signs = []
+    for i in range(4):
+        a0, a1, a2 = p[i - 1], p[i], p[(i + 1) % 4]
+        signs.append(1 if (a1 - a0).cross(a2 - a1).dot(n) > 0 else -1)
+    pos = sum(1 for x in signs if x > 0)
+    if pos in (0, 4):
+        return "convex"
+    return "concave" if pos in (1, 3) else "bowtie"
+
+
+convexity = {"convex": 0, "concave": 0, "bowtie": 0, "degenerate": 0}
 quad_dev, tri_total, skinny = [], 0, 0
 for f in bm.faces:
     if len(f.verts) == 4:
+        convexity[quad_convexity(f)] += 1
         quad_dev.append(max(abs(x - 90.0) for x in corner_angles(f)))
     for mn in triangle_min_angles(f):
         tri_total += 1
@@ -124,6 +143,7 @@ result["shape"] = {
     "quad_corner_dev_p95_deg": round(quad_dev[int(0.95 * (len(quad_dev) - 1))], 2) if quad_dev else None,
     "quad_share_dev_over_30deg": round(sum(1 for d in quad_dev if d > 30.0) / len(quad_dev), 4) if quad_dev else None,
     "skinny_tri_share_under_10deg": round(skinny / max(1, tri_total), 4),
+    "quad_convexity": convexity,
 }
 
 uv_layer = bm.loops.layers.uv.active
