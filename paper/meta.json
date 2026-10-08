@@ -8,11 +8,19 @@
   }
  ],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.17",
- "date": "2026-10-07",
+ "version": "0.18",
+ "date": "2026-10-08",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
  "changelog": [
+  {
+   "version": "0.18",
+   "date": "2026-10-08",
+   "changes": [
+    "What Meshy and Tripo do, from their own documentation (E162). Meshy: quad or triangle remeshing at a chosen count (default 30,000), 2K/4K/8K textures with optional PBR, delighting on by default, and a rig with walk and run clips. Tripo: ~1.4-2M-face generation, quad output up to 150k, a 500-20k 'smart low-poly', textures up to 8K. Set against CharForge in the related work: comparable surface density, but triangles not quads; a 4096 texture holding about one megapixel of real detail; six face shapes; clips carrying our contact corrections. Notes: research/COMMERCIAL_PIPELINES.md.",
+    "A plan to close those gaps in parallel lanes, each on its own git branch and worktree with its own files and cloned characters (tools/lanes/setup_lane.sh): quad topology (E163), a sharper texture (E164), Pixal3D against TRELLIS.2 (E155), skin weights chosen through the clips (E161), the smoothness our corrections cost (E165), ARKit-named face shapes (E166), and playground lighting and transitions (E167). The first run of all seven stopped at a usage limit before any finished; they now run a few at a time, and each result enters the build only when measured."
+   ]
+  },
   {
    "version": "0.17",
    "date": "2026-10-07",

@@ -76,6 +76,22 @@ counts: a 30 fps bake measured 3% at the keys and 13% in the browser.
 
 ---
 
+## Working in parallel lanes
+
+To work on several parts of the pipeline at once without collisions, give each part its own lane:
+
+    zsh tools/lanes/setup_lane.sh <lane> <character> [<character> ...]
+
+This creates a git worktree `../cf_lanes/<lane>` on branch `lane/<lane>`. In it, `vendor/` and `models/` link to this
+checkout, the GPU lock and motion library are shared (so GPU jobs queue across lanes), and the named characters are
+copy-on-write clones. Rules for each lane:
+
+- Edit only the files it owns. Propose `charforge.py` hooks as a patch instead of editing the file.
+- Measure before and after on its clones.
+- Commit on its branch; a change is merged only with its numbers.
+
+research/COMMERCIAL_PIPELINES.md (E162) lists the current lanes and the gap each one closes.
+
 ## Open — ranked by expected impact
 
 ### 1. Hair, bags and layered garments generated apart from the body

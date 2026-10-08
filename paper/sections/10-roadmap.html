@@ -44,6 +44,21 @@
     (sclera, the picture's iris colour, a pupil); the shipped model's eyes are a painted cap at the lids.</figcaption>
 </figure>
 <ol>
+  <li><b>To the commercial bar, in parallel lanes</b> [E162]: measured against what Meshy and Tripo deliver
+    ([#sec-rw-gen]), the work is split into lanes that run at the same time,
+    each on its own git branch and worktree, with its own files, cloned test characters and before/after measures, so they
+    cannot overwrite one another (<code>tools/lanes/setup_lane.sh</code>). The lanes:
+    <ul>
+      <li>a quad-dominant game mesh from Blender's QuadriFlow, baked from the same source and checked for deformation [E163];</li>
+      <li>a sharper texture: projection blending and filtering now, and a high-resolution pass on the reference and views [E164];</li>
+      <li>Pixal3D against TRELLIS.2 on six characters, once its turned output and the slab it makes under the feet are fixed [E155];</li>
+      <li>skin weights chosen by building each candidate through the clips [E161];</li>
+      <li>the smoothness our joint limits and contact solve cost the captures, measured as jerk against the source and then
+        filtered [E165];</li>
+      <li>ARKit-named face shapes in place of six [E166];</li>
+      <li>studio lighting and smooth clip transitions in the playground [E167].</li>
+    </ul>
+    A first run of all seven at once stopped at a usage limit before any finished, so they now run a few at a time.</li>
   <li><b>Shape and texture as clean as a professional's</b> [E132]: the audit and its baselines now exist, and this
     version spent the first round on it - the finer surface [E135], the loose shards, the hands and the skin [E138], the
     rest pose [E137] ([#sec-eval-quality]). What is left, in the order a viewer sees it: <i>faces</i> - taken part by part in
