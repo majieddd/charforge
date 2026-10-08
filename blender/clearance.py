@@ -293,6 +293,7 @@ for clip in clips:
                 theta = float(joint_theta[jn][k])
                 if abs(theta) <= 1e-4:
                     continue
+                bpy.context.view_layer.update()          # the shoulder may have just turned: read the bend axis after it
                 b, par = pb[jn], pb[jn].parent
                 u, f = direction(par), direction(b)
                 axis = u.cross(f).normalized()

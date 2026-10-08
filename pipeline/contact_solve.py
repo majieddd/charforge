@@ -52,7 +52,8 @@ ap.add_argument("--upper-legs", type=int, default=1, help="test the upper arm ag
 ap.add_argument("--reverse", type=int, default=1, help="also test body vertices against the arm's surface")
 ap.add_argument("--smooth", type=float, default=2.5,
                 help="Gaussian sigma, in keys, on each clip's turns after the solve (0 = off): the solve's turns carry "
-                     "per-frame noise (march, strafe, crouch idle), which is removed; the penetration audit is unchanged")
+                     "per-frame noise (march, strafe, crouch idle), which is removed; it costs a little depth (largest penetration "
+                     "mara 1.41 -> 1.47 cm, pip 1.57 -> 1.60 cm; deep frames unchanged)")
 a = ap.parse_args()
 torch.set_default_dtype(torch.float32)            # centimetres need no more; float64 doubled the time
 
