@@ -42,6 +42,7 @@ from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from align import image_mask, similarity  # noqa: E402
+from tex_detail import detail_from_views  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--dir", required=True, help="uv_maps.py output directory")
@@ -103,6 +104,24 @@ ap.add_argument("--hairline", action="store_true",
 ap.add_argument("--face-parts-max", type=float, default=0.25,
                 help="leave the parts as they fall when they would move more than this share of the face's width "
                      "(the picture and the model then disagree on the face, not on where it is)")
+ap.add_argument("--sampler", choices=("linear", "cubic", "lanczos"), default="lanczos",
+                help="how a picture is read at each texel: linear (as before), or Keys' cubic, or Lanczos-4. The "
+                     "reference is 3-4 texels to a picture pixel, and bilinear reads it with a 40% loss at the "
+                     "picture's own Nyquist (tools/texture_sharpness.py)")
+ap.add_argument("--base-strong", type=float, default=0.001,
+                help="the fill's weight on a texel the views see strongly (their summed weight at or above --base-ramp's "
+                     "top): the views then give the texel alone, with their full detail. Weakly seen texels keep "
+                     "--base-weight")
+ap.add_argument("--detail", choices=("views", "mix"), default="views",
+                help="views: a strongly seen texel keeps the mix's low frequencies (the bake's colour field, so the "
+                     "front and back stay as close in colour) and takes its high frequencies from its views alone "
+                     "(pipeline/tex_detail.py); mix: the plain mix")
+ap.add_argument("--detail-sigma", type=float, default=3.0, help="the low band's width, in texels (--detail views)")
+ap.add_argument("--ramp-source", choices=("front", "all"), default="all",
+                help="which summed weight the ramp reads: every view's (all, default), or the reference's alone (front)")
+ap.add_argument("--base-ramp", default="0.1,0.5",
+                help="lo,hi: the summed view weight over which the fill's weight goes from --base-weight (at lo) to "
+                     "--base-strong (at hi), smoothly. 0.1,0.5 is the ramp; 'none' keeps --base-weight everywhere (as before)")
 a = ap.parse_args()
 
 meta = json.load(open(os.path.join(a.dir, "views.json")))
@@ -159,6 +178,25 @@ def to_render_px(X, v):
     u = ((Xn @ right) / half * 0.5 + 0.5) * res
     w = (1.0 - ((Xn @ up) / half * 0.5 + 0.5)) * res
     return np.stack([u, w], 1)
+
+
+def sample_picture(img, ip, ti, R, sampler):
+    """img (H, W, C) read at the image positions ip (N, 2: x, y) of the surface texels ti (indices into the R x R
+    atlas), in the picture's own units. linear is the scipy bilinear read the projection always used; cubic and
+    lanczos are cv2's remap over the whole atlas grid, the same reads at the texel positions. A texel's picture
+    pixel is ~1/3.7 of a texel, so bilinear's triangle filter keeps only ~40% of the picture's own finest detail."""
+    if sampler == "linear":
+        return np.stack([ndimage.map_coordinates(img[..., c].astype(np.float32), [ip[:, 1], ip[:, 0]],
+                                                 order=1, mode="nearest") for c in range(img.shape[-1])], 1)
+    kern = cv2.INTER_CUBIC if sampler == "cubic" else cv2.INTER_LANCZOS4
+    gx = np.zeros(R * R, np.float32)
+    gy = np.zeros(R * R, np.float32)
+    gx[ti] = ip[:, 0]
+    gy[ti] = ip[:, 1]
+    gx, gy = gx.reshape(R, R), gy.reshape(R, R)
+    out = np.stack([cv2.remap(np.ascontiguousarray(img[..., c], dtype=np.float32), gx, gy, kern,
+                              borderMode=cv2.BORDER_REPLICATE) for c in range(img.shape[-1])], -1)
+    return out.reshape(R * R, -1)[ti]
 
 
 def gray(img, mask):
@@ -441,6 +479,7 @@ def match(src, dst, sel):
 
 acc = np.zeros((len(ti), 3), np.float64)
 wsum = np.zeros(len(ti), np.float64)
+wref = np.zeros(len(ti), np.float64)                     # the reference's (view 000's) weight alone
 base_t = base.reshape(-1, 3)[ti]
 palette_set = False
 hand = np.zeros(len(ti), bool)
@@ -670,8 +709,7 @@ for spec in a.view:
         if tag == "000" or in_old.any():
             report.append(f"{tag}: {int((in_old & (vis > 0.5)).sum()):,} texels behind the old hands left to the other views")
     w *= vw
-    col = np.stack([ndimage.map_coordinates(img[..., c].astype(np.float32), [ip[:, 1], ip[:, 0]],
-                                            order=1, mode="nearest") for c in range(3)], 1) / 255.0
+    col = sample_picture(img, ip, ti, R, a.sampler) / 255.0
     if tag == "000" and face_img is not None and not (face_unaligned and a.keep_base_face):
         # The face region, from the detailed image instead: the same pixels, four times finer. Read
         # through this view's own alignment - a separate close-up camera aligned on its own landed a
@@ -684,8 +722,7 @@ for spec in a.view:
             d_edge = np.minimum.reduce([fx, fy, face_img.shape[1] - 1 - fx, face_img.shape[0] - 1 - fy])
             wf_ = np.clip(d_edge / (0.1 * face_img.shape[0]), 0, 1)
             wf_ = (wf_ * wf_ * (3 - 2 * wf_)) * inside_
-            cf_ = np.stack([ndimage.map_coordinates(face_img[..., c], [fy, fx], order=1, mode="nearest")
-                            for c in range(3)], 1)
+            cf_ = sample_picture(face_img, np.stack([fx, fy], 1), ti, R, a.sampler)
             col = col * (1 - wf_[:, None]) + cf_ * wf_[:, None]
             report.append(f"face: {int((wf_ > 0.5).sum()):,} texels of the front view read from the "
                           f"detailed face ({fs:.1f}x the reference's pixels)")
@@ -704,6 +741,8 @@ for spec in a.view:
             col = match(col, base_t, conf)
     acc += w[:, None] * col
     wsum += w
+    if tag == "000":
+        wref += w
     report.append(f"{tag}: silhouette IoU {iou:.3f}, scale {s:.3f}, flow p95 {np.percentile(np.linalg.norm(flow[both], axis=1), 95):.1f}px, "
                   f"{(w > 0.5 * vw).mean():.1%} of texels confident, colour shift dE {shift:.1f}")
     if a.debug:
@@ -719,6 +758,19 @@ out_t = (acc + a.base_weight * base_t) / (wsum + a.base_weight)[:, None]
 opened = np.zeros(len(ti), bool)
 fill = base_t.copy()                                   # what stands in for the bake where the bake is wrong
 bw = np.full(len(ti), a.base_weight)                   # and how much it counts against the views
+strong_t = np.zeros(len(ti))                         # 1 where the views see the texel strongly
+if a.base_ramp != "none":
+    # A texel the views see strongly takes its colour from them alone (base weight --base-strong): a mean with the
+    # blurrier bake takes that share of each view's detail, 8% at 0.08 (Mara's albedo lost 23% of its fine detail
+    # to it: tools/texture_sharpness.py). A weakly seen texel keeps the old weight, so grazing views still lean on
+    # the bake, and the change between the two is a smooth ramp in the summed weight, not an edge.
+    lo_, hi_ = (float(v) for v in a.base_ramp.split(","))
+    seen = wref if a.ramp_source == "front" else wsum
+    t_ = np.clip((seen - lo_) / max(hi_ - lo_, 1e-6), 0.0, 1.0)
+    strong_t = t_ * t_ * (3.0 - 2.0 * t_)
+    bw = a.base_strong + (a.base_weight - a.base_strong) * (1.0 - strong_t)
+    print(f"[texproj] base weight: {a.base_weight} on weakly seen texels, {a.base_strong} where the views see them "
+          f"strongly ({a.ramp_source} weight {lo_}-{hi_}; {(seen >= hi_).mean():.1%} of surface texels strongly seen)", flush=True)
 if a.solid and os.path.exists(a.solid):
     # The surfaces free_arms.py opened between an arm and what it was glued to - the inside of a sleeve,
     # the side of a vest under it, the back of a sleeve a puffy vest had swallowed - were inside the
@@ -787,6 +839,11 @@ if a.solid and os.path.exists(a.solid):
               f"facing their way ({float(same.any(1).mean()):.0%} found one)", flush=True)
     bw[opened] = 1e3
 out_t = (acc + bw[:, None] * fill) / (wsum + bw)[:, None]
+if a.detail == "views" and a.base_ramp != "none":
+    # the bake's colour field stays at low frequency, the views' own detail comes through at high frequency
+    mix_full = (acc + a.base_weight * fill) / (wsum + a.base_weight)[:, None]
+    mix_full[opened] = fill[opened]                    # an opened texel is its fill: the old surface's colour
+    out_t = detail_from_views(ti, R, mix_full, out_t, acc, wsum, np.where(opened, 0.0, strong_t), a.detail_sigma)
 if hand.any():
     # The modelled hands take the character's skin tone, read from texels that are skin-coloured
     # anywhere on the body outside the hands (face, neck, forearms): warm, mid-light, moderately
