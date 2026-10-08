@@ -59,6 +59,16 @@ def page_manifest(m: dict) -> dict:
             "style": (m.get("style") or {}).get("name", "realistic")}
 
 
+def page_licences(p: Path):
+    """The provenance record's parts the playground shows; None for a package built before it existed."""
+    if not p.exists():
+        return None
+    d = json.load(open(p))
+    return {"summary": d["summary"], "note": d["note"], "not_assessed": d["not_assessed"],
+            "components": [{k: c.get(k, "") for k in ("name", "role", "terms", "source", "checked", "evidence")}
+                           for c in d["components"]]}
+
+
 def roster_block(entries, sources) -> str:
     return ("const CHARACTER_SOURCES = {\n" + "".join(f"  {k}: {v},\n" for k, v in sources.items())
             + "};\nconst CHARACTERS = " + json.dumps(entries, indent=1) + ";\n")
@@ -94,7 +104,9 @@ def main(a):
                         # only characters whose zip is on the release ("released": false hides the button, which
                         # otherwise led to a missing file)
                         "download": f"{release}/{cid}.zip" if c.get("released", True) else "",
-                        "manifest": page_manifest(man)})
+                        "manifest": page_manifest(man),
+                        # what made this character and what each component's terms say (pipeline/provenance.py)
+                        "licences": page_licences(pkg / "PROVENANCE.json")})
 
         # Pages: stream the compressed glb
         shutil.copy(web_glb, docs / f"{cid}.glb")

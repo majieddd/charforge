@@ -1,0 +1,107 @@
+{
+ "cadet": {
+  "mean": 4.047300000000001,
+  "per_pose": {
+   "arms_overhead": 11.544,
+   "arms_forward": 8.766,
+   "arms_across": 7.584,
+   "arms_behind": 5.473999999999999,
+   "squat": 2.497,
+   "bend_twist": 2.283,
+   "kick": 0.484,
+   "head_turn": 0.5609999999999999,
+   "tiptoe": 0.887,
+   "heel_strike": 0.393
+  }
+ },
+ "gray": {
+  "mean": 1.7418,
+  "per_pose": {
+   "arms_overhead": 3.3840000000000003,
+   "arms_forward": 3.0490000000000004,
+   "arms_across": 3.1290000000000004,
+   "arms_behind": 2.42,
+   "squat": 2.476,
+   "bend_twist": 1.3499999999999999,
+   "kick": 0.6020000000000001,
+   "head_turn": 0.593,
+   "tiptoe": 0.21,
+   "heel_strike": 0.20500000000000002
+  }
+ },
+ "juno3": {
+  "mean": 1.6524000000000005,
+  "per_pose": {
+   "arms_overhead": 3.27,
+   "arms_forward": 2.721,
+   "arms_across": 2.806,
+   "arms_behind": 1.4779999999999998,
+   "squat": 3.1990000000000003,
+   "bend_twist": 0.669,
+   "kick": 0.88,
+   "head_turn": 1.0030000000000001,
+   "tiptoe": 0.29700000000000004,
+   "heel_strike": 0.201
+  }
+ },
+ "kaito": {
+  "mean": 1.0916,
+  "per_pose": {
+   "arms_overhead": 0.875,
+   "arms_forward": 0.47700000000000004,
+   "arms_across": 0.92,
+   "arms_behind": 0.187,
+   "squat": 4.808999999999999,
+   "bend_twist": 0.534,
+   "kick": 1.089,
+   "head_turn": 1.538,
+   "tiptoe": 0.281,
+   "heel_strike": 0.20600000000000002
+  }
+ },
+ "mara": {
+  "mean": 1.5608999999999997,
+  "per_pose": {
+   "arms_overhead": 3.016,
+   "arms_forward": 2.0260000000000002,
+   "arms_across": 2.5909999999999997,
+   "arms_behind": 1.491,
+   "squat": 3.501,
+   "bend_twist": 0.787,
+   "kick": 1.161,
+   "head_turn": 0.517,
+   "tiptoe": 0.266,
+   "heel_strike": 0.253
+  }
+ },
+ "pip": {
+  "mean": 1.9107999999999996,
+  "per_pose": {
+   "arms_overhead": 3.123,
+   "arms_forward": 3.3529999999999998,
+   "arms_across": 3.689,
+   "arms_behind": 2.7279999999999998,
+   "squat": 2.7150000000000003,
+   "bend_twist": 1.919,
+   "kick": 0.6739999999999999,
+   "head_turn": 0.449,
+   "tiptoe": 0.33999999999999997,
+   "heel_strike": 0.118
+  }
+ },
+ "vex": {
+  "mean": 2.8032999999999997,
+  "per_pose": {
+   "arms_overhead": 6.9639999999999995,
+   "arms_forward": 5.988,
+   "arms_across": 4.862,
+   "arms_behind": 4.125,
+   "squat": 1.637,
+   "bend_twist": 3.458,
+   "kick": 0.6819999999999999,
+   "head_turn": 0.13,
+   "tiptoe": 0.038000000000000006,
+   "heel_strike": 0.149
+  }
+ }
+}

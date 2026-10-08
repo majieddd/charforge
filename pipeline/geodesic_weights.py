@@ -43,6 +43,10 @@ ap.add_argument("--coarsen", type=int, default=2, help="voxel downsampling for t
 ap.add_argument("--power", type=float, default=4.0)
 ap.add_argument("--k", type=int, default=4)
 ap.add_argument("--smooth", type=int, default=6, help="surface smoothing iterations on the weights")
+ap.add_argument("--radius", type=float, default=0.0,
+                help="measure from each body part's surface, not its bone: subtract this share of the part's own radius (E159)")
+ap.add_argument("--inward", type=float, default=0.0,
+                help="find each vertex's voxel from a point this many graph voxels inside the surface, along the vertex normal (E159)")
 a = ap.parse_args()
 t0 = time.time()
 
@@ -120,12 +124,43 @@ for bi, (n, h, t) in enumerate(bones):
         src = np.unique(near[np.argsort(d_)[:3]])
     D[:, bi] = dijkstra(G, directed=False, indices=src, min_only=True)
 print(f"[weights] {len(bones)} bones, geodesic distances in {time.time() - t0:.1f}s", flush=True)
+if a.radius > 0:
+    # Distance from a bone's line favours a thin limb over a thick torso: the side of a loose jacket hangs nearer the upper
+    # arm's bone than the spine's, though it is the torso's surface it belongs to, and it rose into fins with the arm (Vex,
+    # Pip's vest). Measured from each part's own surface instead - the bone's distance less its radius, the depth of the
+    # solid along the bone's middle - the torso's reach grows by its girth and a limb's by its own (E159).
+    depth = ndimage.distance_transform_edt(solid) * vc          # the stored SDF is truncated near the surface
+    rad = np.zeros(len(bones))
+    for bi, (n, h, t) in enumerate(bones):
+        pts = h + np.linspace(0.2, 0.8, 9)[:, None] * (t - h)
+        ijk = np.clip(np.round((pts / v - oc) / c).astype(int), 0, np.array(solid.shape) - 1)
+        rad[bi] = float(np.median(depth[tuple(ijk.T)]))
+    # the trunk is one girth: its bones share the largest of their radii, or a vertebra a little off the body's middle
+    # line takes the trunk from its neighbours and a bend shears between them (Vex's bend-and-twist 3.2 -> 5.7%)
+    trunk = [i for i, b in enumerate(bones) if b[0] in ("pelvis", "spine1", "spine2", "spine3")]
+    if trunk:
+        rad[trunk] = rad[trunk].max()
+    D = D - a.radius * rad[None, :]
+    print("[weights] part radii (cm): " + ", ".join(f"{bones[i][0]} {rad[i] * 100:.1f}" for i in range(len(bones))), flush=True)
 
 # ---- vertices: nearest solid voxel, plus the step to it ---------------------------------------
 mesh = trimesh.load(a.mesh, force="mesh", process=False)
 Vgl = np.asarray(mesh.vertices)
 V = np.stack([Vgl[:, 0], -Vgl[:, 2], Vgl[:, 1]], axis=1)
 dv, nv = tree.query(V)
+if a.inward > 0:
+    # A loose jacket hangs a few millimetres from the arm in the A-pose, the carved gap between them (free_arms.py) is thinner
+    # than a voxel, and the side panel's nearest voxel was often the arm's: Vex's panel below the armpit carried half its
+    # weight on the upper arm and rose into fins with it. A surface belongs to the solid behind it, so the voxel is found from
+    # a point stepped inward along the normal; where that lands no nearer the solid (a strand thinner than the step), the
+    # vertex keeps its own nearest voxel.
+    Ngl = np.asarray(mesh.vertex_normals)
+    Nn = np.stack([Ngl[:, 0], -Ngl[:, 2], Ngl[:, 1]], axis=1)
+    di, ni = tree.query(V - Nn * (a.inward * vc))
+    use = (di <= dv + 0.5 * vc) & (ni != nv)
+    print(f"[weights] inward step {a.inward:g} voxels: {int(use.sum()):,} vertices take a voxel behind their surface", flush=True)
+    nv = np.where(use, ni, nv)
+    dv = np.linalg.norm(V - centres[nv], axis=1)
 # The step out to a vertex is capped: a pocket flap or a strap the voxels do not hold (Pip's cargo
 # pockets stood up to 3 cm off the solid) took that whole step onto every bone's distance, which
 # evens them out - the flap's own thigh fell to a third of its weight, the pelvis and the other leg

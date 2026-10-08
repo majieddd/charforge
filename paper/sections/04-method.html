@@ -250,6 +250,36 @@
   <figcaption>Pip before and after the garment rules: the vest fused to his sleeves lifted into wings with his arms.</figcaption>
 </figure>
 
+<p><b>Two weightings, and the extreme poses choose.</b> A gentler falloff (influence by distance to the power -2 instead of
+  -4) and more smoothing (30 passes instead of 6) take the stretch out of a loose jacket's armpit: with Vex's arms overhead,
+  stretched, sheared and crushed faces fall from 13.3% to 10.5%, with her arms forward from 10.4% to 7.1% [E154]. On the
+  legs the same weights cost the strides: chosen for nine characters in a first rebuild, they stretched Juno's and Mara's
+  thighs more in the gaits and took Knight from 2 pops to 6, five of them in the sprint; on the head and neck they stretched
+  Juno's and Knight's heads in the clips. So the soft weights are blended with the default by how much of a vertex follows a
+  hip, knee, ankle, the neck or the head - soft on the body and arms, the default on the legs and head - and each build
+  makes both, rigs each through the same stages and poses it in the ten extreme poses of [#sec-eval-stress]. The hybrid
+  is kept when its mean share is at least 0.1 points lower and no pose is worse by more than 0.3 ([#tab-weights]):
+  {{weights.n_hybrid}} of {{weights.n}} characters keep it, and the tight-clothed and armoured ones keep the default
+  (Ren's deep squat loses 0.35 points with the hybrid). Knight rebuilt with the hybrid is back to 2 pops; keeping the head on the default too took Juno's stretched faces in the clips from 1.46% to 1.40% and sheared from 1.65% to 1.59% [E160].</p>
+<p><b>What the extreme poses cannot judge.</b> Two other weightings scored better still at the extreme poses and worse in
+  the clips. Make-It-Animatable's learned weights [@mia] beat the hybrid on six of seven characters - on Vex by 15% - and
+  broke Cadet's pauldrons; taken through Vex's clips they stretched and sheared less and left a part more than 2 cm inside
+  another in 22% of frames against 7% for the build it replaced, with 8 pops against 3 [E157]. Measuring distance from each body part's surface
+  instead of its bone's line, so that a loose jacket's side - which hangs nearer the thin arm's bone than the thick
+  trunk's - stays with the trunk, takes the fin out of Vex's raised arms ([#fig-weights]; the fin vertices' arm weight
+  falls from a half to a twentieth) and cuts her extreme-pose share from 4.35% to 2.73%; in her clips, frames with a part
+  inside another went from 7% to 12% and pops from 3 to 15, the arm now sinking into a jacket that no longer moves with it -
+  while Pip's clips, his vest no longer rising with his arms, improved on every measure (deep frames 6.8% to 4.6%,
+  stretched faces down a fifth, a pop fewer) [E159]. Faces that hold their shape can be faces that let a limb through them,
+  and the battery counts only the first (its own penetration reads the same for Pip's and Vex's two weightings); both stay
+  experiments (<code>--skin-weights mia</code>, <code>geodesic_weights.py --radius</code>) until the clips can decide.</p>
+<figure id="fig-weights">
+  <img src="media/weights_vex.webp" width="1200" height="966" alt="Vex with her arms overhead and forward under three weightings: with the default falloff and the hybrid, dark slivers of her jacket's side fold out behind her right arm; with Make-It-Animatable's weights they are shorter and the jacket's hem stays lower">
+  <figcaption>Vex's arms overhead (top) and forward (bottom) with the default weights, the hybrid the build keeps, and
+    Make-It-Animatable's. The jacket's side follows the raised arm into dark slivers; the hybrid shortens them, the learned
+    weights more - and in the clips sank her arms into the jacket three times as often [E157].</figcaption>
+</figure>
+
 <p><b>The pose it was modelled in, as its rest.</b> Retargeting turns each source bone by its change from its own
   rest and applies that change to the target's rest, so the two rests must agree: Mixamo's is a T. Until version 0.11 the
   rig was therefore skinned up from the A-pose the character was generated in to a T and saved in it - and skinning is
@@ -343,6 +373,24 @@
   written into the clip's own keys, so the planted feet and the pelvis are untouched. Contact-aware retargeting
   [@contactretarget] optimises in a learned space for the same reason; here the space is the joints' own turns and
   the measure is the mesh.</p>
+<p><b>Three refinements, each from a residual the first version left [E152].</b> The cost's squared depth is weighted ten
+  times the squared turns: at equal weight, when only a handful of points were inside, the turn penalty outweighed them
+  and Gray's idle stayed at 98 of 98 deep frames although the same solve cleared it at a wider margin with turns of 1.4&deg;.
+  Skipping arm points that share skin weight with the torso or collar, which protects the armpit's fold, hid real
+  penetration on a physique where the biceps meet the lats: relaxing the skip to 0.40 for the arm points alone takes
+  Gray's audited idle from 100% of frames to none, but the same setting breaks Cadet, whose overlapping armour is built to
+  interpenetrate at the shoulder, and the solver's own measure cannot tell the two apart. So the audit decides, clip by
+  clip. When frames with a part more than 2 cm inside another are still above 3% after the solve, the relaxed solve is run
+  on top, and its turns are kept for each clip in which the audit finds at least two points fewer such frames and no more
+  crushed, stretched or sheared faces (0.05 points) or pops - one more pop where the clip loses twenty points or more, as
+  Gray's landing does (64% to 18%) [E156]. A first version took or refused the relaxed solve for a
+  whole character, and one clip made worse - Cadet's armour - kept the rest from it; clip by clip Cadet keeps it for his
+  walk, bow and fist pump and goes from 11.5% to 10.3% of frames. The solve poses the arm by linear skinning while the audit
+  and the playground blend dual quaternions; judging the surface the audit's way instead (a differentiable dual quaternion
+  skin, [E156]) moved the share of deep frames by -0.3 points on Cadet, +0.7 on Pip and +1.2 on Vex, so the solve stays
+  linear. Clips made from video are re-posed by the refine stage after all this, and a punch with the arms crossing
+  the chest goes back into it, so the solve is run again on them and kept for a clip only if its silhouette still matches
+  the video as well (the same IoU refine measures, at the same placement; at most 0.01 lost).</p>
 <figure id="fig-contact">
   <img src="media/contact_pip.webp" width="1800" height="808" alt="Pip in idle, walk and a 180-degree turn, front and side, before and after the contact solve: before, his hands sink into the sides of his baggy shorts; after, they hang just outside them, and in the turn his arms swing clear of his puffy vest">
   <figcaption>Pip before (top, version 0.15) and after (bottom) the contact solve, at the worst frame of idle, walk and the

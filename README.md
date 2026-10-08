@@ -152,7 +152,8 @@ The defaults are what measured best (each is an option in the Studio's **More op
 | option | default | what it does |
 |---|---|---|
 | `--eyes rebuild` / `--eyes none` | rebuild | each eye the generator modelled as an opening full of shards becomes a smooth cap under the lids, found by DWPose on the model's own paint; eyes it cannot read (most anime) stay as generated (E140) |
-| `--contact on` / `--contact off` | on | after clearance, every clip is solved against the character's own surface: the least shoulder, elbow and wrist turns that keep arms and hands out of the torso, thighs and shins (E151; Pip's frames with a part >2 cm inside another 59% -> 11%) |
+| `--contact on` / `--contact off` | on | after clearance, every clip is solved against the character's own surface: the least shoulder, elbow and wrist turns that keep arms and hands out of the torso, thighs and shins (E151; Pip's frames with a part >2 cm inside another 59% -> 11%). Where that still leaves more than 3% of frames deep, a relaxed solve (armpit-fold skip loosened) is tried on top and kept clip by clip where the audit finds it better (E152, E156) |
+| `--skin-weights auto` / `sharp` / `soft` / `mia` | auto | the skin weights made with the default falloff and as a hybrid (soft on the body so a loose jacket's armpit stretches less, default on the legs and head so strides and head turns do not), and the one that holds up better over ten extreme poses kept (E154, E157); `mia` forces Make-It-Animatable's learned weights - experimental, needs `tools/setup_mia.sh` (it scored better on the extreme poses for six of seven characters and worse on Cadet's armour; taken through the clips, Vex stretched and sheared less but had a part more than 2 cm inside another in 22% of frames against 7%, E157) |
 | `--head-share F` | 0.28 | the share of the triangle budget the head keeps (0: left to the decimation, which gave it 17% and crumpled eyes and lips; E140) |
 | `--rest A` / `--rest T` | A | the rest pose: the pose the model was generated in, the T kept only for retargeting (`T` bakes the T into the mesh, as up to v0.11; E137) |
 | `--trellis-faces N` | 1000000 | faces TRELLIS.2 keeps of its surface (200k left flat facets in the normal map; E135); `--no-denoise` skips the surface filtering after it |
@@ -416,8 +417,8 @@ is the shoe the viewer sees: every vertex below the ankle, posed by its own skin
 | walk back | 3.4% | 6.7% | 6.7% | 6.3% | 8.0% | 6.8% | 3.8% | 7.9% | 6.7% | 11.8% | 11.2% | 8.3% | 7.5% | 9.6% | 7.9% | 4.4% | 5.7% |
 | jog back | 1.1% | 4.0% | 6.8% | 2.6% | 4.4% | 2.7% | 2.9% | 4.4% | 1.8% | 4.4% | 15.4% | 4.5% | 3.0% | 2.7% | 3.1% | 4.7% | 4.6% |
 | strafe left | 1.9% | 3.9% | 7.8% | 4.6% | 4.8% | 4.5% | 3.4% | 5.9% | 4.4% | 9.1% | 16.0% | 7.0% | 4.3% | 5.5% | 6.3% | 2.3% | 3.3% |
-| strafe right | 1.9% | 3.9% | 7.8% | 4.8% | 4.7% | 4.2% | 3.2% | 5.6% | 4.3% | 9.1% | 14.5% | 5.7% | 3.7% | 5.5% | 5.9% | 2.4% | 3.2% |
-| crouch walk | 1.1% | 2.2% | 3.0% | 2.5% | 1.7% | 1.6% | 2.7% | 1.7% | 2.7% | 4.1% | 8.0% | 2.8% | 1.9% | 2.1% | 2.1% | 1.4% | 3.1% |
+| strafe right | 1.9% | 3.9% | 7.8% | 4.8% | 4.7% | 4.2% | 3.2% | 5.6% | 4.3% | 9.1% | 16.0% | 5.7% | 3.7% | 5.5% | 5.9% | 2.4% | 3.2% |
+| crouch walk | 1.1% | 2.2% | 3.0% | 2.5% | 1.7% | 1.6% | 2.7% | 1.7% | 2.7% | 4.1% | 7.9% | 2.8% | 1.9% | 2.1% | 2.1% | 1.4% | 3.1% |
 | soles through the floor, worst | 0.0 cm | 0.7 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.4 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.0 cm | 0.2 cm |
 <!--/FEET-->
 
@@ -536,7 +537,9 @@ output, but this does not establish a blanket rights grant. TRELLIS.2's [officia
 says its materials are solely for academic/research purposes and not intended for commercial
 exploitation; its code license is a separate question. Qwen-Image 2.1 is under the Qwen Research
 License for non-commercial research/evaluation only; commercial use needs a separate license from
-[Qwen](https://github.com/QwenLM/Qwen-Image-2.1/blob/main/LICENSE). Check the exact generating model, inputs and output terms before redistribution or commercial
+[Qwen](https://github.com/QwenLM/Qwen-Image-2.1/blob/main/LICENSE). Krea 2's [Community License](https://www.krea.ai/krea-2-licensing) (checked 2026-10-07) allows commercial
+use only for organisations with total company-wide annual revenue under US$1,000,000 (trailing twelve months), and asks distributors of the model to keep
+a licence notice; each package's `PROVENANCE.json` lists the terms of the components that built it. Check the exact generating model, inputs and output terms before redistribution or commercial
 use; unknown permissions remain unknown.
 
 The **animation clips are derived from Mixamo captures** (via the pinned

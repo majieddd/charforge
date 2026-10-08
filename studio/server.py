@@ -100,6 +100,7 @@ def detail(name):
     w, o = ROOT / "work" / name, ROOT / "out" / name
     c = summary(name)
     c["manifest"] = read_json(o / f"{name}.json")
+    c["provenance"] = read_json(o / "PROVENANCE.json")            # what made it and what each one's terms say
     for key, p in (("web_glb", o / f"{name}_web.glb"), ("glb", o / f"{name}.glb"), ("fbx", o / f"{name}.fbx"),
                    ("reference", w / "reference.png")):
         c[key] = url(p) if p.exists() else None
@@ -729,6 +730,8 @@ def make_job(b):
             cmd += ["--eyes", b["eyes"]]
         if b.get("contact") in ("on", "off"):
             cmd += ["--contact", b["contact"]]
+        if b.get("skin_weights") in ("sharp", "soft", "mia"):
+            cmd += ["--skin-weights", b["skin_weights"]]
         title = f"make {name}" + (f": {b['prompt'].strip()[:60]}" if b.get("prompt") else "")
     elif kind == "rerun":
         st = b.get("from")

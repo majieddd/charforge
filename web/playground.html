@@ -119,6 +119,11 @@
   <div class="row"><span>bones</span><b id="s-bones">&mdash;</b></div>
   <div class="row"><span>clips</span><b id="s-clips">&mdash;</b></div>
   <div class="row"><span>fps</span><b id="s-fps">&mdash;</b></div>
+  <div class="row"><span>licences</span><b><a href="#" id="s-lic" style="color:inherit">terms</a></b></div>
+</div>
+<div id="lic" class="hud" hidden style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-width:min(640px,92vw);max-height:80vh;overflow:auto;padding:14px 16px;z-index:30">
+  <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline"><b id="lic-title">Licences</b><a href="#" id="lic-close" style="color:inherit">close</a></div>
+  <div id="lic-body" style="font-size:12px;line-height:1.5;margin-top:8px"></div>
 </div>
 
 <div id="keys" class="hud">
@@ -799,6 +804,7 @@ async function select(id) {
     activeId = id;
     for (const el of document.querySelectorAll('.card'))
       el.setAttribute('aria-current', String(el.dataset.id === id));
+    setLicences(spec);
     const dl = $('b-dl');
     if (spec.download) { dl.href = spec.download; dl.hidden = false;
       dl.title = `${spec.name}: glTF + FBX + textures + manifest`; } else dl.hidden = true;
@@ -884,6 +890,23 @@ const STEP = 0.32;      // tallest ledge walked up without a jump
 const ctl = { vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false, phase:0, speed:0,
               crouch:false, strafeOn:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0,
               turnClip:null, turnRate:1, airTime:0, snap:false, forceSpeed:null };
+function setLicences(spec) {
+  const L = spec.licences, a = $('s-lic'), box = $('lic');
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  a.hidden = !L;
+  a.onclick = (e) => {
+    e.preventDefault();
+    if (!L) return;
+    $('lic-title').textContent = spec.name + ' - what made it, and what each one allows';
+    $('lic-body').innerHTML = `<p>${esc(L.summary)}</p>` + L.components.map((k) =>
+      `<p><b>${esc(k.name)}</b> - ${esc(k.role)}<br>${esc(k.terms)}<br><span style="opacity:.7">${k.evidence ? 'Evidence: ' + esc(k.evidence) + '. ' : ''}${/^https?:/.test(k.source) ? `<a href="${esc(k.source)}" target="_blank" rel="noopener" style="color:inherit">source</a>` : esc(k.source)}${k.checked ? ', checked ' + esc(k.checked) : ''}</span></p>`).join('')
+      + `<p><b>Not assessed</b></p><ul style="margin:0 0 8px 18px">${L.not_assessed.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p style="opacity:.75">${esc(L.note)}</p>`;
+    box.hidden = false;
+  };
+  $('lic-close').onclick = (e) => { e.preventDefault(); box.hidden = true; };
+  box.hidden = true;
+}
+
 function resetController() {
   if (typeof resetSprings === 'function') resetSprings();
   Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, speed:0,

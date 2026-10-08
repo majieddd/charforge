@@ -168,8 +168,13 @@
   ({{aberr.mean.deep_frames_pct|int}}% with hair); the deepest penetration between body regions, averaged over clips,
   goes from {{b.aberrations_before_clearance.mean.body_penetration_cm}} to
   {{b.aberrations_after_clearance.mean.body_penetration_cm}} and then {{aberr.mean.body_penetration_cm}} cm
-  ([#tab-aberrations]). No character's crushed, stretched or sheared share rises, and no pop is added (one hand pop
-  already in Wren's sprint now straddles two frames). The contact solve, after it, changes those shares by at most 0.04 points - Rowan's sheared share goes from 1.71% to 1.75%, the one rise - and adds no pop. The planted feet do not move: Bo's foot slip on walk, jog, run
+  ([#tab-aberrations]). Clearance itself raised no character's crushed, stretched or sheared share and added no pop (one
+  hand pop already in Wren's sprint came to straddle two frames) [E128], and the contact solve, measured alone, changed
+  those shares by at most 0.04 points and added no pop [E151]. Against the clips after clearance, this version - the contact
+  solve with its second look and the skin weights chosen at the extreme poses ([#sec-m-rig]) - crushes fewer faces on every
+  character ({{b.aberrations_after_clearance.mean.crushed_pct}}% to {{aberr.mean.crushed_pct}}% on average); stretched faces rise on
+  four characters (Juno most, 1.29% to 1.40%), sheared on six by at most 0.05 points, and pops on three (Rivet's 7 to 13, in
+  his crouch walk and jog, not traced yet). The planted feet do not move: Bo's foot slip on walk, jog, run
   and sprint is identical to the fourth decimal before and after. The largest single turn clearance makes is
   {{aberr.min.clearance_max_deg|int}}-{{aberr.max.clearance_max_deg|int}}° per character, and armour takes the most:
   Cadet's knee plates meet at {{aberr.cadet.knee_limit_deg|int}}° of bend, so his sprint's swinging knee, bent
@@ -185,6 +190,45 @@
   moving (the limits are measured with the legs at rest), legs brushing past each other in strafes, arms through long
   hair, which is a job for the hair's own spring chains [E125], and knees through a long coat's hem, which needs the hem
   to follow the thighs.</p>
+
+<h3 id="sec-eval-stress">Extreme poses</h3>
+<p>The 18 clips never put the arms overhead or across the chest, or squat deeply, and a neutral stance hides what skinning does
+  there: practitioners' rigging guides ask for checks at extreme poses for that reason, and the open
+  reference-asset-compiler [@refassetcompiler] gates its rigging on a five-pose deformation suite [E153].
+  <code>blender/deform_suite.py</code> writes ten held poses into a copy of each rig - arms overhead, forward, across the
+  chest and behind; a deep squat; a bend with a twist; a high kick; the head turned hard; and, for the feet, on tiptoe and at
+  heel strike, added when softer weights bled a boot's ankle in a run that the first eight could not see - each turn signed by which way it
+  moves its child joint, so no knowledge of a rig's bone axes is needed, and the audit measures them like clips
+  ([#tab-stress]). Skin is mostly sound at the extremes: over {{stress.n}} characters the median stretches
+  {{stress.arms_overhead.stretched_pct.median}}% of its faces with the arms overhead and crushes
+  {{stress.arms_across.crushed_pct.median}}% with the forearms across the chest. The tail is the finding.
+  {{stress.arms_overhead.stretched_pct.max_name}} stretches {{stress.arms_overhead.stretched_pct.max}}% of its faces
+  with the arms overhead, three to four times the median, and the worst for arms forward is
+  {{stress.arms_forward.sheared_pct.max_name}} ({{stress.arms_forward.sheared_pct.max}}% sheared): the characters in loose
+  jackets and armour, at the torso and upper arm beside the armpit, where a jacket is pulled up with the arm. Penetration
+  at these poses is geometry, not skinning: the forearms across the chest go
+  {{stress.arms_across.penetration_max_cm.median}} cm into a median torso, and a thicker one takes more. Shares are of all
+  faces, so they compare only between rigs with the same face count: the face rig adds 18,196 faces to Vex's 59,617 and
+  dilutes every share by 23%.</p>
+<figure id="tab-stress">
+  <div class="tscroll"><!--TABLE:stress--></div>
+  <figcaption>The extreme-pose battery over the roster (tools/deform_suite.py, DQS, every frame of a 13-frame hold): the
+    median character and the worst one, per pose, for stretched, sheared and crushed faces, and the median deepest
+    penetration.</figcaption>
+</figure>
+<p>The battery is also what chooses each character's skin weights ([#sec-m-rig]): the default falloff and a hybrid, soft
+  on the body and default on the legs, are rigged and posed, and the hybrid is kept when it is at least 0.1 points better on
+  average and no pose is more than 0.3 worse ([#tab-weights]). It cannot choose alone. Two weightings it preferred - the
+  learned weights of Make-It-Animatable [E157] and distance measured from each part's surface [E159] - held Vex's faces
+  in shape at the extremes and in her clips let her arms sink into her jacket two to three times as often, while the second
+  improved every clip measure of Pip's; the battery's own penetration did not tell the two apart, so the clips will have to
+  decide ([#sec-roadmap]).</p>
+<figure id="tab-weights">
+  <div class="tscroll"><!--TABLE:weights--></div>
+  <figcaption>Skin weights per character: the battery's mean share of stretched, sheared and crushed faces over the ten
+    poses for the default falloff and the hybrid, which the build kept (bold), and Make-It-Animatable's learned weights
+    where they were tried (E157; not a candidate).</figcaption>
+</figure>
 
 <h3 id="sec-eval-quality">Against professionally made models</h3>
 <p>The measures above are of motion and deformation. Whether a model looks professionally made is measured by a

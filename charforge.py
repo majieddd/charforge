@@ -944,13 +944,98 @@ def face_detail(r: Run, mask):
     return out
 
 
+STRESS_POSES = ("arms_overhead", "arms_forward", "arms_across", "arms_behind", "squat", "bend_twist", "kick", "head_turn",
+                "tiptoe", "heel_strike")
+STRESS_CLIPS = ",".join(f"stress_{p}" for p in STRESS_POSES)
+WEIGHTS_SOFT = ("--power", 2, "--smooth", 30)          # against the default 4 and 6 (experiment E154)
+WEIGHTS_MARGIN = 0.10                                  # points of stretched+sheared+crushed faces a variant must save
+WEIGHTS_GUARD = 0.30                                   # ... and no pose may lose more than this against the default
+
+
+MIA_DIR = ROOT / "vendor" / "Make-It-Animatable"            # tools/setup_mia.sh builds it
+MIA_PY = MIA_DIR / ".venv" / "bin" / "python"
+
+
+def mia_ready() -> bool:
+    return MIA_PY.exists() and (MIA_DIR / "output" / "best" / "v2" / "bw_joints.pth").exists()
+
+
+def mia_weights(r: Run):
+    """Skin weights from Make-It-Animatable v2 (CVPR 2025: a transformer trained on Mixamo characters), run on the CPU in
+    its own environment (about 50 s) and folded onto the 20 body bones (experiment E157)."""
+    mesh = r.path("retopo.glb")
+    r.sh("weights_mia_infer", [MIA_PY, ROOT / "pipeline" / "mia_infer.py", "--mesh", mesh, "--out", r.work / "mia_raw.npz",
+                               "--mia-dir", MIA_DIR], cwd=MIA_DIR, keep=("[mia]",))
+    r.py("weights_mia", "mia_weights.py", "--mia", r.work / "mia_raw.npz", "--mesh", mesh, "--out", r.work / "weights_mia.npz",
+         keep=("[mia->weights]",))
+
+
+def weights_variant_score(r: Run, tag: str):
+    """Rig a variant of the weights the way the pipeline will (rig, springs, frame, T), pose the extreme poses
+    (blender/deform_suite.py) and audit them: per pose, stretched + sheared + crushed faces in %; and their mean."""
+    d = r.work / "weights_choice" / tag
+    d.mkdir(parents=True, exist_ok=True)
+    hands = ["--hands", r.path("hands.json")] if r.path("hands.json").exists() else []
+    r.bl(f"weights_rig_{tag}", "rig_build.py", "--mesh", r.path("retopo.glb"), "--joints", r.path("joints_refined.json"),
+         "--frame-from", r.path("sdf.npz"), *hands, "--weights", r.work / f"weights_{tag}.npz", "--albedo", r.path("albedo.png"),
+         "--out", d / "rig.blend", "--labels", r.path("labels.json"), keep=())
+    r.bl(f"weights_springs_{tag}", "springs.py", "--blend", d / "rig.blend", "--labels", r.path("labels.json"),
+         "--out", d / "rig_s.blend", "--json", d / "springs.json", keep=())
+    r.bl(f"weights_frame_{tag}", "normalize_frame.py", "--blend", d / "rig_s.blend", "--out", d / "rig_m.blend",
+         "--height", height_of(r), keep=())
+    r.bl(f"weights_tpose_{tag}", "tpose.py", "--blend", d / "rig_m.blend", "--out", d / "rig_t.blend",
+         *(["--keep-rest"] if option_of(r, "rest", "A") == "A" else []), keep=())
+    r.bl(f"weights_stress_{tag}", "deform_suite.py", "--blend", d / "rig_t.blend", "--out", d / "stress.blend", keep=())
+    r.bl(f"weights_audit_{tag}", "aberration_audit.py", "--blend", d / "stress.blend", "--out", d / "stress.json", "--step", 1,
+         "--bvh-step", 3, "--skin", "dqs", "--clips", STRESS_CLIPS, "--force", keep=())
+    clips = json.load(open(d / "stress.json"))["clips"]
+    per = {c[len("stress_"):]: clips[c]["stretched_pct"] + clips[c]["sheared_pct"] + clips[c]["crushed_pct"]
+           for c in clips if c.startswith("stress_")}
+    for f in ("rig.blend", "rig_s.blend", "rig_m.blend", "rig_t.blend", "stress.blend"):
+        (d / f).unlink(missing_ok=True)
+    return sum(per.values()) / max(len(per), 1), per
+
+
 def s_weights(r: Run):
     # distance through the solid as the arms were cut free of it (free_arms.py): through the
     # generated solid, a vest glued to the arm was a short walk from the arm's bone and took its weight
     solid = r.path("solid_free.npz") if r.path("solid_free.npz").exists() else r.path("solid.npz")
-    r.py("weights", "geodesic_weights.py", "--mesh", r.path("retopo.glb"), "--solid", solid,
-         "--sdf", r.path("sdf.npz"), "--joints", r.path("joints_refined.json"),
-         "--out", r.path("weights.npz"), keep=("[weights]",))
+    common = ["--mesh", r.path("retopo.glb"), "--solid", solid, "--sdf", r.path("sdf.npz"),
+              "--joints", r.path("joints_refined.json")]
+    mode = option_of(r, "skin_weights", "auto")
+    if mode == "sharp":
+        r.py("weights", "geodesic_weights.py", *common, "--out", r.path("weights.npz"), keep=("[weights]",))
+        return
+    if mode == "soft":
+        r.py("weights", "geodesic_weights.py", *common, *WEIGHTS_SOFT, "--out", r.path("weights.npz"), keep=("[weights]",))
+        return
+    if mode == "mia":
+        if not mia_ready():
+            sys.exit("--skin-weights mia needs Make-It-Animatable: run tools/setup_mia.sh")
+        mia_weights(r)
+        shutil.copy(r.work / "weights_mia.npz", r.path("weights.npz"))
+        (r.work / "weights_choice.json").write_text(json.dumps({"picked": "mia", "forced": True}))
+        return
+    # auto: a gentler falloff and more smoothing take the stretch and crush out of a loose jacket's armpit (Bo, Rowan, Cadet,
+    # Vex: overhead-arm stretching down by a third or more), and cost a tight-clothed character's arms some shear (Ren's) and,
+    # on the legs, stretch and pops in the strides (Juno's and Mara's thighs, Knight's sprint went from 2 pops to 6: E158). So each
+    # character is weighted two ways - the default, and a hybrid that is soft except where a vertex follows the legs - and the
+    # extreme poses decide (E154); the plain soft weights are an ingredient, not a candidate
+    r.py("weights", "geodesic_weights.py", *common, "--out", r.work / "weights_sharp.npz", keep=("[weights]",))
+    r.py("weights_soft", "geodesic_weights.py", *common, *WEIGHTS_SOFT, "--out", r.work / "weights_soft.npz", keep=("[weights]",))
+    r.py("weights_hybrid", "blend_weights.py", "--sharp", r.work / "weights_sharp.npz", "--soft", r.work / "weights_soft.npz",
+         "--out", r.work / "weights_hybrid.npz", keep=("[weights]",))
+    res = {t: weights_variant_score(r, t) for t in ("sharp", "hybrid")}
+    sc = {t: v[0] for t, v in res.items()}
+    base = res["sharp"][1]
+    regress = max(res["hybrid"][1][p] - base.get(p, 0.0) for p in res["hybrid"][1])
+    ok = regress <= WEIGHTS_GUARD
+    pick = "hybrid" if ok and sc["hybrid"] <= sc["sharp"] - WEIGHTS_MARGIN else "sharp"
+    print("      skin weights: extreme poses stretched+sheared+crushed " + ", ".join(f"{t} {sc[t]:.2f}%" for t in sc)
+          + f" -> {pick}" + ("" if ok else f" (hybrid lost a pose by {regress:.2f}, more than {WEIGHTS_GUARD})"), flush=True)
+    shutil.copy(r.work / f"weights_{pick}.npz", r.path("weights.npz"))
+    (r.work / "weights_choice.json").write_text(json.dumps({"scores": sc, "picked": pick, "margin": WEIGHTS_MARGIN,
+                                                           "guard": WEIGHTS_GUARD, "per_pose": {t: res[t][1] for t in res}}))
 
 
 def s_rig(r: Run):
@@ -1044,6 +1129,59 @@ def s_animate(r: Run):
         r.bl("contact_export", "export_pose.py", "--blend", r.path("final.blend"), "--out", cd, keep=("[export_pose]",))
         r.py("contact", "contact_solve.py", "--dir", cd, keep=("[contact]",))
         r.bl("contact_apply", "apply_contact.py", "--blend", r.path("final.blend"), "--dir", cd, keep=("[contact]",))
+        contact_second_look(r)
+
+
+CONTACT_RETRY_DEEP = 3.0          # % of frames with a part >2 cm inside another, above which a second look is taken
+CONTACT_CLIP_GAIN = 2.0           # points of a clip's frames the relaxed solve must clear for that clip to keep it
+
+
+def contact_audit(r: Run, blend: Path, name: str) -> dict:
+    out = r.work / f"contact_audit_{name}.json"
+    r.bl(f"contact_audit_{name}", "aberration_audit.py", "--blend", blend, "--out", out, "--step", 2, "--bvh-step", 6,
+         "--skin", "dqs", "--force", keep=("[aberr] summary",))
+    return json.load(open(out))["summary"]
+
+
+def contact_second_look(r: Run):
+    """The contact solve skips arm points that share skin weight with the torso or collar (the armpit's fold, where
+    the arm and torso are one surface), and for a thick physique that hides real penetration - Gray's biceps in his
+    lats: 100% of idle frames after the solve. Relaxing the skip (arm points only: 0.40 of shared weight) clears
+    Gray, and breaks Cadet's fist pump, where overlapping armour is built to overlap. The solver's own measure cannot tell
+    the two apart, so the audit does, clip by clip: when frames with a part >2 cm inside another are still above
+    CONTACT_RETRY_DEEP, the relaxed solve is run on top and its turns are kept for each clip whose audit finds at least
+    CONTACT_CLIP_GAIN points fewer such frames and no more crushed, stretched or sheared faces or pops (one more pop is
+    allowed where the clip loses ten times that: Gray's land went from 64% to 18% of frames with one pop more)
+    (experiments E152, E156: a whole-character choice left Cadet's walk, bow and land, Pip's, Rivet's clips unmended
+    because one clip in the set got worse)."""
+    base = contact_audit(r, r.path("final.blend"), "strict")
+    r.work.joinpath("contact_second_look.json").write_text(json.dumps({"strict": base}))
+    if base["deep_frames_pct"] <= CONTACT_RETRY_DEEP:
+        return
+    cd2, trial = r.work / "contact2", r.work / "final_contact_trial.blend"
+    r.bl("contact2_export", "export_pose.py", "--blend", r.path("final.blend"), "--out", cd2, keep=("[export_pose]",))
+    r.py("contact2", "contact_solve.py", "--dir", cd2, "--shared", 0.40, "--shared-rev", 0.10, keep=("[contact]",))
+    r.bl("contact2_apply", "apply_contact.py", "--blend", r.path("final.blend"), "--dir", cd2, "--out", trial,
+         keep=("[contact]",))
+    alt = contact_audit(r, trial, "relaxed")
+    cs = json.load(open(r.work / "contact_audit_strict.json"))["clips"]
+    cr = json.load(open(r.work / "contact_audit_relaxed.json"))["clips"]
+    keep = [c for c in cs if c in cr
+            and cr[c]["deep_frames_pct"] <= cs[c]["deep_frames_pct"] - CONTACT_CLIP_GAIN
+            and cr[c]["crushed_pct"] <= cs[c]["crushed_pct"] + 0.05 and cr[c]["stretched_pct"] <= cs[c]["stretched_pct"] + 0.05
+            and cr[c]["sheared_pct"] <= cs[c]["sheared_pct"] + 0.05
+            and cr[c]["popping_event_windows"] <= cs[c]["popping_event_windows"]
+            + (1 if cr[c]["deep_frames_pct"] <= cs[c]["deep_frames_pct"] - 10 * CONTACT_CLIP_GAIN else 0)]
+    after = sum((cr[c] if c in keep else cs[c])["deep_frames_pct"] for c in cs) / max(len(cs), 1)
+    print(f"      contact second look: relaxed solve on top, kept for {len(keep)} of {len(cs)} clips"
+          + (f" ({', '.join(keep)}); frames with a part >2 cm inside another {base['deep_frames_pct']:.1f}% -> about {after:.1f}%" if keep else ""),
+          flush=True)
+    r.work.joinpath("contact_second_look.json").write_text(json.dumps({"strict": base, "relaxed": alt, "adopted": bool(keep),
+                                                                       "clips": keep, "deep_pct_after": round(after, 3)}))
+    trial.unlink(missing_ok=True)
+    if keep:
+        r.bl("contact2_apply_clips", "apply_contact.py", "--blend", r.path("final.blend"), "--dir", cd2,
+             "--clips", ",".join(keep), keep=("[contact]",))
 
 
 def ensure_hand_calib(r: Run):
@@ -1102,7 +1240,58 @@ def s_refine(r: Run):
         r.bl("refine_apply", "apply_pose_corrections.py", "--blend", r.path("final.blend"), "--clip", clip,
              "--corr", tmp / f"{clip}_corr.npz", "--out", r.path("final.blend"), "--masks", masks, keep=("[apply]",))
         report[clip]["applied"] = True
+    refined = [c for c, v in report.items() if v.get("applied")]
+    if refined and option_of(r, "contact", "on") == "on":
+        contact_after_refine(r, refined, clips, report)
     json.dump(report, open(r.work / "refine.json", "w"), indent=1)
+
+
+def contact_after_refine(r: Run, names, clips, report):
+    """Refine re-poses a clip from a video to lie on the video, after the contact solve of the animate stage had
+    kept its arms out of the body - and a punch with the arms across the chest goes back into it. The solve is
+    run again on those clips, and kept for a clip only if the silhouette still matches the video as well as before
+    (the same IoU refine measures, at the same placement; at most 0.01 lost). E152."""
+    import numpy as np
+    cd, tmp = r.work / "contact_video", r.work / "refine"
+    blend = r.path("final.blend")
+    r.bl("contact_video_export", "export_pose.py", "--blend", blend, "--out", cd, "--clips", ",".join(names),
+         keep=("[export_pose]",))
+    r.py("contact_video", "contact_solve.py", "--dir", cd, "--clips", ",".join(names), keep=("[contact]",))
+    trial = r.work / "final_contact_trial.blend"
+    r.bl("contact_video_trial", "apply_contact.py", "--blend", blend, "--dir", cd, "--out", trial, keep=("[contact]",))
+
+    def iou_of(b, clip, tag):
+        spec = clips[clip]
+        src = Path(spec["from_video"])
+        masks, pose = src.with_name(f"{clip}_masks.npz"), src.with_name(f"{clip}_match_pose.npz")
+        calib = r.work / "joint_calib.json"
+        sk = tmp / f"{clip}_{tag}_skin.npz"
+        r.bl(f"contact_iou_skin_{tag}", "export_skin.py", "--blend", b, "--clip", clip, "--frames", len(np.load(masks)["masks"]),
+             "--points", 30000, *(["--calib", calib] if calib.exists() else []), "--out", sk, keep=("[skin]",))
+        out = tmp / f"{clip}_{tag}_iou.npz"
+        r.sh(f"contact_iou_{tag}", [sys.executable, ROOT / "pipeline" / "refine_pose.py", "--skin", sk, "--masks", masks,
+                                    "--kp", pose, "--yaw", spec["fit"]["preview_yaw_deg"], "--iters", 0, "--out", out],
+             keep=("silhouette IoU",))
+        return json.load(open(str(out).replace(".npz", ".json")))["iou_points_clip"]
+
+    for clip in names:
+        f = cd / f"contact_{clip}.npz"
+        if not f.exists():
+            continue
+        z = np.load(f)
+        if not np.abs(z["d"]).max() > 1e-6:
+            report[clip]["contact"] = {"turned": False}
+            continue
+        before, after = iou_of(blend, clip, "pre"), iou_of(trial, clip, "post")
+        keep_it = after >= before - 0.01
+        report[clip]["contact"] = {"turned": True, "iou_before": round(before, 4), "iou_after": round(after, 4),
+                                   "kept": bool(keep_it), "max_turn_deg": round(float(np.linalg.norm(z["d"], axis=-1).max()), 1)}
+        print(f"      {clip}: contact solve silhouette IoU {before:.3f} -> {after:.3f} "
+              f"({'kept' if keep_it else 'dropped: the video fit lost more than 0.01'})", flush=True)
+        if not keep_it:
+            np.savez(f, **{**{k: z[k] for k in z.files}, "d": np.zeros_like(z["d"])})
+    r.bl("contact_video_apply", "apply_contact.py", "--blend", blend, "--dir", cd, keep=("[contact]",))
+    trial.unlink(missing_ok=True)
 
 
 def s_package(r: Run):
@@ -1113,6 +1302,8 @@ def s_package(r: Run):
     args += ["--image", r.path("reference.png"), "--style", style_of(r)]
     r.bl("package", "package.py", *args,
          keep=("renamed", "glTF ->", "FBX  ->", "FBX LODs", "manifest:", "capsule:", "[pkg]    "))
+    # which models and data made this character and what their terms say, beside the package (E153)
+    r.py("provenance", "provenance.py", "--work", r.work, "--out", r.out, "--name", r.a.name, keep=("[provenance]",))
 
 
 def s_web(r: Run):
@@ -1322,6 +1513,10 @@ def main():
                    help="hunyuan (needs tools/setup_hunyuan.sh): the head made again on its own from a close crop of the "
                         "reference by Hunyuan3D 2.1's shape model - a sculpted face where the whole-figure model's has a few "
                         "rough facets, ~8 more minutes (experiment E139); none: the head as generated with the body")
+    m.add_argument("--skin-weights", dest="skin_weights", choices=("auto", "sharp", "soft", "mia"), default=None,
+                   help="auto (default): the skin weights made with the default falloff and as a hybrid (soft on the body, "
+                        "default on the legs), and the one that holds up better at the extreme poses kept (E154); sharp, soft "
+                        "or mia (Make-It-Animatable, tools/setup_mia.sh; experimental, E157) forces one")
     m.add_argument("--contact", choices=("on", "off"), default=None,
                    help="on (default): after clearance, each clip is solved against the character's own surface so "
                         "arms and hands stay out of the torso and thighs (experiment E151); off: clearance only")
