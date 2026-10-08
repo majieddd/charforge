@@ -910,7 +910,7 @@ let CR = 0.28;          // capsule radius, m - replaced by the character's own, 
 const STEP = 0.32;      // tallest ledge walked up without a jump
 const ctl = { turnOut: [], vx:0, vz:0, y:0, vy:0, facing:0, mode:'ground', t:0, took:false, phase:0, speed:0,
               crouch:false, strafeOn:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0,
-              turnClip:null, turnRate:1, airTime:0, snap:false, forceSpeed:null };
+              turnClip:null, turnRate:1, airTime:0, forceSpeed:null };
 function setLicences(spec) {
   const L = spec.licences, a = $('s-lic'), box = $('lic');
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -932,7 +932,7 @@ function resetController() {
   if (typeof resetSprings === 'function') resetSprings();
   Object.assign(ctl, { vx:0, vz:0, vy:0, mode:'ground', t:0, took:false, phase:0, speed:0,
                        crouch:false, lay:{ ground:1, turn:0, air:0, emote:0 }, cw:0, sw:0, turnClip:null,
-                       airTime:0, snap:false, turnOut: [] });
+                       airTime:0, turnOut: [] });
   for (const n in xf) delete xf[n];
   ctl.y = groundAt(rig.position.x, rig.position.z);
 }
@@ -1207,7 +1207,6 @@ function animate(dt) {
                 emote: ctl.mode === 'emote' ? 1 : 0 };
   const k = 1 - Math.exp(-dt / 0.12);
   for (const n in ctl.lay) ctl.lay[n] += (tgt[n] - ctl.lay[n]) * k;
-  ctl.snap = false;
   ctl.cw += ((ctl.crouch ? 1 : 0) - ctl.cw) * (1 - Math.exp(-dt / 0.25));
   ctl.sw += ((ctl.strafeNow ? 1 : 0) - ctl.sw) * (1 - Math.exp(-dt / 0.2));
   const G = ctl.lay.ground, C = ctl.cw, S = ctl.sw * (1 - C);
