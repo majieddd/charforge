@@ -11,9 +11,9 @@ left alone.
 
 The floor. The old softplus shoulder lifted the darkest texels but also flattened them: its slope at black was
 0.2, so the shadows of hair, shoes and dark cloth (14.7% of Mara's non-metals) lost most of their contrast, and the
-albedo's fine detail fell 16% (tools/texture_sharpness.py). --curve power (the default) lifts black to the same floor
-with a slope of --slope0 (0.4) there, rising smoothly to 1 at L* 20 and the identity above. A power-law slope never
-dips, so no two tones swap; it keeps 0.98 of the detail where the old floor kept 0.84 (tested on Mara with pipeline/tex_replay.py). --curve soft is the old shoulder, kept for comparison. The ceiling is unchanged.
+albedo's fine detail fell 16% (tools/texture_sharpness.py). --curve power (the default) lifts black to about the same floor
+(L* 11.3 against the old 13.0) with a slope of --slope0 (0.4) there, rising smoothly to 1 at L* 20 and the identity above. A power-law slope never
+dips, so no two tones swap; on Mara's albedo before the floor it keeps 0.89 of the detail where the old floor kept 0.85 (tools/texture_sharpness.py). --curve soft is the old shoulder, kept for comparison. The ceiling is unchanged.
 """
 import argparse
 
@@ -52,6 +52,9 @@ def floor_power(L, lo, slope0=0.4, L0=20.0):
     identity above it: L = lo + L0 (s0 t + (1 - s0) t^(p+1) / (p+1)), t = L / L0, with p set so that L(L0) = L0.
     The slope never falls below slope0, so no two tones swap and the shadows keep a fraction of their folds."""
     q = lo / (L0 * (1 - slope0))
+    if q > 0.95:                                     # a floor this high needs a longer ramp, or p blows up and the
+        L0 = lo / (0.95 * (1 - slope0))              # darkest texels go negative (black); the default (q 0.94) is untouched
+        q = 0.95
     p = q / (1 - q)
     t = np.clip(L / L0, 0.0, 1.0)
     return np.where(L < L0, lo + L0 * (slope0 * t + (1 - slope0) * t ** (p + 1) / (p + 1)), L)

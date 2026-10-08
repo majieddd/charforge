@@ -51,8 +51,9 @@ def ensure_maps(work: Path):
     (Blender's bakes), and copied in where missing. uv_position.npy is compared, to show the regeneration agrees."""
     import numpy as np
     texproj = work / "texproj"
-    albedos = sorted(texproj.glob("view_*_albedo.png"))
-    missing = [p for p in albedos if not (texproj / p.name.replace("_albedo.png", "_position.npy")).exists()]
+    import json
+    tags = [v["tag"] for v in json.loads((texproj / "views.json").read_text())["views"]]   # only the views in use: a
+    missing = [t for t in tags if not (texproj / f"view_{t}_position.npy").exists()]       # stale extra albedo is not one
     if not missing:
         return
     first = (work / "logs" / "texture_maps.log").read_text(errors="replace").splitlines()[0]
