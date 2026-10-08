@@ -19,6 +19,11 @@ arm or collar weight, or within 3 cm at rest of the arm point it is measured aga
 once (degrees and centimetres; Adam, 300 steps, nearest points re-found every 25):
     sum relu(margin - s)^2  +  1 * |d|^2 (twist about the bone 3x, an elbow's sideways turn 5x)
                             + 20 * |d(t+1) - d(t)|^2
+After the solve each clip's turns are smoothed over time (zero-phase Gaussian, sigma --smooth keys, 2.5 by default; 0
+turns it off). The solve is a per-frame optimisation with a hinge on depth, so frame-to-frame noise survives it: on
+cadet the raw turns took the clips' joint jerk to 1.28 times the captured motion; smoothed at 2.5 keys the contact step
+adds nothing beyond the clearance step, with the same pops, crushed, stretched and sheared faces, and fewer deep frames
+(11.5% -> 11.1% on the strict solve). Mara: 2.36 -> 1.05 times, at 1.5 keys 1.09.
 Each clip works only on the arm points and body vertices that come within 8 cm of each other somewhere in it
 (a quarter of the time on a crouch, same result); a clip with nothing within the margin of a surface is left as it was. Writes <dir>/contact_<clip>.npz: d (T, 6, 3)
 degrees, bones, and before/after counts of frames with a point deeper than 2 cm.
@@ -45,6 +50,9 @@ ap.add_argument("--shared-rev", type=float, default=0.10, help="the same, for bo
 ap.add_argument("--tag", default="", help="suffix for the output files")
 ap.add_argument("--upper-legs", type=int, default=1, help="test the upper arm against the thighs too")
 ap.add_argument("--reverse", type=int, default=1, help="also test body vertices against the arm's surface")
+ap.add_argument("--smooth", type=float, default=2.5,
+                help="Gaussian sigma, in keys, on each clip's turns after the solve (0 = off): the solve's turns carry "
+                     "per-frame noise (march, strafe, crouch idle), which is removed; the penetration audit is unchanged")
 a = ap.parse_args()
 torch.set_default_dtype(torch.float32)            # centimetres need no more; float64 doubled the time
 
@@ -317,9 +325,12 @@ for clip in clips:
         opt.zero_grad()
         loss.backward()
         opt.step()
-    with torch.no_grad():
-        after = deep_frames(arm_matrices(M, d))
     dd = d.detach().numpy()
+    if a.smooth > 0:
+        from scipy.ndimage import gaussian_filter1d
+        dd = gaussian_filter1d(dd, a.smooth, axis=0, mode="nearest").astype(np.float32)
+    with torch.no_grad():
+        after = deep_frames(arm_matrices(M, torch.from_numpy(dd)))
     mag = np.linalg.norm(dd, axis=-1)
     np.savez(os.path.join(a.dir, f"contact{a.tag}_{clip}.npz"), d=dd, bones=np.array(CHAIN), f0=C["f0"], f1=C["f1"],
              before=np.array(before), after=np.array(after))
