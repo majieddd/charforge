@@ -18,6 +18,12 @@ Input: the T-posed rig (metres) and pipeline/face_landmarks.py's landmarks. Outp
   smile      mouth corners up and out, cheeks lifted.
   brows_up   brows raised.
   pucker     mouth corners in, lips forward (the o/u visemes and a kiss).
+  ARKit names  the shapes engines and face-capture apps drive by name, built by blender/face_arkit.py
+             from the same landmarks: eyeBlinkLeft/Right (= blink_L/R), eyeWideLeft/Right,
+             eyeSquintLeft/Right, browDownLeft/Right, browInnerUp, browOuterUpLeft/Right, jawOpen (the
+             jaw bone at its open angle, as a morph), mouthSmileLeft/Right, mouthFrownLeft/Right,
+             mouthPucker (= pucker), mouthFunnel, mouthStretchLeft/Right, cheekPuff, noseSneerLeft/Right.
+             mouthClose is not built (face_arkit.py says why). The six shapes above keep their names.
 
 Shapes are built from the landmarks, measured in units of the eye distance, so the same rule
 makes a realistic face and an anime one. They are glTF morph targets in the package; the clips
@@ -32,6 +38,9 @@ import sys
 import bpy
 import numpy as np
 from mathutils import Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import face_arkit  # noqa: E402  the ARKit-named shapes (after the six below)
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
@@ -244,6 +253,7 @@ face_front = (Whead > 0.3) & (N[:, 1] < 0.2)            # head-bound, not facing
 
 # ---- jaw ---------------------------------------------------------------------------------------
 hinge = np.array([mouth[0], mouth[1] + 1.35 * ied, nose[2]])
+wj, jaw_axis, jaw_head = np.zeros(n), None, None          # set below when there is a jaw
 if not MOUTH_OK:
     print("[face] no jaw: the mouth landmarks were not trusted", flush=True)
 else:
@@ -256,6 +266,9 @@ else:
     jb.head, jb.tail = to_local(hinge), to_local(chin)
     jb.parent = eb[head_name]
     bpy.ops.object.mode_set(mode="OBJECT")
+    # the jaw bone's rest head and local X in world: jawOpen rotates the jaw's vertices about them
+    Mj = np.array(rig.matrix_world) @ np.array(rig.data.bones["jaw"].matrix_local)
+    jaw_axis, jaw_head = Mj[:3, 0].copy(), Mj[:3, 3].copy()
     f_vert = ss((mouth[2] + 0.04 * ied - V[:, 2]) / (0.10 * ied))      # 0 above the upper lip, 1 below
     f_front = ss((hinge[1] + 0.2 * ied - V[:, 1]) / (0.6 * ied))       # the face, not the back of the head
     f_side = ss((1.35 * ied - np.abs(V[:, 0] - mouth[0])) / (0.45 * ied))
@@ -315,6 +328,7 @@ def add_key(name, D):
           flush=True)
 
 
+blink_D = {}
 for side, tag in (("left", "L"), ("right", "R")):
     e = F["eyes"][side]
     E = np.array(e["centre"])
@@ -333,6 +347,7 @@ for side, tag in (("left", "L"), ("right", "R")):
     # the closing lid rides a little forward, over the eye's curve, rather than into the head
     bump = np.clip(1 - np.abs(v - 0.3) / 1.6, 0, 1)
     D[near, 1] -= 0.10 * h * fu[near] * bump[near]
+    blink_D[side] = D
     add_key(f"blink_{tag}", D)
 
 D = np.zeros((n, 3))
@@ -366,6 +381,15 @@ d = np.linalg.norm((V - mouth)[:, [0, 2]], axis=1)
 lips = np.clip(1 - (d / (0.7 * mw)) ** 2, 0, 1) ** 2 * face_front
 D[:, 1] -= 0.10 * mw * lips
 add_key("pucker", D)
+pucker_D = D
+
+# ---- ARKit names (blender/face_arkit.py): the shapes engines and face-capture apps drive by name.
+# Only the ones the landmarks support come back: eye and brow shapes need EYES_OK, mouth and jaw MOUTH_OK.
+arkit = face_arkit.build(V, N, Whead, F, ied, wj, jaw_head, jaw_axis, 18.0, EYES_OK, MOUTH_OK,
+                         blink=blink_D if EYES_OK else None, pucker=pucker_D if MOUTH_OK else None)
+for name_, D_ in arkit.items():
+    add_key(name_, D_)
+print(f"[face] ARKit names: {len(arkit)} shapes", flush=True)
 
 bpy.ops.wm.save_as_mainfile(filepath=a.out)
 json.dump({"jaw": "jaw" if MOUTH_OK else None, "morphs": made,
