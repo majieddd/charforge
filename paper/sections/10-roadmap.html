@@ -49,16 +49,19 @@
     each on its own git branch and worktree, with its own files, cloned test characters and before/after measures, so they
     cannot overwrite one another (<code>tools/lanes/setup_lane.sh</code>). The lanes:
     <ul>
-      <li>a quad-dominant game mesh from Blender's QuadriFlow, baked from the same source and checked for deformation [E163];</li>
-      <li>a sharper texture: projection blending and filtering now, and a high-resolution pass on the reference and views [E164];</li>
-      <li>Pixal3D against TRELLIS.2 on six characters, once its turned output and the slab it makes under the feet are fixed [E155];</li>
+      <li>done in 0.19: a sharper texture from the same sources [E164], clips that keep the capture's smoothness through our
+        corrections [E165], 23 ARKit-named face shapes [E166], and cross-faded clips at a fixed simulation rate in the
+        playground [E167];</li>
+      <li>dropped: a quad-dominant game mesh. Joining the triangle pairs gives quads that deform slightly worse, and Blender's
+        QuadriFlow refuses our solids [E163];</li>
+      <li>next: dense first, then down to the smallest well-shaped mesh that keeps the detail, with the budget set by an error
+        bound and an LOD ladder from the same bake - what Tripo does after generating ~1.5-2M faces [E168];</li>
+      <li>Pixal3D against TRELLIS.2 on six characters, once its turned output and the slab it makes under the feet are fixed
+        [E155];</li>
       <li>skin weights chosen by building each candidate through the clips [E161];</li>
-      <li>the smoothness our joint limits and contact solve cost the captures, measured as jerk against the source and then
-        filtered [E165];</li>
-      <li>ARKit-named face shapes in place of six [E166];</li>
-      <li>studio lighting and smooth clip transitions in the playground [E167].</li>
+      <li>a high-resolution pass on the reference and views, written and waiting on ComfyUI [E164].</li>
     </ul>
-    A first run of all seven at once stopped at a usage limit before any finished, so they now run a few at a time.</li>
+    Each lane is reviewed by a second agent that re-runs its measures before anything is merged.</li>
   <li><b>Shape and texture as clean as a professional's</b> [E132]: the audit and its baselines now exist, and this
     version spent the first round on it - the finer surface [E135], the loose shards, the hands and the skin [E138], the
     rest pose [E137] ([#sec-eval-quality]). What is left, in the order a viewer sees it: <i>faces</i> - taken part by part in
