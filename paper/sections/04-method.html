@@ -47,7 +47,15 @@
   {{boyscout.front_iou}}. It is also checked from behind: on Vex, made from a painting, TRELLIS.2 sculpted and painted a
   second face on the back of her head, which nothing later looked at. DWPose [@dwpose] reads a face on the back of an
   ordinary head at 0.34-0.55 - a ghost of one in any hair - and on hers at 0.97; above 0.8 the model is made again on
-  another seed [E145].</p>
+  another seed [E145].
+<p><b>Pixal3D, on request [E155].</b> Pixal3D [@pixal3d] conditions the same backbone on image features carried along
+  the camera's rays, so the shape lines up with the picture. Run through its Apple Silicon port on six of our references
+  with the same gates, it matches the picture's front silhouette better on all six (IoU 0.921 &rarr; 0.949 on average) and
+  comes out as one closed piece with a quieter surface and clean armour and cloth edges, where TRELLIS.2's first pass is
+  40-409 pieces. It is worse where the gates do not look: the mirror symmetry of five of six, black eyes on two, a face on
+  the back of the head read higher on two, and two to three times the time. So it is an option
+  (<code>--generator pixal3d</code>), turned to face our cameras and welded at the import's seams before it is
+  decimated, and TRELLIS.2 stays the default.</p>
 <figure id="fig-board">
   <img src="media/prompts_board.webp" width="1218" height="300" alt="TRELLIS's first pass from the front for four characters: Gray is a flat grey board hiding the figure, Knight has a board behind him, Kaito a board through his legs, Bo is clean">
   <figcaption>A backdrop built into the model: TRELLIS's first pass from the front, labelled with the silhouette IoU
