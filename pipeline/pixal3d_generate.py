@@ -38,7 +38,7 @@ TPY = ROOT / "vendor" / "trellis2mlx" / ".venv" / "bin" / "python"   # DWPose ru
 TIME = "/usr/bin/time"
 HEIGHT = 0.99                                           # pass1's height: 0.978-1.000 over the six TRELLIS.2 pass1 meshes (mean 0.989)
 FACES = 1_000_000                                       # pass1's size: TRELLIS.2 is run with --target-faces 1,000,000
-TURN = 180.0                                            # the raw output faces away from azimuth 0: on the six E155 characters the turned face reads 0.91-1.02 on the front and 0.18-0.37 on the back
+TURN = 180.0                                            # the raw output faces away from azimuth 0: on the six E155 characters the turned face reads 0.89-1.03 on the front and 0.17-0.51 on the back
 
 
 def _charforge():
@@ -155,12 +155,16 @@ def generate(r) -> None:
     cf = _charforge()
     out = r.path("pass1.glb")
     (r.work / "generate.json").unlink(missing_ok=True)
-    picture, mask = r.path("reference.png"), r.path("reference_mask.png")
+    # the cut-out: Qwen-made references come with one; a picture given with --image or drawn by Krea gets it from the
+    # generation stage's background remover, as the texture stage does (charforge.reference_mask)
+    picture, mask = r.path("reference.png"), cf.reference_mask(r)
+    if not mask.exists():
+        raise SystemExit("Pixal3D needs the reference's cut-out (reference_mask.png) and the background remover is not set up")
     best = None
     tries = [r.a.seed, r.a.seed + 1000]
     for k, seed in enumerate(tries):
-        tag = f"pixal3d_s{seed}"
-        raw, fixed = r.work / f"{tag}.glb", r.work / f"pass1_{tag}.glb"
+        tag = f"pass1_pixal3d_s{seed}"            # gate/<tag>: the folder the head swap reads (generate.json's input)
+        raw, fixed = r.work / f"pixal3d_s{seed}.glb", r.work / f"{tag}.glb"
         produce(picture, mask, raw, fixed, seed)
         iou = cf.front_iou(r, fixed, tag)
         print(f"      front silhouette on the reference: IoU {iou:.2f} (Pixal3D single view, seed {seed})", flush=True)
@@ -180,7 +184,7 @@ def generate(r) -> None:
     if iou < cf.FRONT_IOU_MIN:
         print(f"      no try matches from the front: keeping the closest (IoU {iou:.2f}, seed {seed})", flush=True)
     shutil.copy(fixed, out)
-    json.dump({"seed": seed, "front_iou": round(iou, 3), "input": "pixal3d-sv", "generator": "pixal3d"},
+    json.dump({"seed": seed, "front_iou": round(iou, 3), "input": "pixal3d", "generator": "pixal3d"},
               open(r.work / "generate.json", "w"))
 
 
