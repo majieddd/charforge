@@ -50,9 +50,38 @@ ap.add_argument("--labels", default=None, help="labels.json - accessories bind t
 ap.add_argument("--loose-max-share", type=float, default=1.0,
                 help="a loose piece larger than this share of the vertices keeps its own weights instead of riding "
                      "rigidly with the body part nearest it (1.0: every piece rides; a layered character, E149, 0.005)")
+ap.add_argument("--colour-blur", type=float, default=float(os.environ.get("CF_COLOUR_BLUR", "0")),
+                help="sigma, in texels of the 1024 albedo, of a Gaussian low-pass applied before the garment colour is "
+                     "read at each vertex (0: the texel at the vertex's UV, as before). Default 0, or the environment "
+                     "variable CF_COLOUR_BLUR, which reaches charforge's rig stage (the trials of weights2 use it)")
+ap.add_argument("--dump-weights", default=None,
+                help="also write the final per-vertex weights (the groups written, top influences renormalised) to this "
+                     ".npz: bones and weight (vertices x bones). Used to measure a colour-read change (weights2)")
 a = ap.parse_args(argv)
 
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
+
+
+def gauss_lowpass(img, sigma):
+    """A separable Gaussian blur of an (H, W, C) image, edge-clamped (the atlas is not periodic), in numpy so that it runs
+    inside Blender's Python without scipy."""
+    r = int(np.ceil(3.0 * sigma))
+    x = np.arange(-r, r + 1, dtype=np.float64)
+    k = np.exp(-0.5 * (x / sigma) ** 2)
+    k /= k.sum()
+    out = img.astype(np.float64)
+    for ax in (0, 1):
+        pad = [(0, 0)] * out.ndim
+        pad[ax] = (r, r)
+        p = np.pad(out, pad, mode="edge")
+        n_ = out.shape[ax]
+        acc = np.zeros_like(out)
+        for i, kv in enumerate(k):
+            sl = [slice(None)] * out.ndim
+            sl[ax] = slice(i, i + n_)
+            acc += kv * p[tuple(sl)]
+        out = acc
+    return out
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=a.mesh)
@@ -194,6 +223,10 @@ if a.albedo and os.path.exists(a.albedo) and mesh.data.uv_layers:
     smp.pixels.foreach_get(px_)
     px_ = px_.reshape(1024, 1024, 4)[..., :3]
     bpy.data.images.remove(smp)
+    if a.colour_blur > 0:
+        # the garment colour is the texture's colour field, not its texels: a sharper albedo (E164) moved a few hundred
+        # vertices between garments at a point sample, and the armhole and hem rules followed (weights2)
+        px_ = gauss_lowpass(px_, a.colour_blur)
     luv_ = np.empty(len(mesh.data.loops) * 2)
     mesh.data.uv_layers.active.data.foreach_get("uv", luv_)
     lvi_ = np.empty(len(mesh.data.loops), np.int64)
@@ -727,6 +760,8 @@ rows = np.arange(n)[:, None]
 keep[rows, order] = W[rows, order]
 keep /= np.maximum(keep.sum(1, keepdims=True), 1e-9)
 unweighted = int((keep.sum(1) < 1e-6).sum())
+if a.dump_weights:
+    np.savez_compressed(a.dump_weights, bones=np.array(names), weight=keep.astype(np.float32))
 mesh.vertex_groups.clear()
 for c, nm in enumerate(names):
     vg = mesh.vertex_groups.new(name=nm)
