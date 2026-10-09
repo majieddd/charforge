@@ -271,7 +271,7 @@
       <div class="fact"><div class="v">48% → 5%</div><div class="k">of frames with one body part more than 2 cm inside another, on 13 characters: every clip now held inside joint limits measured on each character's own mesh</div></div>
       <div class="fact"><div class="v">48% → 1%</div><div class="k">of Cadet's frames with a boot under the floor - the shoe the viewer sees is the one planted now, every vertex of it</div></div>
       <div class="fact"><div class="v">5 moves <small>from 5 sentences</small></div><div class="k">the motion library lacks, made for Cadet on his own skeleton by UniMate - about 25 s each on the GPU</div></div>
-      <div class="fact"><div class="v">1,529 → 8 <small>faces</small></div><div class="k">of Pip's texture sharing texels with another surface - his vest's paint on his sleeves. Every character had 224–2,602; now 6–31</div></div>
+      <div class="fact"><div class="v">1,529 → 9 <small>faces</small></div><div class="k">of Pip's texture sharing texels with another surface - his vest's paint on his sleeves. Every character had 224–2,602; now 0–9</div></div>
       <div class="fact"><div class="v">wings → none</div><div class="k">Pip's vest stays on his torso with his arms overhead; the rig's rule for it had never acted - its flood walked onto the vest</div></div>
       <div class="fact"><div class="v">Studio <small>:8830</small></div><div class="k">make, watch, turn round and walk your own characters in a local app - <span class="mono">python charforge.py studio</span></div></div>
       <div class="fact"><div class="v">4 new</div><div class="k">characters made with the pipeline as it is now - Knight, Kaito, Bo and Cadet</div></div>
@@ -605,7 +605,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
       <div class="txt">
         <div class="tag">the rig</div>
         <h3>Pip's vest no longer lifts into wings</h3>
-        <div class="num">555 + 1,280 <small>vest vertices now let go of the arms (before: 0 and 5)</small></div>
+        <div class="num">1,190 + 1,236 <small>vest vertices now let go of the arms (before: 0 and 5)</small></div>
         <p>Three causes, stacked. The 3D model glued his arms to the vest's sides - now cut free below the armpit. The rig's
          rule that keeps an arm's weight on the arm floods the arm's own surface from the sleeve's outside, and it started
          at the very slab where the cut opens, where sleeve and vest are still one surface: it walked onto the vest on both
@@ -632,7 +632,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
       <div class="txt">
         <div class="tag">the texture</div>
         <h3>No garment carries another's paint</h3>
-        <div class="num">224–2,602 → 6–31 <small>faces sharing texels, per character</small></div>
+        <div class="num">224–2,602 → 0–9 <small>faces sharing texels, per character</small></div>
         <p>The patches looked like a projection error, and three rounds of fixes to the projection changed nothing. The cause
          was the UV layout: unwrapped on a smoothed copy of the mesh, islands folded onto themselves wherever it curls, and
          two surfaces painted the same texels - 1,529 faces on Pip, 2,602 on Vex. Repacking cannot part an island
@@ -670,7 +670,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
       <div class="txt">
         <div class="tag">the rig</div>
         <h3>A jacket's hem follows the hips, not the thighs</h3>
-        <div class="num">1,118 <small>vertices of Juno's jacket moved from the thighs to the pelvis</small></div>
+        <div class="num">1,453 <small>vertices of Juno's jacket moved from the thighs to the pelvis</small></div>
         <p>The lowest part of Pip's vest carried half its weight on his thighs (median 0.50), and spreading the legs in a
          jump pulled its hem into a W; Juno's windbreaker wrapped round her thighs in a squat. Where the torso's colours and
          the upper thighs' differ, the upper garment near the hips follows the pelvis, and a long jacket still rides on the
@@ -708,7 +708,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
       <div class="txt">
         <div class="tag">the move</div>
         <h3>Elbows no longer fold back through the arm</h3>
-        <div class="num">176° → 150° <small>her most folded elbow in the spell; the motion library's reach 159° at most</small></div>
+        <div class="num">176° → 144° <small>her most folded elbow in the spell; the motion library's reach 159° at most</small></div>
         <p>In her spell cast Aoi presses her hands together in front of her chest, elbows out. One camera cannot say how far a
     bone reaches toward it, so the fit takes each bone's depth from its length in the image - up to a sign - and it took the
     matched capture's side for her upper arm: tipped back. The elbow came out folded to 176°, the forearm back through
@@ -716,9 +716,9 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
     score caught it: the pose model read those sleeve ends as her hands.</p>
     <p>The fit now chooses an upper arm's side and its forearm's together. An elbow folded past 150-160° costs - the motion
     library's pass 150° in 0.05% of frames - and so does a wrist within the chest's width and height put behind the torso,
-    as 1% of the library's such wrists are. That alone brought this elbow to 150°: where the video shows an upper arm at
+    as 1% of the library's such wrists are. That alone brought this elbow to 145°: where the video shows an upper arm at
     its full length there is no side left to choose (the pose model puts her elbow at the outside of a puffy sleeve). So the
-    refine stage also holds every elbow under 150°: 150°, with the silhouette and the hands where they were. On 40
+    refine stage also holds every elbow under 150°: 144°, with the silhouette and the hands where they were. On 40
     library moves it had never seen, the new fit is as close as the old (0.212 → 0.211 torso lengths).</p>
       </div>
     </article>
@@ -765,14 +765,14 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
     <div class="facts">
       <div class="fact"><div class="v">2.72 · 1.52 · 2.71 <small>%</small></div><div class="k">of faces crushed, stretched and sheared, averaged over every clip of 13 characters - most of the crushed ones out of sight, under an arm</div></div>
       <div class="fact"><div class="v">48% → 5%</div><div class="k">of frames with one body part more than 2 cm inside another - the commonest fault - before and after the joint limits</div></div>
-      <div class="fact"><div class="v">3.89 → 1.22 cm</div><div class="k">the deepest one part goes into another, averaged over clips; crushed, stretched and sheared shares unchanged</div></div>
+      <div class="fact"><div class="v">3.89 → 1.28 cm</div><div class="k">the deepest one part goes into another, averaged over clips; crushed, stretched and sheared shares unchanged</div></div>
     </div>
     <article class="fix">
       <img src="media/clearance_bo.webp" alt="Bo in idle, strafe and sprint before and after: before, his forearms sink into the sides of his chef's jacket and his raised heel folds into the back of his thigh; after, his arms hang just clear of the jacket and the raised leg bends less" width="1560" height="1096" loading="lazy">
       <div class="txt">
         <div class="tag">the clips</div>
         <h3>Limbs keep out of each other</h3>
-        <div class="num">9–54° <small>the largest single correction per character; armour takes the most - Cadet's sprint, his knee plates meeting at 105°</small></div>
+        <div class="num">7–53° <small>the largest single correction per character; armour takes the most - Cadet's sprint, his knee plates meeting at 105°</small></div>
         <p>A capture was performed by one person of one build. On a thicker character the same joint angles put a forearm
          inside a puffy sleeve and a heel into a thigh, and hang the arms inside a wide torso. Each character's elbows, knees
          and shoulders are now bent on its own mesh, 5° at a time, until one part goes 2 cm into another, and every clip
@@ -818,7 +818,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
         <div class="body">
           <div class="title"><h3>Knight</h3><span class="chip">realistic</span></div>
           <p class="prompt">"a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots"</p>
-          <dl class="kv"><dt>height</dt><dd>1.80 m</dd><dt>triangles</dt><dd>67,380</dd><dt>made in</dt><dd>about 35 min</dd><dt>notes</dt><dd style="font-family:var(--sans)">Three failures on the way, each now a rule: macOS stopped his 3D model on the GPU (it is evaluated in smaller pieces now); his armour's texture failed the web build's quality gate (it steps up the quality instead); and TRELLIS built the picture's backdrop into his model as a board, which the later stages cut into grey sheets hanging from his arms - made again through TRELLIS's own background remover, it has none. Last, his face: his picture's would not lie on his model's, and went on unaligned with every feature twice; his generator's own face is kept now, and with eyes it can find, the face stage gave him blinks and a jaw.</dd></dl>
+          <dl class="kv"><dt>height</dt><dd>1.80 m</dd><dt>triangles</dt><dd>61,953</dd><dt>made in</dt><dd>about 35 min</dd><dt>notes</dt><dd style="font-family:var(--sans)">Three failures on the way, each now a rule: macOS stopped his 3D model on the GPU (it is evaluated in smaller pieces now); his armour's texture failed the web build's quality gate (it steps up the quality instead); and TRELLIS built the picture's backdrop into his model as a board, which the later stages cut into grey sheets hanging from his arms - made again through TRELLIS's own background remover, it has none. Last, his face: his picture's would not lie on his model's, and went on unaligned with every feature twice; his generator's own face is kept now, and with eyes it can find, the face stage gave him blinks and a jaw.</dd></dl>
           <div class="refrow"><figure><img src="media/cast_knight_ref.webp" alt="Knight's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_knight_rest.webp" alt="Knight at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_knight_jump.webp" alt="Knight mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
         </div>
       </article><article class="who">
@@ -826,7 +826,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
         <div class="body">
           <div class="title"><h3>Kaito</h3><span class="chip">anime</span></div>
           <p class="prompt">"an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots"</p>
-          <dl class="kv"><dt>height</dt><dd>1.70 m</dd><dt>triangles</dt><dd>72,646</dd><dt>made in</dt><dd>49 min, sharing the GPU</dd><dt>notes</dt><dd style="font-family:var(--sans)">His first model was 40 pieces: the picture's backdrop built into it as a board through his legs (front match 0.35), his boots' inner toes and hair spikes detached. Made again from the picture with its background cut away (0.91), it is one solid - 7 specks of 80 vertices ride with the part nearest them - and his open sandals have whole toes.</dd></dl>
+          <dl class="kv"><dt>height</dt><dd>1.70 m</dd><dt>triangles</dt><dd>98,781</dd><dt>made in</dt><dd>49 min, sharing the GPU</dd><dt>notes</dt><dd style="font-family:var(--sans)">His first model was 40 pieces: the picture's backdrop built into it as a board through his legs (front match 0.35), his boots' inner toes and hair spikes detached. Made again from the picture with its background cut away (0.91), it is one solid - 7 specks of 80 vertices ride with the part nearest them - and his open sandals have whole toes.</dd></dl>
           <div class="refrow"><figure><img src="media/cast_kaito_ref.webp" alt="Kaito's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_kaito_rest.webp" alt="Kaito at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_kaito_jump.webp" alt="Kaito mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
         </div>
       </article><article class="who">
@@ -834,7 +834,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
         <div class="body">
           <div class="title"><h3>Bo</h3><span class="chip">stylised</span></div>
           <p class="prompt">"a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs"</p>
-          <dl class="kv"><dt>height</dt><dd>1.60 m</dd><dt>triangles</dt><dd>59,981</dd><dt>made in</dt><dd>about 35 min</dd><dt>notes</dt><dd style="font-family:var(--sans)">His first reference had his fists on his hips; the model fused them and shredded his hands at his belt. The new reference check rejects that picture and draws him again.</dd></dl>
+          <dl class="kv"><dt>height</dt><dd>1.60 m</dd><dt>triangles</dt><dd>59,894</dd><dt>made in</dt><dd>about 35 min</dd><dt>notes</dt><dd style="font-family:var(--sans)">His first reference had his fists on his hips; the model fused them and shredded his hands at his belt. The new reference check rejects that picture and draws him again.</dd></dl>
           <div class="refrow"><figure><img src="media/cast_bo_ref.webp" alt="Bo's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_bo_rest.webp" alt="Bo at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_bo_jump.webp" alt="Bo mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
         </div>
       </article><article class="who">
@@ -842,7 +842,7 @@ python tools/unimate_moves.py --name cadet --pick salute=1 --rebuild     # or th
         <div class="body">
           <div class="title"><h3>Cadet</h3><span class="chip">stylised</span></div>
           <p class="prompt">"a fresh-faced young space marine, about 19 years old, short messy brown hair, in chunky rounded sci-fi power armour: teal-blue armour plates with white trim, a dark grey flexible undersuit showing at the elbows, knees and waist, big rounded shoulder pads, sturdy armoured boots, plain smooth armour with no emblems, no insignia, no logos, no skulls and no markings"</p>
-          <dl class="kv"><dt>height</dt><dd>1.75 m</dd><dt>triangles</dt><dd>78,006</dd><dt>made in</dt><dd>about an hour</dd><dt>notes</dt><dd style="font-family:var(--sans)">A young space marine with the emblems left off, from a few words in the Studio, written out by the local model. Two faults on the way, each now fixed for every character: "about 19 years old" was read as an elder (the word "old"), and his armoured boots went through the floor while the solve reported them planted (<a href="#aberr">Aberrations</a>). The texture stage took 20 of his minutes, slowed by memory swapping. The first character with moves from words (<a href="#words">below</a>).</dd></dl>
+          <dl class="kv"><dt>height</dt><dd>1.75 m</dd><dt>triangles</dt><dd>96,880</dd><dt>made in</dt><dd>about an hour</dd><dt>notes</dt><dd style="font-family:var(--sans)">A young space marine with the emblems left off, from a few words in the Studio, written out by the local model. Two faults on the way, each now fixed for every character: "about 19 years old" was read as an elder (the word "old"), and his armoured boots went through the floor while the solve reported them planted (<a href="#aberr">Aberrations</a>). The texture stage took 20 of his minutes, slowed by memory swapping. The first character with moves from words (<a href="#words">below</a>).</dd></dl>
           <div class="refrow"><figure><img src="media/cast_cadet_ref.webp" alt="Cadet's reference image" width="400" height="400" loading="lazy"><figcaption>reference</figcaption></figure><figure><img src="media/cast_cadet_rest.webp" alt="Cadet at rest" width="400" height="400" loading="lazy"><figcaption>model</figcaption></figure><figure><img src="media/cast_cadet_jump.webp" alt="Cadet mid-jump" width="400" height="400" loading="lazy"><figcaption>jump</figcaption></figure></div>
         </div>
       </article></div>

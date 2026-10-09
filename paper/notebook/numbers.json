@@ -2,24 +2,24 @@
  "uv": {
   "pip": [
    1529,
-   8
+   9
   ],
   "vex": [
    2602,
-   30
+   0
   ],
   "min_before": 224,
   "max_before": 2602,
-  "min_after": 6,
-  "max_after": 31
+  "min_after": 0,
+  "max_after": 9
  },
  "pip_rules": {
-  "left_let_go": 555,
-  "right_let_go": 1280
+  "left_let_go": 1190,
+  "right_let_go": 1236
  },
  "hem": {
-  "juno3": 1118,
-  "pip": 816
+  "juno3": 1453,
+  "pip": 931
  },
  "cast_count": 4,
  "cast_names": "Knight, Kaito, Bo and Cadet",
@@ -33,7 +33,7 @@
    "video": "cast_knight.mp4",
    "prompt": "a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots",
    "height": "1.80 m",
-   "tris": "67,380",
+   "tris": "61,953",
    "time": "about 35 min",
    "notes": "Three failures on the way, each now a rule: macOS stopped his 3D model on the GPU (it is evaluated in smaller pieces now); his armour's texture failed the web build's quality gate (it steps up the quality instead); and TRELLIS built the picture's backdrop into his model as a board, which the later stages cut into grey sheets hanging from his arms - made again through TRELLIS's own background remover, it has none. Last, his face: his picture's would not lie on his model's, and went on unaligned with every feature twice; his generator's own face is kept now, and with eyes it can find, the face stage gave him blinks and a jaw.",
    "refs": [
@@ -60,7 +60,7 @@
    "video": "cast_kaito.mp4",
    "prompt": "an anime ninja boy with spiky black hair, a long red scarf, a fitted dark blue jacket with a belt, black trousers wrapped at the shins and split-toe boots",
    "height": "1.70 m",
-   "tris": "72,646",
+   "tris": "98,781",
    "time": "49 min, sharing the GPU",
    "notes": "His first model was 40 pieces: the picture's backdrop built into it as a board through his legs (front match 0.35), his boots' inner toes and hair spikes detached. Made again from the picture with its background cut away (0.91), it is one solid - 7 specks of 80 vertices ride with the part nearest them - and his open sandals have whole toes.",
    "refs": [
@@ -87,7 +87,7 @@
    "video": "cast_bo.mp4",
    "prompt": "a cheerful cartoon chef with a tall white chef's hat, round glasses and a thick moustache, a white double-breasted chef jacket, black-and-white checked trousers and red clogs",
    "height": "1.60 m",
-   "tris": "59,981",
+   "tris": "59,894",
    "time": "about 35 min",
    "notes": "His first reference had his fists on his hips; the model fused them and shredded his hands at his belt. The new reference check rejects that picture and draws him again.",
    "refs": [
@@ -114,7 +114,7 @@
    "video": "cast_cadet.mp4",
    "prompt": "a fresh-faced young space marine, about 19 years old, short messy brown hair, in chunky rounded sci-fi power armour: teal-blue armour plates with white trim, a dark grey flexible undersuit showing at the elbows, knees and waist, big rounded shoulder pads, sturdy armoured boots, plain smooth armour with no emblems, no insignia, no logos, no skulls and no markings",
    "height": "1.75 m",
-   "tris": "78,006",
+   "tris": "96,880",
    "time": "about an hour",
    "notes": "A young space marine with the emblems left off, from a few words in the Studio, written out by the local model. Two faults on the way, each now fixed for every character: \"about 19 years old\" was read as an elder (the word \"old\"), and his armoured boots went through the floor while the solve reported them planted (<a href=\"#aberr\">Aberrations</a>). The texture stage took 20 of his minutes, slowed by memory swapping. The first character with moves from words (<a href=\"#words\">below</a>).",
    "refs": [
@@ -176,8 +176,8 @@
  },
  "elbow": {
   "before": 176,
-  "fit": 150,
-  "after": 150,
+  "fit": 145,
+  "after": 144,
   "frames_fit": 0,
   "frames_after": 0
  },

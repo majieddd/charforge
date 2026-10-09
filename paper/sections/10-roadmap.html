@@ -54,8 +54,10 @@
         playground [E167];</li>
       <li>dropped: a quad-dominant game mesh. Joining the triangle pairs gives quads that deform slightly worse, and Blender's
         QuadriFlow refuses our solids [E163];</li>
-      <li>next: dense first, then down to the smallest well-shaped mesh that keeps the detail, with the budget set by an error
-        bound and an LOD ladder from the same bake - what Tripo does after generating ~1.5-2M faces [E168];</li>
+      <li>dense first, then down to the smallest mesh that keeps the detail - what Tripo does after generating ~1.5-2M faces
+        [E168]. Measured so far: an isotropic remesh at the same 60k makes far better-shaped triangles but sits 6-8 times
+        further from the surface than our collapse decimation, so the decimation stays; next, the budget set per character by
+        that distance, and an LOD ladder from the same bake;</li>
       <li>done: Pixal3D against TRELLIS.2 on six characters - an option with a better silhouette and a cleaner surface,
         not the default for its eyes and symmetry [E155];</li>
       <li>done: a judge that builds a weight candidate through the clips; it rejects the surface-relative weights on all four
