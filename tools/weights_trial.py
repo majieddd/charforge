@@ -26,7 +26,7 @@ Stages after animate (refine, package, web) are not run: refine only changes vid
 are built with the same range, so the comparison is like for like.
 
 Tolerances (points of frames or faces, pops as counts, penetration in cm). A regression is a rise beyond the
-tolerance. The keep rule: no global regression, no clip regression, and at least one clear global gain.
+tolerance; a clip's deep-frame tolerance is at least one sampled frame (100 / samples points). The keep rule: no global regression, no clip regression, and at least one clear global gain.
 """
 from __future__ import annotations
 
@@ -136,7 +136,13 @@ def compare(ctl_sum, ctl_clips, tr_sum, tr_clips):
         d = {k: round(tr_clips[c][k] - ctl_clips[c][k], 3) for k in CLIP_KEYS}
         per[c] = {"control": {k: ctl_clips[c][k] for k in CLIP_KEYS}, "trial": {k: tr_clips[c][k] for k in CLIP_KEYS},
                   "diff": d}
-        bad = [k for k in CLIP_KEYS if d[k] > CLIP_TOL[k]]
+        # a clip's deep share moves in steps of one sampled frame (the audit tests penetration every bvh step, so sprint's
+        # 33 frames are 11 samples, 9.1 points each): one sample's flip is within the resolution, not a regression
+        tol = dict(CLIP_TOL)
+        n = len(tr_clips[c].get("bvh_sample_frames") or []) or len(ctl_clips[c].get("bvh_sample_frames") or [])
+        if n:
+            tol["deep_frames_pct"] = max(tol["deep_frames_pct"], 100.0 / n + 0.01)   # + rounding of the diff
+        bad = [k for k in CLIP_KEYS if d[k] > tol[k]]
         good = [k for k in CLIP_GAIN if -d[k] >= CLIP_GAIN[k]]
         if bad:
             reg_c.append({"clip": c, "measures": {k: d[k] for k in bad}, "pairs": pair_rises(ctl_clips[c], tr_clips[c])})
