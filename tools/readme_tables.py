@@ -32,8 +32,8 @@ def roster(cfg):
         face = m.get("face") or {}
         morphs = face.get("morphs", [])
         parts = (["jaw"] if face.get("jaw_bone") else []) + [x.replace("_L", "").replace("_R", "")
-                                                              for x in morphs if x == x.lower()]
-        arkit = sum(1 for x in morphs if x != x.lower())     # the ARKit-named shapes (camelCase, E166): counted, not listed
+                                                              for x in morphs if "_" in x or x == x.lower()]
+        arkit = sum(1 for x in morphs if "_" not in x and x != x.lower())   # ARKit names (camelCase, E166): counted, not listed
         face_s = ", ".join(dict.fromkeys(parts)) + (f" + {arkit} ARKit" if arkit else "") or "-"
         # a character made since the release is built here but has no download yet ("released": false)
         pkg = f"[{c['id']}.zip]({rel}/{c['id']}.zip)" if c.get("released", True) else "not in a release yet"
