@@ -8,11 +8,21 @@
   }
  ],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.19",
+ "version": "0.20",
  "date": "2026-10-09",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
  "changelog": [
+  {
+   "version": "0.20",
+   "date": "2026-10-09",
+   "changes": [
+    "Pip's arms through the clips (E171): 0.19's sharper texture had tipped his weights to the default by 0.005 under the battery's margin (the colour rules read the texture). Of the variants judged through his clips, soft weights on the arm-bound vertices only (--skin-weights armsoft) take his frames with a part more than 2 cm inside another from 6.9% to 3.9% (0.18: 5.5%), crushed faces 0.83 -> 0.75%, sheared 1.62 -> 1.57%, the deepest point 1.68 -> 1.57 cm, and shrink the vest's wings under his raised arms. The clip judge's tolerance is now at least one sampled frame per clip, the audit's own resolution.",
+    "A level mouth cut where a mouth is seen a little from the side (E170): Knight's folds on jawOpen 121 -> 95, the pouch from nose to cheek gone; Aoi 42 -> 36; the scout's worst edge stretch 254x -> 15x; their clip audits unchanged. Kaito's worse 0.19 audit was a counting effect - more small faces where his face moves - not worse deformation.",
+    "The black marks on Rowan's jacket traced (E169): not paint but the band of air the arm cut leaves round a freed arm, whose mouth runs up the back of the shoulder; a wider band halves the slot's vertices but not the marks, so the fix is open. Rowan's and Mara's left hands ship as a separate shell that the hands check misses.",
+    "Dense first, then down (E168): the triangle budget that keeps the surface within 0.35 mm is 40k (Pip) to 90k (Cadet's armour); the shipped LODs reuse the full mesh's normal map and are 17-44 deg off, where LODs from the solid with their own maps stay at 8-17 deg. Tools: tools/budget_sweep.py, blender/lod_export.py."
+   ]
+  },
   {
    "version": "0.19",
    "date": "2026-10-09",

@@ -87,9 +87,9 @@
    "from_image": false,
    "height_m": 1.2,
    "triangles_lods": [
-    91510,
-    36603,
-    13726
+    91460,
+    36584,
+    13719
    ],
    "bones": 64,
    "clips": 18,
@@ -385,9 +385,9 @@
    "from_image": false,
    "height_m": 1.8,
    "triangles_lods": [
-    61953,
-    24781,
-    9292
+    61927,
+    24769,
+    9289
    ],
    "bones": 64,
    "clips": 18,
@@ -1957,8 +1957,8 @@
    "misread_frames": [],
    "joints_trusted": 0.07,
    "roundtrip_cm": 3.97,
-   "iou_refine_clip": 0.769,
-   "iou_refine_refined": 0.855,
+   "iou_refine_clip": 0.765,
+   "iou_refine_refined": 0.854,
    "worst_elbow_deg": 130.3,
    "worst_knee_deg": 90.1
   }
@@ -2361,15 +2361,15 @@
    "skin": "dqs",
    "clips": 19,
    "crushed_pct": 0.821,
-   "stretched_pct": 1.088,
-   "sheared_pct": 1.276,
+   "stretched_pct": 1.09,
+   "sheared_pct": 1.278,
    "penetration_max_cm": 2.107,
    "body_penetration_cm": 1.41,
    "deep_frames_pct": 10.284,
    "deep_body_frames_pct": 4.484,
    "penetration_body_max_cm": 1.412,
    "popping_windows": 5,
-   "exposed_crushed_pct": 42.095,
+   "exposed_crushed_pct": 42.091,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2420,10 +2420,10 @@
   "boyscout": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.814,
-   "stretched_pct": 1.194,
-   "sheared_pct": 1.359,
-   "penetration_max_cm": 0.703,
+   "crushed_pct": 0.815,
+   "stretched_pct": 1.193,
+   "sheared_pct": 1.358,
+   "penetration_max_cm": 0.702,
    "body_penetration_cm": 0.45,
    "deep_frames_pct": 1.389,
    "deep_body_frames_pct": 0.0,
@@ -2600,16 +2600,16 @@
   "knight": {
    "skin": "dqs",
    "clips": 18,
-   "crushed_pct": 0.791,
-   "stretched_pct": 1.283,
-   "sheared_pct": 1.662,
-   "penetration_max_cm": 0.886,
+   "crushed_pct": 0.792,
+   "stretched_pct": 1.294,
+   "sheared_pct": 1.671,
+   "penetration_max_cm": 0.887,
    "body_penetration_cm": 0.89,
    "deep_frames_pct": 1.133,
    "deep_body_frames_pct": 1.133,
-   "penetration_body_max_cm": 0.886,
+   "penetration_body_max_cm": 0.887,
    "popping_windows": 2,
-   "exposed_crushed_pct": 38.003,
+   "exposed_crushed_pct": 37.977,
    "worst_clips": [
     "crouch_walk",
     "sprint"
@@ -2690,16 +2690,16 @@
   "pip": {
    "skin": "dqs",
    "clips": 19,
-   "crushed_pct": 0.831,
-   "stretched_pct": 2.025,
-   "sheared_pct": 1.618,
-   "penetration_max_cm": 1.677,
-   "body_penetration_cm": 1.62,
-   "deep_frames_pct": 6.889,
-   "deep_body_frames_pct": 6.889,
-   "penetration_body_max_cm": 1.622,
+   "crushed_pct": 0.754,
+   "stretched_pct": 2.002,
+   "sheared_pct": 1.569,
+   "penetration_max_cm": 1.574,
+   "body_penetration_cm": 1.53,
+   "deep_frames_pct": 3.947,
+   "deep_body_frames_pct": 3.947,
+   "penetration_body_max_cm": 1.532,
    "popping_windows": 9,
-   "exposed_crushed_pct": 43.1,
+   "exposed_crushed_pct": 43.047,
    "worst_clips": [
     "crouch_walk",
     "fall"
@@ -2707,12 +2707,12 @@
    "clearance_max_deg": 18.6,
    "clearance_clips": 18,
    "limits": {
-    "left_elbow": 125.0,
+    "left_elbow": 135.0,
     "left_knee": 125.0,
-    "left_shoulder": 35.0,
-    "right_elbow": 120.0,
+    "left_shoulder": 50.0,
+    "right_elbow": 130.0,
     "right_knee": 120.0,
-    "right_shoulder": 50.0
+    "right_shoulder": 35.0
    },
    "knee_limit_deg": 120.0,
    "knee_clips_max_deg": 145.7
@@ -4129,13 +4129,6 @@
    "hybrid": 1.84,
    "soft": null,
    "mia": 1.56
-  },
-  "pip": {
-   "picked": "sharp",
-   "sharp": 2.54,
-   "hybrid": 2.44,
-   "soft": null,
-   "mia": 1.91
   },
   "ren": {
    "picked": "sharp",

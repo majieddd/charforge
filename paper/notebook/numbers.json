@@ -19,7 +19,7 @@
  },
  "hem": {
   "juno3": 1453,
-  "pip": 931
+  "pip": 934
  },
  "cast_count": 4,
  "cast_names": "Knight, Kaito, Bo and Cadet",
@@ -33,7 +33,7 @@
    "video": "cast_knight.mp4",
    "prompt": "a young knight in dented steel plate armour over a blue surcoat, short blond hair, leather gloves and brown leather boots",
    "height": "1.80 m",
-   "tris": "61,953",
+   "tris": "61,927",
    "time": "about 35 min",
    "notes": "Three failures on the way, each now a rule: macOS stopped his 3D model on the GPU (it is evaluated in smaller pieces now); his armour's texture failed the web build's quality gate (it steps up the quality instead); and TRELLIS built the picture's backdrop into his model as a board, which the later stages cut into grey sheets hanging from his arms - made again through TRELLIS's own background remover, it has none. Last, his face: his picture's would not lie on his model's, and went on unaligned with every feature twice; his generator's own face is kept now, and with eyes it can find, the face stage gave him blinks and a jaw.",
    "refs": [
