@@ -8,11 +8,22 @@
   }
  ],
  "acknowledgement": "Experiments and this living paper were developed with Claude (Anthropic) working in the repository. Script-backed values are included where artifacts exist; some historical and prose claims remain manually maintained and are being audited.",
- "version": "0.18",
- "date": "2026-10-08",
+ "version": "0.19",
+ "date": "2026-10-09",
  "url": "https://majieddd.github.io/charforge/paper/",
  "repo": "https://github.com/majieddd/charforge",
  "changelog": [
+  {
+   "version": "0.19",
+   "date": "2026-10-09",
+   "changes": [
+    "The first parallel lanes, each reviewed by a second agent that re-ran its measures before the merge (E162). Merged: a sharper texture from the same sources (E164: Lanczos reads, the bake kept as the colour field under the views' detail, a shadow floor that keeps the folds; lightness detail +14% Mara, +13% Pip, +3% Hana), clips that keep the capture's smoothness through our corrections (E165: added joint jerk 28-136% -> under 2%, spikes 1.7-2.9% -> 0.04-0.2% of bone-frames, same deep frames, pops and foot slip), 23 ARKit-named face shapes beside the five (E166: neutral face unchanged, +0.6 MB on a web model), and cross-faded clips at a fixed simulation rate in the playground, framed to the character (E167).",
+    "Pixal3D as an option (E155, --generator pixal3d): with its output finally turned to face our cameras and welded before decimation, it matches the picture's front silhouette better on all six test characters (IoU 0.921 -> 0.949) and comes out as one closed piece with a quieter surface, but with worse symmetry on five, black eyes on two and two to three times the time, so TRELLIS.2 stays the default. The earlier preliminary figures from the second round were judged on a model facing away.",
+    "Skin weights judged through the clips (E161): tools/weights_trial.py builds a candidate through every clip in a copy of the character and keeps it only when no clip is worse. It rejects the surface-relative weights on Vex, Pip, Rowan and Bo - they shrink the fins at arms overhead but hand a thin joint's weight to the thick bone beside it, so wrists and forearms pass through each other (Vex's pops 7 -> 32).",
+    "Dropped: a quad-dominant game mesh (E163). Joining the cage's triangle pairs gives 56-58% quads that deform slightly worse in the battery and the clips, and Blender's QuadriFlow refuses our solids and every voxel remesh of them. Next is what Tripo does instead: a dense surface brought down to the smallest well-shaped mesh that keeps its detail, the budget set by an error bound, with LODs from the same bake (E168).",
+    "Over the rebuilt roster against 0.18 (17 characters, DQS clip audit): crushed, stretched and sheared faces level (0.76 -> 0.74%, 1.47 -> 1.46%, 1.49 -> 1.49%), pops 5.1 -> 4.8 per character (Rivet 13 -> 7), frames with a part more than 2 cm inside another 5.7% -> 5.9% (Cadet, Rowan, Juno and the scout fewer; Pip, Vex, Kaito and Knight more), foot slip unchanged on every character (median 3.2%). Two side effects of the new texture, both open: the weight rules read garment colours, and Pip's hybrid weights lost to sharp by 0.005 under the margin (deep frames 5.5% -> 6.9%; the clip trial of E161 will decide him); and the face stage found larger eye and mouth regions on Kaito and subdivided more of his face (88.7k -> 98.8k triangles), with every clip reading a little more stretched."
+   ]
+  },
   {
    "version": "0.18",
    "date": "2026-10-08",

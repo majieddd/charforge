@@ -6,8 +6,14 @@
 A physically based renderer multiplies light by the albedo: a black jacket painted at sRGB 5-15 comes out a hole
 with no folds in it, and a white one at 250 glows. The PBR guides put non-metals between sRGB 30-50 (charcoal,
 fresh asphalt) and 240 (fresh snow). The lightness (CIELAB L*) of every non-metal texel is eased into that range
-by a smooth curve - texels well inside it are untouched, contrast inside a dark garment is kept (the curve is
-steepest where it bends least), and hue and chroma stay as painted. Metals (ORM blue > 0.5) are left alone.
+by a curve - texels well inside it are untouched, and hue and chroma stay as painted. Metals (ORM blue > 0.5) are
+left alone.
+
+The floor. The old softplus shoulder lifted the darkest texels but also flattened them: its slope at black was
+0.2, so the shadows of hair, shoes and dark cloth (14.7% of Mara's non-metals) lost most of their contrast, and the
+albedo's fine detail fell 16% (tools/texture_sharpness.py). --curve power (the default) lifts black to about the same floor
+(L* 11.3 against the old 13.0) with a slope of --slope0 (0.4) there, rising smoothly to 1 at L* 20 and the identity above. A power-law slope never
+dips, so no two tones swap; on Mara's albedo before the floor it keeps 0.89 of the detail where the old floor kept 0.85 (tools/texture_sharpness.py). --curve soft is the old shoulder, kept for comparison. The ceiling is unchanged.
 """
 import argparse
 
@@ -41,11 +47,28 @@ def l_of_srgb_grey(v):
     return float(srgb_to_lab(np.array([[v / 255.0] * 3]))[0, 0])
 
 
-def soft_range(L, lo, hi, knee=8.0):
-    """L* eased into [lo, hi]: identity well inside, a smooth (softplus) shoulder over `knee` L* units at each end."""
+def floor_power(L, lo, slope0=0.4, L0=20.0):
+    """L* lifted so that black reaches lo (sRGB 30) with slope slope0 there, rising smoothly to 1 at L0 and the
+    identity above it: L = lo + L0 (s0 t + (1 - s0) t^(p+1) / (p+1)), t = L / L0, with p set so that L(L0) = L0.
+    The slope never falls below slope0, so no two tones swap and the shadows keep a fraction of their folds."""
+    q = lo / (L0 * (1 - slope0))
+    if q > 0.95:                                     # a floor this high needs a longer ramp, or p blows up and the
+        L0 = lo / (0.95 * (1 - slope0))              # darkest texels go negative (black); the default (q 0.94) is untouched
+        q = 0.95
+    p = q / (1 - q)
+    t = np.clip(L / L0, 0.0, 1.0)
+    return np.where(L < L0, lo + L0 * (slope0 * t + (1 - slope0) * t ** (p + 1) / (p + 1)), L)
+
+
+def soft_range(L, lo, hi, knee=8.0, curve="power", slope0=0.4):
+    """L* eased into [lo, hi]: identity well inside. The floor is floor_power (default) or the old softplus shoulder;
+    the ceiling is a softplus shoulder over `knee` L* units, as before."""
     def softplus(x):
         return knee * np.log1p(np.exp(np.clip(x / knee, -40, 40)))
-    L1 = lo + softplus(L - lo)                       # floor
+    if curve == "power":
+        L1 = floor_power(L, lo, slope0)              # floor: the shadows keep a share of their contrast
+    else:
+        L1 = lo + softplus(L - lo)                   # floor, as it was (flattens black: slope 0.18)
     return hi - softplus(hi - L1)                    # ceiling
 
 
@@ -56,6 +79,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--floor", type=float, default=30)
     ap.add_argument("--ceiling", type=float, default=240)
+    ap.add_argument("--curve", choices=("power", "soft"), default="power",
+                    help="the floor: power keeps the shadows' contrast (default); soft is the old shoulder")
+    ap.add_argument("--slope0", type=float, default=0.4, help="the floor's slope at black (power)")
     a = ap.parse_args()
     img = np.asarray(Image.open(a.albedo).convert("RGB"), np.float32) / 255
     metal = np.zeros(img.shape[:2], bool)
@@ -69,7 +95,7 @@ def main():
         sl = slice(r0, r0 + step)
         lab = srgb_to_lab(img[sl])
         L = lab[..., 0]
-        L2 = soft_range(L, lo, hi)
+        L2 = soft_range(L, lo, hi, curve=a.curve, slope0=a.slope0)
         lab2 = lab.copy()                            # hue and chroma as painted; only lightness moves
         lab2[..., 0] = L2
         res = lab_to_srgb(lab2)

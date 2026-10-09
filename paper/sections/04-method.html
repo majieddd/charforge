@@ -47,7 +47,15 @@
   {{boyscout.front_iou}}. It is also checked from behind: on Vex, made from a painting, TRELLIS.2 sculpted and painted a
   second face on the back of her head, which nothing later looked at. DWPose [@dwpose] reads a face on the back of an
   ordinary head at 0.34-0.55 - a ghost of one in any hair - and on hers at 0.97; above 0.8 the model is made again on
-  another seed [E145].</p>
+  another seed [E145].
+<p><b>Pixal3D, on request [E155].</b> Pixal3D [@pixal3d] conditions the same backbone on image features carried along
+  the camera's rays, so the shape lines up with the picture. Run through its Apple Silicon port on six of our references
+  with the same gates, it matches the picture's front silhouette better on all six (IoU 0.921 &rarr; 0.949 on average) and
+  comes out as one closed piece with a quieter surface and clean armour and cloth edges, where TRELLIS.2's first pass is
+  40-409 pieces. It is worse where the gates do not look: the mirror symmetry of five of six, black eyes on two, a face on
+  the back of the head read higher on two, and two to three times the time. So it is an option
+  (<code>--generator pixal3d</code>), turned to face our cameras and welded at the import's seams before it is
+  decimated, and TRELLIS.2 stays the default.</p>
 <figure id="fig-board">
   <img src="media/prompts_board.webp" width="1218" height="300" alt="TRELLIS's first pass from the front for four characters: Gray is a flat grey board hiding the figure, Knight has a board behind him, Kaito a board through his legs, Bo is clean">
   <figcaption>A backdrop built into the model: TRELLIS's first pass from the front, labelled with the silhouette IoU
@@ -152,6 +160,15 @@
   view only paints surfaces it sees face-on and unoccluded; unlike it, views are blended by weight rather than by Poisson
   blending [@poisson] - comparing the two is [E105]. The face is painted from a detailed image: the reference's face
   region enlarged 3-5x and re-detailed by the image model at low strength.</p>
+<p><b>Sharper from the same pixels [E164].</b> The 4096 atlas holds about one megapixel of real detail: the reference is
+  832&times;1216 and the views 1024 px. Three changes take more of it into the texture. The pictures are read with a
+  Lanczos filter instead of bilinear. The bake's own colour, which was mixed in at 8% everywhere, drops to 0.1% where the
+  views see a texel strongly, and keeps only its low frequencies, as the colour field the views' detail is laid on. The
+  shadow floor below was a softplus with a slope of 0.2 at black, which flattened the darkest folds; it is now a
+  power curve whose slope never falls below 0.4. On Mara, Pip and Hana the albedo's lightness detail rises 14%, 13% and 3%,
+  and an unlit front render keeps 0.51, 0.58 and 0.65 of the picture's own detail at the picture's scale, up from 0.43,
+  0.52 and 0.59. The sides and backs are limited by their 1024 px views; a 2&times; refine of the reference and views
+  (<code>pipeline/tex_hires.py</code>) is written for when ComfyUI runs.</p>
 <p><b>The face in parts.</b> Faces looked sloppy after version 0.12 - eyes hollow or smeared, features off the shape,
   patches on the cheek - and taken one part at a time the faults had separate causes [E140]. The eyes were in the shape:
   TRELLIS.2 models every eye as an almond opening with shards inside it, the solid filled it with streaks, and the
@@ -272,7 +289,13 @@
   while Pip's clips, his vest no longer rising with his arms, improved on every measure (deep frames 6.8% to 4.6%,
   stretched faces down a fifth, a pop fewer) [E159]. Faces that hold their shape can be faces that let a limb through them,
   and the battery counts only the first (its own penetration reads the same for Pip's and Vex's two weightings); both stay
-  experiments (<code>--skin-weights mia</code>, <code>geodesic_weights.py --radius</code>) until the clips can decide.</p>
+  experiments (<code>--skin-weights mia</code>, <code>geodesic_weights.py --radius</code>) until the clips can decide.
+  Now they can: <code>tools/weights_trial.py</code> builds a candidate through every clip in a copy of the character and keeps
+  it only when no clip is worse beyond a tolerance [E161]. The surface-relative weights fail it on Vex, Pip, Rowan and Bo -
+  Pip's clips stretch and shear less, but his fall and strafe go deeper - and the cause is in the method: the radius is
+  subtracted per bone, so a thick bone takes the weight of the thin joint beside it on the same chain (Vex's left wrist
+  keeps 33 of its 880 vertices; her forearm and hand pass through each other), and the trunk's radius pulls weight from the
+  shoulders and collar.</p>
 <figure id="fig-weights">
   <img src="media/weights_vex.webp" width="1200" height="966" alt="Vex with her arms overhead and forward under three weightings: with the default falloff and the hybrid, dark slivers of her jacket's side fold out behind her right arm; with Make-It-Animatable's weights they are shorter and the jacket's hem stays lower">
   <figcaption>Vex's arms overhead (top) and forward (bottom) with the default weights, the hybrid the build keeps, and
@@ -302,7 +325,11 @@
 <h3 id="sec-m-face">Face rig</h3>
 <p>The head is rendered from the front, unlit, together with the world position under every pixel. Eyes are found as
   blobs and the mouth by its colour and the pose model's face points; from them the face stage cuts the mouth open,
-  adds a jaw bone and five shapes (blinks, smile, raised brows, pucker). It places nothing it cannot find: on Bo, eyes
+  adds a jaw bone and five shapes (blinks, smile, raised brows, pucker), and beside them 23 shapes under ARKit's names
+  - eyes wide and squinting, brows down and raised inside and out, jawOpen, smiles, frowns, funnel, stretches, cheek puff,
+  sneers - the names engines and face-capture apps drive [E166]. Each is a smooth field per side from the same landmarks,
+  gated by the same trust in the eyes and mouth; jawOpen is the jaw bone's opening as a morph. Stored as sparse morphs,
+  they add about 0.6 MB to a web model. It places nothing it cannot find: on Bo, eyes
   behind round glasses and a mouth under a moustache, it builds no face rig rather than a guessed one [E109]. Two
   characters lost their face rig because the frame stopped above the chin on a tall head [E017]. The position render
   had its own error: written as position + 4 into EEVEE's half-float film, every position was read in
@@ -313,7 +340,10 @@
 <p>Eighteen motion captures (idle, walk, jog, run, sprint, backpedals, strafes, turns, crouch, jump, fall, land, wave)
   are retargeted onto the rig with the fingers. Feet are planted by clip selection, grounding and foot IK, and the
   playground drives all locomotion from one stride clock, so the foot on the floor slides a median {{feet.median}}% of
-  the gait's ground speed ([#sec-eval-feet]) [E029]. The foot that is planted is the shoe as the viewer deforms it:
+  the gait's ground speed ([#sec-eval-feet]) [E029]. Every change of clip is a cross-fade (0.12 s), and the simulation
+  steps at no more than 1/120 s whatever the display's rate, so a gait change, a landing or a wave no longer jumps
+  in one frame (Mara's worst single-frame bone turn: 95&deg; &rarr; 43&deg; between gaits, 136&deg; &rarr; 24&deg; on landing) and
+  the motion is the same at 60 and 120 Hz [E167]. The foot that is planted is the shoe as the viewer deforms it:
   every vertex of the shoe below the ankle ({{pl.points_per_foot.0}}-{{pl.points_per_foot.1}} a foot on the roster),
   each posed by its own skin weights with dual quaternions, the way the playground skins the mesh [E130]. A planted key
   pivots on the flat of the sole; a key in the air keeps the whole shoe, toe cap included, above the floor. A rigid
@@ -388,7 +418,14 @@
   walk, bow and fist pump and goes from 11.5% to 10.3% of frames. The solve poses the arm by linear skinning while the audit
   and the playground blend dual quaternions; judging the surface the audit's way instead (a differentiable dual quaternion
   skin, [E156]) moved the share of deep frames by -0.3 points on Cadet, +0.7 on Pip and +1.2 on Vex, so the solve stays
-  linear. Clips made from video are re-posed by the refine stage after all this, and a punch with the arms crossing
+  linear. <b>Smooth corrections [E165].</b> Measured against the same capture retargeted with neither step, the shipped
+  clips carried 1.3-2.4 times its joint jerk: the solve's turns are found frame by frame and keep frame-to-frame noise,
+  and clearance clamped each key on its own (an elbow gate at 0.05&deg;, a knee floor switching on and off). The
+  corrections, never the capture, are now eased in time: each clip's turns and the shoulder and elbow corrections over
+  2.5 keys (a zero-phase Gaussian, 42 ms), the knee's over one key and only while the foot is lifted, and the floor bound
+  eased in without being crossed. The added jerk falls to 0.5-1.6% (Cadet 1.28 &rarr; 1.005, Mara 2.36 &rarr; 1.016,
+  Pip 1.53 &rarr; 1.008 times the capture) with the same deep frames, foot slip and pops, at 0.02-0.06 cm more depth at
+  the deepest point. Clips made from video are re-posed by the refine stage after all this, and a punch with the arms crossing
   the chest goes back into it, so the solve is run again on them and kept for a clip only if its silhouette still matches
   the video as well (the same IoU refine measures, at the same placement; at most 0.01 lost).</p>
 <figure id="fig-contact">

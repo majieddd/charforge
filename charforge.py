@@ -488,6 +488,11 @@ def s_generate(r: Run):
     reference's (a board built in with the figure) is made again - first from the picture through
     TRELLIS's own background remover instead of the image model's cut-out, then on a new seed.
     Knight's cut-out gave a board on three seeds (IoU 0.32-0.40); through the remover, 0.92."""
+    if getattr(r.a, "generator", "trellis") == "pixal3d":
+        # E155: Pixal3D's single view in place of TRELLIS.2, checked by the same gates (pipeline/pixal3d_generate.py)
+        sys.path.insert(0, str(ROOT / "pipeline"))
+        import pixal3d_generate  # noqa: E402
+        return pixal3d_generate.generate(r)
     out = r.path("pass1.glb")
     (r.work / "generate.json").unlink(missing_ok=True)
     have_alpha = r.path("reference_rgba.png").exists()
@@ -1502,6 +1507,8 @@ def main():
     m.add_argument("--trellis-faces", type=int, default=1_000_000,
                    help="faces TRELLIS.2 keeps of its surface (default 1M: at 200k, large flat facets and sawtooth "
                         "plate edges reached the normal map; experiment E135)")
+    m.add_argument("--generator", choices=("trellis", "pixal3d"), default="trellis",
+                   help="the first pass: TRELLIS.2 (default), or Pixal3D's single view (E155: pipeline/pixal3d_generate.py)")
     m.add_argument("--no-denoise", action="store_true",
                    help="skip the bilateral normal filtering of the generated surface (E135)")
     m.add_argument("--texture-views", choices=("hunyuan", "none"), default=None,

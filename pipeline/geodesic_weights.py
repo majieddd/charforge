@@ -47,6 +47,18 @@ ap.add_argument("--radius", type=float, default=0.0,
                 help="measure from each body part's surface, not its bone: subtract this share of the part's own radius (E159)")
 ap.add_argument("--inward", type=float, default=0.0,
                 help="find each vertex's voxel from a point this many graph voxels inside the surface, along the vertex normal (E159)")
+ap.add_argument("--radius-groups", default="",
+                help="with --radius: apply the radius only to vertices of these label groups (comma list of body, clothing, "
+                     "hair, accessory, from --labels); the rest keep their bone distances (E161)")
+ap.add_argument("--labels", default="", help="labels.json (its per-vertex group) for --radius-groups")
+ap.add_argument("--radius-skip-arm", type=float, default=0.0,
+                help="with --radius: vertices whose default weights give at least this share to the arm bones (shoulder, collar, elbow, wrist) keep their bone distances, so a sleeve stays with its arm (E161)")
+ap.add_argument("--radius-bones", default="",
+                help="with --radius: subtract the radius only for these bones (comma list, e.g. pelvis,spine1,spine2,spine3); "
+                     "the others keep their bone distances (E161)")
+ap.add_argument("--radius-skip-leg", type=float, default=0.0,
+                help="with --radius: vertices whose default weights give at least this share to the leg bones (hip, knee, ankle) "
+                     "keep their bone distances, as --radius-skip-arm does for the arm (E161)")
 a = ap.parse_args()
 t0 = time.time()
 
@@ -140,7 +152,13 @@ if a.radius > 0:
     trunk = [i for i, b in enumerate(bones) if b[0] in ("pelvis", "spine1", "spine2", "spine3")]
     if trunk:
         rad[trunk] = rad[trunk].max()
-    D = D - a.radius * rad[None, :]
+    if a.radius_bones:
+        # only the named bones' radii are subtracted (E161): a thick segment's radius lets it take the weight of a thin joint
+        # next to it along the same chain (the wrist's radius is 0 cm, the forearm's 2.6: the forearm took the hand's weight)
+        keep = {s.strip() for s in a.radius_bones.split(",") if s.strip()}
+        rad = rad * np.array([b[0] in keep for b in bones], float)
+    if not (a.radius_groups or a.radius_skip_arm > 0 or a.radius_skip_leg > 0):   # else applied per vertex below
+        D = D - a.radius * rad[None, :]
     print("[weights] part radii (cm): " + ", ".join(f"{bones[i][0]} {rad[i] * 100:.1f}" for i in range(len(bones))), flush=True)
 
 # ---- vertices: nearest solid voxel, plus the step to it ---------------------------------------
@@ -167,6 +185,38 @@ if a.inward > 0:
 # took the rest, and a squat pulled it into a plank. Off the solid a vertex takes its nearest voxel's
 # distances, as a pocket follows the thigh it is sewn to.
 DV = D[nv] + np.minimum(dv, 1.5 * vc)[:, None]
+if a.radius > 0 and (a.radius_groups or a.radius_skip_arm > 0 or a.radius_skip_leg > 0):
+    # the radius per vertex, not for the whole field (E161): only the label groups named (e.g. the clothing alone), and/or
+    # not for the vertices the default weights already bind to an arm (a sleeve keeps its arm)
+    on = np.ones(len(V), bool)
+    if a.radius_groups:
+        if not a.labels:
+            raise SystemExit("--radius-groups needs --labels (labels.json)")
+        lab = json.load(open(a.labels))
+        grp = np.asarray(lab["labels"])
+        if len(grp) != len(V):
+            raise SystemExit(f"labels.json has {len(grp):,} vertices, the mesh {len(V):,}")
+        on &= np.isin(grp, [lab["group_ids"][g] for g in a.radius_groups.split(",")])
+    if a.radius_skip_arm > 0:
+        W0 = np.maximum(DV, 0.25 * vc) ** (-a.power)
+        W0[~np.isfinite(W0)] = 0
+        arm = np.array([any(t in n for t in ("shoulder", "collar", "elbow", "wrist")) for n in names])
+        share = W0[:, arm].sum(1) / np.maximum(W0.sum(1), 1e-30)
+        bound = share >= a.radius_skip_arm
+        print(f"[weights] {int((bound & on).sum()):,} vertices bound to an arm by the default keep their bone distances", flush=True)
+        on &= ~bound
+    if a.radius_skip_leg > 0:
+        # the same for a leg (E161): a thigh's or shin's skin, bound by the default to its hip, knee or ankle, keeps its bone
+        # distances - the thick thigh's radius otherwise takes the weight of the thinner knee and ankle beside it
+        W0 = np.maximum(DV, 0.25 * vc) ** (-a.power)
+        W0[~np.isfinite(W0)] = 0
+        leg = np.array([n.endswith(("_hip", "_knee", "_ankle")) for n in names])
+        share_l = W0[:, leg].sum(1) / np.maximum(W0.sum(1), 1e-30)
+        bound_l = share_l >= a.radius_skip_leg
+        print(f"[weights] {int((bound_l & on).sum()):,} vertices bound to a leg by the default keep their bone distances", flush=True)
+        on &= ~bound_l
+    DV[on] -= a.radius * rad[None, :]
+    print(f"[weights] radius {a.radius:g} on {int(on.sum()):,} of {len(V):,} vertices", flush=True)
 unreached = ~np.isfinite(DV).any(axis=1)
 if unreached.any():                                   # a vertex whose voxel island has no bone
     eu = np.array([[np.linalg.norm(np.cross(t - h, h - x)) / max(np.linalg.norm(t - h), 1e-9)

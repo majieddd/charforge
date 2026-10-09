@@ -1,0 +1,1165 @@
+{
+ "_about": "E163 (lane topology): measurements behind the quad-join experiment. Each figure is read from the JSON named under 'sources' by the commands under 'reproduce'. Baseline = the default 60k-triangle cage (solid_decimate); quads = the same cage with triangle pairs joined (retopo.py --quads --quad-face-angle 60 --quad-shape-angle 60). Topology and shape are measured on the polygon .obj that retopo.py writes beside each retopo.glb, so both sides keep their quads.",
+ "sources": {
+  "topology": "work/_audit/topo_<char>_{base,quads}_obj.json (blender/quad_audit.py)",
+  "shape_E132": "work/_audit/mq_<char>_{base_obj,quads}.json (blender/model_quality.py, then tools/model_quality.py)",
+  "texture_E132": "work/_audit/mqt_<char>_{base,quads}.json (tools/model_quality.py --work)",
+  "stress_battery": "work/_audit/deform_{base,quads}/<char>[_quads]_stress.json (tools/deform_suite.py)",
+  "clip_audit": "work/_audit/aberr/<char>_{base,quads}.json (blender/aberration_audit.py --step 2 --bvh-step 6 --skin dqs)",
+  "join_sweep": "work/_audit/sweep/f<face>_s<shape>.json (pip; retopo at bake 512)",
+  "quadriflow_probe": "work/_audit/quad_probe_pip.log (blender/quad_probe.py)"
+ },
+ "reproduce": [
+  "cp -c -R work/<c> work/<c>_quads   # copy-on-write clone (and work/<c>_base for the default build)",
+  "python pipeline/despeck_source.py --mesh work/<c>_quads/mesh.glb --out work/<c>_quads/source_albedo.png",
+  "blender -b -noaudio --python blender/retopo.py -- --source-albedo work/<c>_quads/source_albedo.png --mesh work/<c>_quads/mesh.glb --cage work/<c>_quads/solid_hands.glb --out work/<c>_quads/retopo.glb --bake-res 4096 --cage-extrusion 0.006 --ray-distance 0.014 --joints work/<c>_quads/joints_refined.json --head-share 0.28 --quads --tris 60000 --quad-face-angle 60 --quad-shape-angle 60",
+  "python tools/hands_check.py <c>_quads --strict",
+  "python charforge.py make --name <c>_quads --from labels --until animate",
+  "blender -b -noaudio --python blender/quad_audit.py -- --mesh work/<c>_quads/retopo_polys.obj --out work/_audit/topo_<c>_quads_obj.json",
+  "python tools/deform_suite.py --name <c>_quads --out work/_audit/deform_quads --force",
+  "blender -b -noaudio --python blender/aberration_audit.py -- --blend work/<c>_quads/final.blend --out work/_audit/aberr/<c>_quads.json --step 2 --bvh-step 6 --skin dqs --force",
+  "blender -b -noaudio --python blender/quad_probe.py -- --mesh work/pip/solid_hands.glb --sizes 0.012,0.01,0.008,0.006,0.005,0.004,0.003"
+ ],
+ "budget": {
+  "triangles_before_join": 60000,
+  "join_face_angle_deg": 60,
+  "join_shape_angle_deg": 60,
+  "bake_res": 4096
+ },
+ "join_sweep_pip": [
+  {
+   "face_angle_deg": 40,
+   "shape_angle_deg": 40,
+   "faces": 43872,
+   "quads": 15947,
+   "quad_share": 0.3635,
+   "valence4_share_interior": 0.3501,
+   "quad_corner_dev_median_deg": 25.69,
+   "quad_share_dev_over_30deg": 0.3355
+  },
+  {
+   "face_angle_deg": 60,
+   "shape_angle_deg": 40,
+   "faces": 43383,
+   "quads": 16436,
+   "quad_share": 0.3789,
+   "valence4_share_interior": 0.3573,
+   "quad_corner_dev_median_deg": 25.76,
+   "quad_share_dev_over_30deg": 0.337
+  },
+  {
+   "face_angle_deg": 60,
+   "shape_angle_deg": 60,
+   "faces": 38278,
+   "quads": 21541,
+   "quad_share": 0.5628,
+   "valence4_share_interior": 0.4507,
+   "quad_corner_dev_median_deg": 30.09,
+   "quad_share_dev_over_30deg": 0.5024
+  },
+  {
+   "face_angle_deg": 90,
+   "shape_angle_deg": 60,
+   "faces": 38062,
+   "quads": 21757,
+   "quad_share": 0.5716,
+   "valence4_share_interior": 0.4548,
+   "quad_corner_dev_median_deg": 30.15,
+   "quad_share_dev_over_30deg": 0.5038
+  },
+  {
+   "face_angle_deg": 90,
+   "shape_angle_deg": 75,
+   "faces": 36359,
+   "quads": 23460,
+   "quad_share": 0.6452,
+   "valence4_share_interior": 0.4714,
+   "quad_corner_dev_median_deg": 31.75,
+   "quad_share_dev_over_30deg": 0.5405
+  }
+ ],
+ "quadriflow_probe_pip": [
+  {
+   "input": "control ico",
+   "faces": 5120,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 0,
+   "edges_turned_over_120deg": 0,
+   "quadriflow": "accepted"
+  },
+  {
+   "input": "control voxel_ico",
+   "faces": 21342,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 8,
+   "edges_turned_over_120deg": 0,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "solid as it is",
+   "faces": 1429928,
+   "non_manifold_edges": 5,
+   "open_edges": 21,
+   "folded_quads": 0,
+   "edges_turned_over_120deg": 2590,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.012",
+   "faces": 9680,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 113,
+   "edges_turned_over_120deg": 148,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.01",
+   "faces": 14024,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 178,
+   "edges_turned_over_120deg": 227,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.008",
+   "faces": 22340,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 197,
+   "edges_turned_over_120deg": 271,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.006",
+   "faces": 40428,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 322,
+   "edges_turned_over_120deg": 288,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.005",
+   "faces": 58548,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 305,
+   "edges_turned_over_120deg": 330,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.004",
+   "faces": 92102,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 374,
+   "edges_turned_over_120deg": 369,
+   "quadriflow": "refused"
+  },
+  {
+   "input": "voxel 0.003",
+   "faces": 165322,
+   "non_manifold_edges": 0,
+   "open_edges": 0,
+   "folded_quads": 527,
+   "edges_turned_over_120deg": 464,
+   "quadriflow": "refused"
+  }
+ ],
+ "characters": {
+  "pip": {
+   "baseline": {
+    "topology": {
+     "faces": 59786,
+     "triangles": 59734,
+     "quads": 33,
+     "ngons": 19,
+     "quad_share": 0.0006,
+     "verts": 29921,
+     "valence4_share_interior": 0.0898,
+     "open_edges": 10,
+     "nonmanifold_edges": 1,
+     "quad_convexity": {
+      "convex": 16,
+      "concave": 17,
+      "bowtie": 0,
+      "degenerate": 0
+     },
+     "quad_corner_dev_median_deg": 89.83,
+     "quad_corner_dev_p95_deg": 89.96,
+     "quad_share_dev_over_30deg": 1.0,
+     "skinny_tri_share_under_10deg": 0.0336,
+     "uv_islands": 1116,
+     "uv_islands_per_1k_faces": 18.67,
+     "uv_stretch_p95_log2": 1.485,
+     "uv_share_faces_beyond_2x": 0.2003,
+     "uv_seam_length_rel": 50.2495,
+     "uv_seam_edge_share": 0.0982,
+     "folded_quads": 12,
+     "edges_turned_over_120deg": 199
+    },
+    "shape_E132": {
+     "noise_deg": {
+      "p50": 2.1,
+      "p90": 10.75
+     },
+     "lump_mm": {
+      "p50": 0.996,
+      "p75": 1.812
+     },
+     "tilt_deg": {
+      "p50": 14.66,
+      "p99": 61.48
+     },
+     "skinny_tri": 0.0345,
+     "open_edges_per10k": 2.67,
+     "non_manifold_per10k": 0.67,
+     "cuts_per10k": 41.1,
+     "symmetry_mm": {
+      "p50": 2.13,
+      "p90": 4.26
+     },
+     "quads": 0.001
+    },
+    "texture_E132": {
+     "light_r2": 0.234,
+     "front_back_de": 6.604,
+     "back_sharp": 0.791,
+     "coverage": 0.582,
+     "clusters": 8,
+     "seam_de_p50": 1.15,
+     "texel_spread_p95_p5": 5.93
+    },
+    "stress_battery": {
+     "poses": {
+      "arms_across": {
+       "crushed_pct": 0.292,
+       "stretched_pct": 0.896,
+       "sheared_pct": 0.752,
+       "faces_bad_pct": 1.94,
+       "intersecting_pairs_mean": 1560.8,
+       "penetration_max_cm": 7.05
+      },
+      "arms_behind": {
+       "crushed_pct": 0.191,
+       "stretched_pct": 0.587,
+       "sheared_pct": 0.521,
+       "faces_bad_pct": 1.299,
+       "intersecting_pairs_mean": 173.0,
+       "penetration_max_cm": 0.0
+      },
+      "arms_forward": {
+       "crushed_pct": 0.174,
+       "stretched_pct": 0.973,
+       "sheared_pct": 0.986,
+       "faces_bad_pct": 2.133,
+       "intersecting_pairs_mean": 299.2,
+       "penetration_max_cm": 2.69
+      },
+      "arms_overhead": {
+       "crushed_pct": 0.439,
+       "stretched_pct": 1.58,
+       "sheared_pct": 0.651,
+       "faces_bad_pct": 2.67,
+       "intersecting_pairs_mean": 50.4,
+       "penetration_max_cm": 0.0
+      },
+      "bend_twist": {
+       "crushed_pct": 0.295,
+       "stretched_pct": 0.548,
+       "sheared_pct": 0.482,
+       "faces_bad_pct": 1.325,
+       "intersecting_pairs_mean": 247.2,
+       "penetration_max_cm": 1.95
+      },
+      "head_turn": {
+       "crushed_pct": 0.136,
+       "stretched_pct": 0.788,
+       "sheared_pct": 0.36,
+       "faces_bad_pct": 1.284,
+       "intersecting_pairs_mean": 180.4,
+       "penetration_max_cm": 0.0
+      },
+      "heel_strike": {
+       "crushed_pct": 0.083,
+       "stretched_pct": 0.227,
+       "sheared_pct": 0.182,
+       "faces_bad_pct": 0.492,
+       "intersecting_pairs_mean": 0.6,
+       "penetration_max_cm": 0.0
+      },
+      "kick": {
+       "crushed_pct": 0.112,
+       "stretched_pct": 0.999,
+       "sheared_pct": 0.864,
+       "faces_bad_pct": 1.975,
+       "intersecting_pairs_mean": 264.4,
+       "penetration_max_cm": 1.61
+      },
+      "squat": {
+       "crushed_pct": 0.542,
+       "stretched_pct": 1.796,
+       "sheared_pct": 1.675,
+       "faces_bad_pct": 4.013,
+       "intersecting_pairs_mean": 1320.8,
+       "penetration_max_cm": 6.75
+      },
+      "tiptoe": {
+       "crushed_pct": 0.116,
+       "stretched_pct": 0.026,
+       "sheared_pct": 0.064,
+       "faces_bad_pct": 0.206,
+       "intersecting_pairs_mean": 8.4,
+       "penetration_max_cm": 0.0
+      }
+     },
+     "mean": {
+      "crushed_pct": 0.238,
+      "stretched_pct": 0.842,
+      "sheared_pct": 0.654,
+      "faces_bad_pct": 1.734,
+      "intersecting_pairs_mean": 410.52,
+      "penetration_max_cm": 2.005
+     }
+    },
+    "clip_audit": {
+     "crushed_pct": 0.739,
+     "stretched_pct": 1.996,
+     "sheared_pct": 1.591,
+     "intersecting_pairs_mean": 503.479,
+     "penetration_max_cm": 1.593,
+     "deep_frames_pct": 5.479,
+     "popping_event_windows": 10
+    }
+   },
+   "quads": {
+    "topology": {
+     "faces": 38278,
+     "triangles": 16718,
+     "quads": 21541,
+     "ngons": 19,
+     "quad_share": 0.5628,
+     "verts": 29921,
+     "valence4_share_interior": 0.4507,
+     "open_edges": 10,
+     "nonmanifold_edges": 1,
+     "quad_convexity": {
+      "convex": 21524,
+      "concave": 17,
+      "bowtie": 0,
+      "degenerate": 0
+     },
+     "quad_corner_dev_median_deg": 30.09,
+     "quad_corner_dev_p95_deg": 55.26,
+     "quad_share_dev_over_30deg": 0.5024,
+     "skinny_tri_share_under_10deg": 0.0312,
+     "uv_islands": 741,
+     "uv_islands_per_1k_faces": 19.36,
+     "uv_stretch_p95_log2": 1.4495,
+     "uv_share_faces_beyond_2x": 0.1961,
+     "uv_seam_length_rel": 43.8634,
+     "uv_seam_edge_share": 0.1215,
+     "folded_quads": 12,
+     "edges_turned_over_120deg": 193
+    },
+    "shape_E132": {
+     "noise_deg": {
+      "p50": 2.07,
+      "p90": 10.44
+     },
+     "lump_mm": {
+      "p50": 0.999,
+      "p75": 1.814
+     },
+     "tilt_deg": {
+      "p50": 15.34,
+      "p99": 64.63
+     },
+     "skinny_tri": 0.0358,
+     "open_edges_per10k": 4.34,
+     "non_manifold_per10k": 1.5,
+     "cuts_per10k": 41.43,
+     "symmetry_mm": {
+      "p50": 2.15,
+      "p90": 4.29
+     },
+     "quads": 0.72
+    },
+    "texture_E132": {
+     "light_r2": 0.248,
+     "front_back_de": 3.122,
+     "back_sharp": 0.865,
+     "coverage": 0.575,
+     "clusters": 8,
+     "seam_de_p50": 1.21,
+     "texel_spread_p95_p5": 5.53
+    },
+    "stress_battery": {
+     "poses": {
+      "arms_across": {
+       "crushed_pct": 0.495,
+       "stretched_pct": 0.954,
+       "sheared_pct": 0.905,
+       "faces_bad_pct": 2.354,
+       "intersecting_pairs_mean": 1900.0,
+       "penetration_max_cm": 7.09
+      },
+      "arms_behind": {
+       "crushed_pct": 0.267,
+       "stretched_pct": 0.649,
+       "sheared_pct": 0.552,
+       "faces_bad_pct": 1.468,
+       "intersecting_pairs_mean": 203.2,
+       "penetration_max_cm": 0.0
+      },
+      "arms_forward": {
+       "crushed_pct": 0.178,
+       "stretched_pct": 1.015,
+       "sheared_pct": 1.028,
+       "faces_bad_pct": 2.221,
+       "intersecting_pairs_mean": 317.6,
+       "penetration_max_cm": 2.99
+      },
+      "arms_overhead": {
+       "crushed_pct": 0.497,
+       "stretched_pct": 1.607,
+       "sheared_pct": 0.714,
+       "faces_bad_pct": 2.818,
+       "intersecting_pairs_mean": 45.0,
+       "penetration_max_cm": 0.0
+      },
+      "bend_twist": {
+       "crushed_pct": 0.352,
+       "stretched_pct": 0.506,
+       "sheared_pct": 0.442,
+       "faces_bad_pct": 1.3,
+       "intersecting_pairs_mean": 259.0,
+       "penetration_max_cm": 1.98
+      },
+      "head_turn": {
+       "crushed_pct": 0.137,
+       "stretched_pct": 0.799,
+       "sheared_pct": 0.392,
+       "faces_bad_pct": 1.328,
+       "intersecting_pairs_mean": 179.4,
+       "penetration_max_cm": 0.0
+      },
+      "heel_strike": {
+       "crushed_pct": 0.087,
+       "stretched_pct": 0.261,
+       "sheared_pct": 0.216,
+       "faces_bad_pct": 0.564,
+       "intersecting_pairs_mean": 1.2,
+       "penetration_max_cm": 0.0
+      },
+      "kick": {
+       "crushed_pct": 0.129,
+       "stretched_pct": 1.099,
+       "sheared_pct": 0.91,
+       "faces_bad_pct": 2.138,
+       "intersecting_pairs_mean": 336.0,
+       "penetration_max_cm": 1.61
+      },
+      "squat": {
+       "crushed_pct": 0.521,
+       "stretched_pct": 1.898,
+       "sheared_pct": 1.73,
+       "faces_bad_pct": 4.149,
+       "intersecting_pairs_mean": 1539.8,
+       "penetration_max_cm": 6.84
+      },
+      "tiptoe": {
+       "crushed_pct": 0.115,
+       "stretched_pct": 0.024,
+       "sheared_pct": 0.059,
+       "faces_bad_pct": 0.198,
+       "intersecting_pairs_mean": 10.8,
+       "penetration_max_cm": 0.0
+      }
+     },
+     "mean": {
+      "crushed_pct": 0.278,
+      "stretched_pct": 0.881,
+      "sheared_pct": 0.695,
+      "faces_bad_pct": 1.854,
+      "intersecting_pairs_mean": 479.2,
+      "penetration_max_cm": 2.051
+     }
+    },
+    "clip_audit": {
+     "crushed_pct": 0.848,
+     "stretched_pct": 2.103,
+     "sheared_pct": 1.653,
+     "intersecting_pairs_mean": 509.505,
+     "penetration_max_cm": 1.383,
+     "deep_frames_pct": 7.337,
+     "popping_event_windows": 16
+    }
+   }
+  },
+  "vex": {
+   "baseline": {
+    "topology": {
+     "faces": 59908,
+     "triangles": 59846,
+     "quads": 49,
+     "ngons": 13,
+     "quad_share": 0.0008,
+     "verts": 29886,
+     "valence4_share_interior": 0.0824,
+     "open_edges": 4,
+     "nonmanifold_edges": 0,
+     "quad_convexity": {
+      "convex": 23,
+      "concave": 26,
+      "bowtie": 0,
+      "degenerate": 0
+     },
+     "quad_corner_dev_median_deg": 89.83,
+     "quad_corner_dev_p95_deg": 89.96,
+     "quad_share_dev_over_30deg": 1.0,
+     "skinny_tri_share_under_10deg": 0.033,
+     "uv_islands": 1395,
+     "uv_islands_per_1k_faces": 23.29,
+     "uv_stretch_p95_log2": 1.606,
+     "uv_share_faces_beyond_2x": 0.2512,
+     "uv_seam_length_rel": 49.9436,
+     "uv_seam_edge_share": 0.096,
+     "folded_quads": 12,
+     "edges_turned_over_120deg": 380
+    },
+    "shape_E132": {
+     "noise_deg": {
+      "p50": 2.84,
+      "p90": 13.54
+     },
+     "lump_mm": {
+      "p50": 1.018,
+      "p75": 1.676
+     },
+     "tilt_deg": {
+      "p50": 13.92,
+      "p99": 72.28
+     },
+     "skinny_tri": 0.0335,
+     "open_edges_per10k": 2.0,
+     "non_manifold_per10k": 0.83,
+     "cuts_per10k": 27.17,
+     "symmetry_mm": {
+      "p50": 2.42,
+      "p90": 8.88
+     },
+     "quads": 0.002
+    },
+    "texture_E132": {
+     "light_r2": 0.147,
+     "front_back_de": 4.316,
+     "back_sharp": 0.73,
+     "coverage": 0.52,
+     "clusters": 8,
+     "seam_de_p50": 1.13,
+     "texel_spread_p95_p5": 5.74
+    },
+    "stress_battery": {
+     "poses": {
+      "arms_across": {
+       "crushed_pct": 0.679,
+       "stretched_pct": 1.417,
+       "sheared_pct": 1.42,
+       "faces_bad_pct": 3.516,
+       "intersecting_pairs_mean": 3426.6,
+       "penetration_max_cm": 6.21
+      },
+      "arms_behind": {
+       "crushed_pct": 0.313,
+       "stretched_pct": 1.087,
+       "sheared_pct": 1.001,
+       "faces_bad_pct": 2.401,
+       "intersecting_pairs_mean": 222.2,
+       "penetration_max_cm": 0.0
+      },
+      "arms_forward": {
+       "crushed_pct": 0.925,
+       "stretched_pct": 1.855,
+       "sheared_pct": 2.862,
+       "faces_bad_pct": 5.642,
+       "intersecting_pairs_mean": 1751.4,
+       "penetration_max_cm": 1.84
+      },
+      "arms_overhead": {
+       "crushed_pct": 0.458,
+       "stretched_pct": 4.697,
+       "sheared_pct": 2.949,
+       "faces_bad_pct": 8.104,
+       "intersecting_pairs_mean": 360.6,
+       "penetration_max_cm": 0.0
+      },
+      "bend_twist": {
+       "crushed_pct": 0.287,
+       "stretched_pct": 0.953,
+       "sheared_pct": 0.799,
+       "faces_bad_pct": 2.039,
+       "intersecting_pairs_mean": 284.6,
+       "penetration_max_cm": 0.06
+      },
+      "head_turn": {
+       "crushed_pct": 0.068,
+       "stretched_pct": 0.136,
+       "sheared_pct": 0.105,
+       "faces_bad_pct": 0.309,
+       "intersecting_pairs_mean": 3.0,
+       "penetration_max_cm": 0.0
+      },
+      "heel_strike": {
+       "crushed_pct": 0.022,
+       "stretched_pct": 0.103,
+       "sheared_pct": 0.105,
+       "faces_bad_pct": 0.23,
+       "intersecting_pairs_mean": 3.0,
+       "penetration_max_cm": 0.0
+      },
+      "kick": {
+       "crushed_pct": 0.075,
+       "stretched_pct": 0.523,
+       "sheared_pct": 0.498,
+       "faces_bad_pct": 1.096,
+       "intersecting_pairs_mean": 107.4,
+       "penetration_max_cm": 0.63
+      },
+      "squat": {
+       "crushed_pct": 0.298,
+       "stretched_pct": 0.814,
+       "sheared_pct": 0.965,
+       "faces_bad_pct": 2.077,
+       "intersecting_pairs_mean": 1228.8,
+       "penetration_max_cm": 7.87
+      },
+      "tiptoe": {
+       "crushed_pct": 0.009,
+       "stretched_pct": 0.004,
+       "sheared_pct": 0.018,
+       "faces_bad_pct": 0.031,
+       "intersecting_pairs_mean": 3.0,
+       "penetration_max_cm": 0.0
+      }
+     },
+     "mean": {
+      "crushed_pct": 0.313,
+      "stretched_pct": 1.159,
+      "sheared_pct": 1.072,
+      "faces_bad_pct": 2.545,
+      "intersecting_pairs_mean": 739.06,
+      "penetration_max_cm": 1.661
+     }
+    },
+    "clip_audit": {
+     "crushed_pct": 0.574,
+     "stretched_pct": 1.96,
+     "sheared_pct": 1.515,
+     "intersecting_pairs_mean": 578.128,
+     "penetration_max_cm": 2.197,
+     "deep_frames_pct": 8.233,
+     "popping_event_windows": 7
+    }
+   },
+   "quads": {
+    "topology": {
+     "faces": 38107,
+     "triangles": 16244,
+     "quads": 21850,
+     "ngons": 13,
+     "quad_share": 0.5734,
+     "verts": 29886,
+     "valence4_share_interior": 0.4509,
+     "open_edges": 4,
+     "nonmanifold_edges": 0,
+     "quad_convexity": {
+      "convex": 21824,
+      "concave": 26,
+      "bowtie": 0,
+      "degenerate": 0
+     },
+     "quad_corner_dev_median_deg": 30.5,
+     "quad_corner_dev_p95_deg": 55.38,
+     "quad_share_dev_over_30deg": 0.5131,
+     "skinny_tri_share_under_10deg": 0.0303,
+     "uv_islands": 939,
+     "uv_islands_per_1k_faces": 24.64,
+     "uv_stretch_p95_log2": 1.5616,
+     "uv_share_faces_beyond_2x": 0.226,
+     "uv_seam_length_rel": 43.3046,
+     "uv_seam_edge_share": 0.1198,
+     "folded_quads": 12,
+     "edges_turned_over_120deg": 380
+    },
+    "shape_E132": {
+     "noise_deg": {
+      "p50": 2.76,
+      "p90": 13.21
+     },
+     "lump_mm": {
+      "p50": 1.021,
+      "p75": 1.653
+     },
+     "tilt_deg": {
+      "p50": 14.68,
+      "p99": 74.98
+     },
+     "skinny_tri": 0.0342,
+     "open_edges_per10k": 3.67,
+     "non_manifold_per10k": 2.17,
+     "cuts_per10k": 26.84,
+     "symmetry_mm": {
+      "p50": 2.42,
+      "p90": 8.84
+     },
+     "quads": 0.729
+    },
+    "texture_E132": {
+     "light_r2": 0.141,
+     "front_back_de": 3.164,
+     "back_sharp": 0.687,
+     "coverage": 0.56,
+     "clusters": 8,
+     "seam_de_p50": 0.87,
+     "texel_spread_p95_p5": 5.84
+    },
+    "stress_battery": {
+     "poses": {
+      "arms_across": {
+       "crushed_pct": 0.684,
+       "stretched_pct": 1.459,
+       "sheared_pct": 1.506,
+       "faces_bad_pct": 3.649,
+       "intersecting_pairs_mean": 3548.4,
+       "penetration_max_cm": 6.31
+      },
+      "arms_behind": {
+       "crushed_pct": 0.314,
+       "stretched_pct": 1.135,
+       "sheared_pct": 1.035,
+       "faces_bad_pct": 2.484,
+       "intersecting_pairs_mean": 230.2,
+       "penetration_max_cm": 0.0
+      },
+      "arms_forward": {
+       "crushed_pct": 0.902,
+       "stretched_pct": 1.888,
+       "sheared_pct": 2.883,
+       "faces_bad_pct": 5.673,
+       "intersecting_pairs_mean": 1765.4,
+       "penetration_max_cm": 1.66
+      },
+      "arms_overhead": {
+       "crushed_pct": 0.471,
+       "stretched_pct": 4.708,
+       "sheared_pct": 2.947,
+       "faces_bad_pct": 8.126,
+       "intersecting_pairs_mean": 430.8,
+       "penetration_max_cm": 0.0
+      },
+      "bend_twist": {
+       "crushed_pct": 0.302,
+       "stretched_pct": 0.985,
+       "sheared_pct": 0.812,
+       "faces_bad_pct": 2.099,
+       "intersecting_pairs_mean": 280.6,
+       "penetration_max_cm": 1.13
+      },
+      "head_turn": {
+       "crushed_pct": 0.078,
+       "stretched_pct": 0.152,
+       "sheared_pct": 0.119,
+       "faces_bad_pct": 0.349,
+       "intersecting_pairs_mean": 2.0,
+       "penetration_max_cm": 0.0
+      },
+      "heel_strike": {
+       "crushed_pct": 0.03,
+       "stretched_pct": 0.098,
+       "sheared_pct": 0.103,
+       "faces_bad_pct": 0.231,
+       "intersecting_pairs_mean": 3.2,
+       "penetration_max_cm": 0.0
+      },
+      "kick": {
+       "crushed_pct": 0.084,
+       "stretched_pct": 0.538,
+       "sheared_pct": 0.511,
+       "faces_bad_pct": 1.133,
+       "intersecting_pairs_mean": 98.2,
+       "penetration_max_cm": 0.52
+      },
+      "squat": {
+       "crushed_pct": 0.311,
+       "stretched_pct": 0.799,
+       "sheared_pct": 1.007,
+       "faces_bad_pct": 2.117,
+       "intersecting_pairs_mean": 1229.4,
+       "penetration_max_cm": 7.43
+      },
+      "tiptoe": {
+       "crushed_pct": 0.006,
+       "stretched_pct": 0.004,
+       "sheared_pct": 0.018,
+       "faces_bad_pct": 0.028,
+       "intersecting_pairs_mean": 2.0,
+       "penetration_max_cm": 0.0
+      }
+     },
+     "mean": {
+      "crushed_pct": 0.318,
+      "stretched_pct": 1.177,
+      "sheared_pct": 1.094,
+      "faces_bad_pct": 2.589,
+      "intersecting_pairs_mean": 759.02,
+      "penetration_max_cm": 1.705
+     }
+    },
+    "clip_audit": {
+     "crushed_pct": 0.583,
+     "stretched_pct": 2.023,
+     "sheared_pct": 1.536,
+     "intersecting_pairs_mean": 621.117,
+     "penetration_max_cm": 2.351,
+     "deep_frames_pct": 10.517,
+     "popping_event_windows": 11
+    }
+   }
+  },
+  "mara": {
+   "baseline": {
+    "topology": {
+     "faces": 59740,
+     "triangles": 59561,
+     "quads": 130,
+     "ngons": 49,
+     "quad_share": 0.0022,
+     "verts": 29985,
+     "valence4_share_interior": 0.0871,
+     "open_edges": 7,
+     "nonmanifold_edges": 4,
+     "quad_convexity": {
+      "convex": 72,
+      "concave": 58,
+      "bowtie": 0,
+      "degenerate": 0
+     },
+     "quad_corner_dev_median_deg": 89.83,
+     "quad_corner_dev_p95_deg": 89.96,
+     "quad_share_dev_over_30deg": 1.0,
+     "skinny_tri_share_under_10deg": 0.0337,
+     "uv_islands": 777,
+     "uv_islands_per_1k_faces": 13.01,
+     "uv_stretch_p95_log2": 1.4933,
+     "uv_share_faces_beyond_2x": 0.2197,
+     "uv_seam_length_rel": 41.1356,
+     "uv_seam_edge_share": 0.0761,
+     "folded_quads": 30,
+     "edges_turned_over_120deg": 308
+    },
+    "shape_E132": {
+     "noise_deg": {
+      "p50": 2.74,
+      "p90": 12.39
+     },
+     "lump_mm": {
+      "p50": 0.976,
+      "p75": 1.542
+     },
+     "tilt_deg": {
+      "p50": 12.22,
+      "p99": 63.95
+     },
+     "skinny_tri": 0.036,
+     "open_edges_per10k": 4.34,
+     "non_manifold_per10k": 2.5,
+     "cuts_per10k": 30.51,
+     "symmetry_mm": {
+      "p50": 2.39,
+      "p90": 6.7
+     },
+     "quads": 0.004
+    },
+    "texture_E132": {
+     "light_r2": 0.106,
+     "front_back_de": 1.861,
+     "back_sharp": 0.683,
+     "coverage": 0.547,
+     "clusters": 7,
+     "seam_de_p50": 0.76,
+     "texel_spread_p95_p5": 5.57
+    },
+    "stress_battery": {
+     "poses": {
+      "arms_across": {
+       "crushed_pct": 0.389,
+       "stretched_pct": 0.681,
+       "sheared_pct": 0.808,
+       "faces_bad_pct": 1.878,
+       "intersecting_pairs_mean": 1342.6,
+       "penetration_max_cm": 7.73
+      },
+      "arms_behind": {
+       "crushed_pct": 0.204,
+       "stretched_pct": 0.436,
+       "sheared_pct": 0.493,
+       "faces_bad_pct": 1.133,
+       "intersecting_pairs_mean": 99.8,
+       "penetration_max_cm": 0.0
+      },
+      "arms_forward": {
+       "crushed_pct": 0.218,
+       "stretched_pct": 0.846,
+       "sheared_pct": 1.005,
+       "faces_bad_pct": 2.069,
+       "intersecting_pairs_mean": 216.2,
+       "penetration_max_cm": 0.28
+      },
+      "arms_overhead": {
+       "crushed_pct": 0.131,
+       "stretched_pct": 1.299,
+       "sheared_pct": 1.512,
+       "faces_bad_pct": 2.942,
+       "intersecting_pairs_mean": 37.8,
+       "penetration_max_cm": 0.0
+      },
+      "bend_twist": {
+       "crushed_pct": 0.251,
+       "stretched_pct": 0.314,
+       "sheared_pct": 0.373,
+       "faces_bad_pct": 0.938,
+       "intersecting_pairs_mean": 15.6,
+       "penetration_max_cm": 0.0
+      },
+      "head_turn": {
+       "crushed_pct": 0.08,
+       "stretched_pct": 0.277,
+       "sheared_pct": 0.267,
+       "faces_bad_pct": 0.624,
+       "intersecting_pairs_mean": 23.8,
+       "penetration_max_cm": 0.0
+      },
+      "heel_strike": {
+       "crushed_pct": 0.056,
+       "stretched_pct": 0.059,
+       "sheared_pct": 0.071,
+       "faces_bad_pct": 0.186,
+       "intersecting_pairs_mean": 5.2,
+       "penetration_max_cm": 0.0
+      },
+      "kick": {
+       "crushed_pct": 0.225,
+       "stretched_pct": 0.495,
+       "sheared_pct": 0.814,
+       "faces_bad_pct": 1.534,
+       "intersecting_pairs_mean": 5.2,
+       "penetration_max_cm": 0.0
+      },
+      "squat": {
+       "crushed_pct": 0.632,
+       "stretched_pct": 1.085,
+       "sheared_pct": 1.662,
+       "faces_bad_pct": 3.379,
+       "intersecting_pairs_mean": 805.8,
+       "penetration_max_cm": 5.69
+      },
+      "tiptoe": {
+       "crushed_pct": 0.1,
+       "stretched_pct": 0.062,
+       "sheared_pct": 0.067,
+       "faces_bad_pct": 0.229,
+       "intersecting_pairs_mean": 4.0,
+       "penetration_max_cm": 0.0
+      }
+     },
+     "mean": {
+      "crushed_pct": 0.229,
+      "stretched_pct": 0.555,
+      "sheared_pct": 0.707,
+      "faces_bad_pct": 1.491,
+      "intersecting_pairs_mean": 255.6,
+      "penetration_max_cm": 1.37
+     }
+    },
+    "clip_audit": {
+     "crushed_pct": 0.737,
+     "stretched_pct": 1.07,
+     "sheared_pct": 1.376,
+     "intersecting_pairs_mean": 227.245,
+     "penetration_max_cm": 1.46,
+     "deep_frames_pct": 1.73,
+     "popping_event_windows": 14
+    }
+   },
+   "quads": {
+    "topology": {
+     "faces": 37995,
+     "triangles": 16071,
+     "quads": 21875,
+     "ngons": 49,
+     "quad_share": 0.5757,
+     "verts": 29985,
+     "valence4_share_interior": 0.4559,
+     "open_edges": 7,
+     "nonmanifold_edges": 4,
+     "quad_convexity": {
+      "convex": 21817,
+      "concave": 58,
+      "bowtie": 0,
+      "degenerate": 0
+     },
+     "quad_corner_dev_median_deg": 30.68,
+     "quad_corner_dev_p95_deg": 55.47,
+     "quad_share_dev_over_30deg": 0.5186,
+     "skinny_tri_share_under_10deg": 0.0319,
+     "uv_islands": 517,
+     "uv_islands_per_1k_faces": 13.61,
+     "uv_stretch_p95_log2": 1.4676,
+     "uv_share_faces_beyond_2x": 0.2092,
+     "uv_seam_length_rel": 36.483,
+     "uv_seam_edge_share": 0.0972,
+     "folded_quads": 30,
+     "edges_turned_over_120deg": 299
+    },
+    "shape_E132": {
+     "noise_deg": {
+      "p50": 2.64,
+      "p90": 11.94
+     },
+     "lump_mm": {
+      "p50": 0.962,
+      "p75": 1.549
+     },
+     "tilt_deg": {
+      "p50": 12.93,
+      "p99": 66.51
+     },
+     "skinny_tri": 0.0367,
+     "open_edges_per10k": 5.17,
+     "non_manifold_per10k": 3.17,
+     "cuts_per10k": 32.18,
+     "symmetry_mm": {
+      "p50": 2.4,
+      "p90": 6.72
+     },
+     "quads": 0.73
+    },
+    "texture_E132": {
+     "light_r2": 0.067,
+     "front_back_de": 1.517,
+     "back_sharp": 0.709,
+     "coverage": 0.557,
+     "clusters": 8,
+     "seam_de_p50": 0.87,
+     "texel_spread_p95_p5": 5.47
+    },
+    "stress_battery": {
+     "poses": {
+      "arms_across": {
+       "crushed_pct": 0.398,
+       "stretched_pct": 0.701,
+       "sheared_pct": 0.826,
+       "faces_bad_pct": 1.925,
+       "intersecting_pairs_mean": 1390.6,
+       "penetration_max_cm": 7.86
+      },
+      "arms_behind": {
+       "crushed_pct": 0.183,
+       "stretched_pct": 0.422,
+       "sheared_pct": 0.496,
+       "faces_bad_pct": 1.101,
+       "intersecting_pairs_mean": 85.4,
+       "penetration_max_cm": 0.0
+      },
+      "arms_forward": {
+       "crushed_pct": 0.227,
+       "stretched_pct": 0.827,
+       "sheared_pct": 1.019,
+       "faces_bad_pct": 2.073,
+       "intersecting_pairs_mean": 239.4,
+       "penetration_max_cm": 0.31
+      },
+      "arms_overhead": {
+       "crushed_pct": 0.147,
+       "stretched_pct": 1.267,
+       "sheared_pct": 1.515,
+       "faces_bad_pct": 2.929,
+       "intersecting_pairs_mean": 40.8,
+       "penetration_max_cm": 0.0
+      },
+      "bend_twist": {
+       "crushed_pct": 0.239,
+       "stretched_pct": 0.342,
+       "sheared_pct": 0.387,
+       "faces_bad_pct": 0.968,
+       "intersecting_pairs_mean": 18.2,
+       "penetration_max_cm": 0.0
+      },
+      "head_turn": {
+       "crushed_pct": 0.09,
+       "stretched_pct": 0.287,
+       "sheared_pct": 0.268,
+       "faces_bad_pct": 0.645,
+       "intersecting_pairs_mean": 24.6,
+       "penetration_max_cm": 0.0
+      },
+      "heel_strike": {
+       "crushed_pct": 0.061,
+       "stretched_pct": 0.06,
+       "sheared_pct": 0.068,
+       "faces_bad_pct": 0.189,
+       "intersecting_pairs_mean": 3.0,
+       "penetration_max_cm": 0.0
+      },
+      "kick": {
+       "crushed_pct": 0.237,
+       "stretched_pct": 0.511,
+       "sheared_pct": 0.815,
+       "faces_bad_pct": 1.563,
+       "intersecting_pairs_mean": 5.4,
+       "penetration_max_cm": 0.0
+      },
+      "squat": {
+       "crushed_pct": 0.648,
+       "stretched_pct": 1.148,
+       "sheared_pct": 1.656,
+       "faces_bad_pct": 3.452,
+       "intersecting_pairs_mean": 816.8,
+       "penetration_max_cm": 5.69
+      },
+      "tiptoe": {
+       "crushed_pct": 0.096,
+       "stretched_pct": 0.064,
+       "sheared_pct": 0.067,
+       "faces_bad_pct": 0.227,
+       "intersecting_pairs_mean": 3.0,
+       "penetration_max_cm": 0.0
+      }
+     },
+     "mean": {
+      "crushed_pct": 0.233,
+      "stretched_pct": 0.563,
+      "sheared_pct": 0.712,
+      "faces_bad_pct": 1.507,
+      "intersecting_pairs_mean": 262.72,
+      "penetration_max_cm": 1.386
+     }
+    },
+    "clip_audit": {
+     "crushed_pct": 0.743,
+     "stretched_pct": 1.088,
+     "sheared_pct": 1.385,
+     "intersecting_pairs_mean": 251.905,
+     "penetration_max_cm": 1.649,
+     "deep_frames_pct": 3.095,
+     "popping_event_windows": 16
+    }
+   }
+  }
+ }
+}
