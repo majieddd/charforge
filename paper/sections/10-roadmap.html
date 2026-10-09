@@ -56,8 +56,12 @@
         QuadriFlow refuses our solids [E163];</li>
       <li>dense first, then down to the smallest mesh that keeps the detail - what Tripo does after generating ~1.5-2M faces
         [E168]. Measured so far: an isotropic remesh at the same 60k makes far better-shaped triangles but sits 6-8 times
-        further from the surface than our collapse decimation, so the decimation stays; next, the budget set per character by
-        that distance, and an LOD ladder from the same bake;</li>
+        further from the surface than our collapse decimation, so the decimation stays. The budget that keeps the surface
+        within 0.35 mm is 40k for Pip, 50k for Mara and Vex and 90k for Cadet's armour; the shipped LODs reuse the full mesh's
+        normal map and their normals are 17-44&deg; off, where LODs decimated from the solid with their own maps stay at
+        8-17&deg; - next is shipping those, and the face stage's subdivision, which adds half again to every model;</li>
+      <li>the black slots at the back of the shoulders, which the arm cut leaves [E169], and a hands check that notices a
+        hand that failed to join the arm;</li>
       <li>done: Pixal3D against TRELLIS.2 on six characters - an option with a better silhouette and a cleaner surface,
         not the default for its eyes and symmetry [E155];</li>
       <li>done: a judge that builds a weight candidate through the clips; it rejects the surface-relative weights on all four

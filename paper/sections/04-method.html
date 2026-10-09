@@ -115,7 +115,11 @@
   characters the shell went through the torso from front to back and showed on the back as dark rectangular holes. Once
   the arm is free, everything the cut took that lies more than 3 voxels (about 5 mm) from the arm's own solid now goes
   back to the body; a band of air still parts them wherever they were glued, and the stage undoes the give-back if its
-  own joined test would fail [E146].</p>
+  own joined test would fail [E146]. That band is also where the black squiggles on Rowan's jacket come from: seen from
+  behind, its mouth runs up the back of the shoulder as a slot a few millimetres wide that light cannot reach (the baked
+  occlusion there is 11 of 255), and no change to the paint shows through it. Widening the band to 6 mm halves the
+  slot's vertices but leaves the marks as they were and lets the arms go deeper in the clips, so it is not adopted; the
+  slot's mouth has to be closed above the armpit [E169].</p>
 <p><b>Modelled hands.</b> Generated hands are paddles. They are carved off at the wrist and replaced by a modelled hand
   (a signed distance function with anatomical proportions, 15 finger bones) unioned onto the solid. The modelled wrist
   was a person's; on Gray, "extremely muscular", whose forearms measure 11-13 cm at the wrist, each arm ended in a flat
@@ -295,7 +299,12 @@
   Pip's clips stretch and shear less, but his fall and strafe go deeper - and the cause is in the method: the radius is
   subtracted per bone, so a thick bone takes the weight of the thin joint beside it on the same chain (Vex's left wrist
   keeps 33 of its 880 vertices; her forearm and hand pass through each other), and the trunk's radius pulls weight from the
-  shoulders and collar.</p>
+  shoulders and collar. The same judge chose Pip's weights for 0.20 [E171]. The colour rules read the texture, and 0.19's
+  sharper one moved 1.8% of his clothing vertices - enough to tip the battery from the hybrid to the default by 0.005
+  under its margin. Of the variants tried through his clips, soft weights on the arm-bound vertices only, the default
+  everywhere else, take his frames with a part more than 2 cm inside another from 6.4% to 3.9% with every other measure
+  better; its one worse clip is one more of sprint's eleven sampled frames, and a clip's tolerance is now at least one
+  sample, the audit's own resolution.</p>
 <figure id="fig-weights">
   <img src="media/weights_vex.webp" width="1200" height="966" alt="Vex with her arms overhead and forward under three weightings: with the default falloff and the hybrid, dark slivers of her jacket's side fold out behind her right arm; with Make-It-Animatable's weights they are shorter and the jacket's hem stays lower">
   <figcaption>Vex's arms overhead (top) and forward (bottom) with the default weights, the hybrid the build keeps, and
@@ -329,7 +338,10 @@
   - eyes wide and squinting, brows down and raised inside and out, jawOpen, smiles, frowns, funnel, stretches, cheek puff,
   sneers - the names engines and face-capture apps drive [E166]. Each is a smooth field per side from the same landmarks,
   gated by the same trust in the eyes and mouth; jawOpen is the jaw bone's opening as a morph. Stored as sparse morphs,
-  they add about 0.6 MB to a web model. It places nothing it cannot find: on Bo, eyes
+  they add about 0.6 MB to a web model. The mouth is cut along the seam; where the plane through the seam and the corners
+  tilts more than 10&deg; while the seam itself sits level with them - a mouth seen a little from the side - the cut is
+  made level, so the jaw does not open along a slant (Knight's folds on jawOpen 121 &rarr; 95, the pouch from nose to
+  cheek gone) [E170]. It places nothing it cannot find: on Bo, eyes
   behind round glasses and a mouth under a moustache, it builds no face rig rather than a guessed one [E109]. Two
   characters lost their face rig because the frame stopped above the chin on a tall head [E017]. The position render
   had its own error: written as position + 4 into EEVEE's half-float film, every position was read in

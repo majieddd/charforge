@@ -1014,6 +1014,16 @@ def s_weights(r: Run):
     if mode == "soft":
         r.py("weights", "geodesic_weights.py", *common, *WEIGHTS_SOFT, "--out", r.path("weights.npz"), keep=("[weights]",))
         return
+    if mode == "armsoft":
+        # E171: the default weights everywhere but the arm-bound vertices (default arm share 0.3-0.6), which take the soft
+        # weights - judged through the clips on Pip (tools/weights_trial.py: deep frames 6.4% -> 3.9%, every measure better)
+        r.py("weights", "geodesic_weights.py", *common, "--out", r.work / "weights_sharp.npz", keep=("[weights]",))
+        r.py("weights_soft", "geodesic_weights.py", *common, *WEIGHTS_SOFT, "--out", r.work / "weights_soft.npz",
+             keep=("[weights]",))
+        r.py("weights_armsoft", "blend_weights.py", "--sharp", r.work / "weights_sharp.npz", "--soft",
+             r.work / "weights_soft.npz", "--soft-arm", "0.3,0.6", "--out", r.path("weights.npz"), keep=("[weights]",))
+        (r.work / "weights_choice.json").write_text(json.dumps({"picked": "armsoft", "forced": True}))
+        return
     if mode == "mia":
         if not mia_ready():
             sys.exit("--skin-weights mia needs Make-It-Animatable: run tools/setup_mia.sh")
@@ -1520,9 +1530,10 @@ def main():
                    help="hunyuan (needs tools/setup_hunyuan.sh): the head made again on its own from a close crop of the "
                         "reference by Hunyuan3D 2.1's shape model - a sculpted face where the whole-figure model's has a few "
                         "rough facets, ~8 more minutes (experiment E139); none: the head as generated with the body")
-    m.add_argument("--skin-weights", dest="skin_weights", choices=("auto", "sharp", "soft", "mia"), default=None,
+    m.add_argument("--skin-weights", dest="skin_weights", choices=("auto", "sharp", "soft", "armsoft", "mia"), default=None,
                    help="auto (default): the skin weights made with the default falloff and as a hybrid (soft on the body, "
-                        "default on the legs), and the one that holds up better at the extreme poses kept (E154); sharp, soft "
+                        "default on the legs), and the one that holds up better at the extreme poses kept (E154); sharp, soft, "
+                        "armsoft (soft only on the arm-bound vertices, chosen for Pip through the clips, E171) "
                         "or mia (Make-It-Animatable, tools/setup_mia.sh; experimental, E157) forces one")
     m.add_argument("--contact", choices=("on", "off"), default=None,
                    help="on (default): after clearance, each clip is solved against the character's own surface so "
