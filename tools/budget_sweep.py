@@ -5,6 +5,9 @@
     ../.venv/bin/python tools/budget_sweep.py bake --names pip --budgets 40000        (full retopo, GPU lock held)
     ../.venv/bin/python tools/budget_sweep.py fbx --names pip mara cadet vex          (the shipped FBX's LODs)
     ../.venv/bin/python tools/budget_sweep.py lod --names pip --budgets 36000 13500   (solid-based LODs, GPU lock held)
+    ../.venv/bin/python tools/budget_sweep.py render --names pip        (raking-light grids, blender/lod_render.py)
+    ../.venv/bin/python tools/budget_sweep.py choose --names pip --tol-mm 0.35   (the --tris-rule budget; geometry only)
+    ../.venv/bin/python tools/budget_sweep.py rules --names pip mara cadet vex   (each candidate rule's budgets)
     ../.venv/bin/python tools/budget_sweep.py table --names pip mara cadet vex
 
 geometry: blender/retopo.py --geometry-only collapse-decimates each character's solid (solid_hands.glb, the head held
@@ -268,9 +271,7 @@ def rules(names, abs_tols=(0.25, 0.30, 0.35, 0.40), rel_mm=0.10, rel_deg=1.0):
     """What each candidate rule gives each character, from the measured curves. Absolute T: the smallest budget whose
     two-way surface p95 at 1.75 m is within T. Relative: the smallest budget whose surface p95 is within rel_mm of the
     shipped 60k's and, where it was baked, whose mapped normal p95 is within rel_deg of the 60k's."""
-    rows = []
-    for name in names:
-        rows += [r for r in table([name]) if r["kind"] in ("geo", "bake")]
+    rows = [r for r in table(names) if r["kind"] in ("geo", "bake")]
     out = {}
     for name in names:
         geo = {}
@@ -288,13 +289,19 @@ def rules(names, abs_tols=(0.25, 0.30, 0.35, 0.40), rel_mm=0.10, rel_deg=1.0):
         for b in sorted(geo):
             if geo[b]["two_way_p95_mm"] > base["two_way_p95_mm"] + rel_mm:
                 continue
-            if b in mapped and mapped[SHIPPED] is not None and mapped[b] > mapped[SHIPPED] + rel_deg:
+            if b not in mapped:              # surface only: the normal test waits for a bake of this budget
+                rel.append(b)
                 continue
-            rel.append(b)
-        choices[f"rel_{rel_mm:.2f}mm_{rel_deg:.0f}deg"] = rel[0] if rel else None
+            if mapped[b] <= mapped[SHIPPED] + rel_deg:
+                rel.append(b)
+        pick = rel[0] if rel else None
+        key = f"rel_{rel_mm:.2f}mm_{rel_deg:.0f}deg"
+        choices[key] = pick
+        choices[key + "_normal_checked"] = bool(pick is not None and pick in mapped)
         out[name] = {"choices": choices, "geo": {b: geo[b]["two_way_p95_mm"] for b in sorted(geo)},
                      "mapped": {b: mapped[b] for b in sorted(mapped)}}
-        cells = "  ".join(f"{k}={v:,}" if v else f"{k}=-" for k, v in choices.items())
+        cells = "  ".join(f"{k}={'yes' if v else 'no'}" if isinstance(v, bool) else
+                          (f"{k}={v:,}" if v else f"{k}=-") for k, v in choices.items())
         print(f"[rules] {name}: {cells}", flush=True)
     json.dump(out, open(os.path.join(NOTES, "e168_budget_rules.json"), "w"), indent=1)
     return out
