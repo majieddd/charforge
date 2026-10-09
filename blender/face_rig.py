@@ -47,6 +47,29 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--blend", required=True)
 ap.add_argument("--face", required=True)
 ap.add_argument("--out", required=True)
+# the density regions (see below). Defaults are the 0.19 behaviour; the options bound the regions by the eye spacing:
+# --eye-cap 0.2 caps the eye's height at 0.2 of the eye spacing, --mouth-region lips takes the mouth's width as the
+# lips' (0.6 of the eye spacing) when it reads wider than the eyes are apart (see the region code below)
+ap.add_argument("--eye-cap", type=float, default=0.0)
+ap.add_argument("--mouth-region", choices=("lips", "read"), default="read")
+# the density passes (each quarters the faces of the eye and mouth regions); 0 keeps the decimated mesh (a control)
+ap.add_argument("--density-passes", type=int, default=2)
+# the cut's plane: "auto" (the default) cuts level where the seam sits level with the corners but the plane through
+# the corners and the seam tilts more than 10 degrees (Knight, Aoi); "three" is the plane through the corners and the
+# seam everywhere (0.19); "level" cuts level everywhere
+ap.add_argument("--cut", choices=("auto", "three", "level"), default="auto")
+# the pouch's middle row: its share of the jaw weight (0.5 is the rows' midpoint; the floor is 1, the roof 0). 1.0
+# (the back wall moves with the floor) takes Knight's pouch folds 54 -> 19 and Aoi's 9 -> 3, but it also changes Mara's
+# jawOpen morph (slivers only; her folds above 1 mm2 stay 14): an option, off by default
+ap.add_argument("--pouch-mid", type=float, default=0.5)
+# the jaw's weight fades down the neck from (chin - neck_start * ied) over neck_fade * ied
+ap.add_argument("--neck-start", type=float, default=0.7)
+ap.add_argument("--neck-fade", type=float, default=0.5)
+# the jaw's share of each vertex's head weight, averaged over the mesh's edges this many times (0 keeps it as
+# painted by the falloff); the head keeps the rest, so head plus jaw still equals the head weight. Measured and not
+# adopted: 5 passes take jawOpen's folds above 1 mm2 to Aoi 36 -> 29, Mara 14 -> 3, Knight 95 -> 64, but they raise the
+# big-edge stretch (Mara 703 -> 845, Knight 430 -> 488) and open a dark tear along Aoi's jaw line in the render
+ap.add_argument("--jaw-smooth", type=int, default=0)
 a = ap.parse_args(argv)
 
 bpy.ops.wm.open_mainfile(filepath=a.blend)
@@ -68,23 +91,39 @@ import bmesh  # noqa: E402
 bm = bmesh.new()
 bm.from_mesh(me)
 Mw0 = np.array(mesh.matrix_world)
+# The region is set by the landmarks, and two of them read the texture: the eye's height (the dark blob's, 2.3 and
+# 2.8 cm on Kaito) and the mouth's width (the redness's ends). On Kaito the mouth corners read 10.0 cm apart, wider
+# than the 8.3 cm eye spacing (the smile line, which the cut refuses to use), so the mouth box is 8.5 cm half-wide
+# and runs down past the chin into the neck. --mouth-region lips takes the lips' width (0.6 of the eye spacing, as the
+# cut does) instead: Kaito 98,781 -> 85,684 triangles. The default keeps the 0.19 box. The face's flagged surface is
+# the same either way (rest-area share of the clip audit: stretched 0.7483% vs 0.7480%); the audit's face-count
+# share is not, because a finer region adds faces (tools/face_flag_where.py). --eye-cap 0.2 caps the eye's height
+# at that share of the eye spacing: on the four test characters it removes no face, so it changes nothing there.
 regions = []
 for side in ("left", "right") if F.get("eyes_ok", True) else ():
     e = F["eyes"][side]
-    regions.append((np.array(e["centre"]), 1.6 * e["width_m"] / 2, 2.2 * max(e["height_m"], 0.3 * e["width_m"]) + 0.35 * ied))
+    h_reg = max(e["height_m"], 0.3 * e["width_m"])
+    if a.eye_cap > 0:
+        h_reg = min(h_reg, a.eye_cap * ied)
+    regions.append((np.array(e["centre"]), 1.6 * e["width_m"] / 2, 2.2 * h_reg + 0.35 * ied))
 mouth0 = np.array(F["mouth"]["centre"])
 mw0 = float(F["mouth"]["width_m"])
+if a.mouth_region == "lips" and mw0 > ied:
+    mw0 = 0.6 * ied
 if F.get("mouth_ok", True):
     regions.append((mouth0, 0.85 * mw0, 0.55 * mw0))
-for rep in range(2):
+for rep in range(a.density_passes):
     bm.faces.ensure_lookup_table()
     sel = set()
+    per_region = [0] * len(regions)
     for f_ in bm.faces:
         c = Mw0[:3, :3] @ np.array(f_.calc_center_median()) + Mw0[:3, 3]
-        for C, rx, rz in regions:
+        for k_, (C, rx, rz) in enumerate(regions):
             if abs(c[0] - C[0]) < rx and abs(c[2] - C[2]) < rz and abs(c[1] - C[1]) < 0.5 * ied:
                 sel.add(f_)
+                per_region[k_] += 1
                 break
+    print(f"[face] density pass {rep + 1}: {len(sel):,} faces in the eye and mouth regions {per_region}", flush=True)
     edges = list({e_ for f_ in sel for e_ in f_.edges})
     bmesh.ops.subdivide_edges(bm, edges=edges, cuts=1, use_grid_fill=True, smooth=0.0)
 bm.to_mesh(me)
@@ -112,6 +151,17 @@ n_w = np.cross(mcr_w - mcl_w, seam_w - mcl_w)
 if np.linalg.norm(n_w) < 1e-9 or abs(n_w[2]) < 0.5 * np.linalg.norm(n_w):
     n_w = np.array([0.0, 0.0, 1.0])                     # a degenerate or steep plane: cut level
 n_w = n_w / np.linalg.norm(n_w) * (1.0 if n_w[2] >= 0 else -1.0)
+# The plane through the two corners and the seam is ill-conditioned when the seam lies almost on the corners' chord:
+# a seam level with the corners (within a tenth of the eye spacing) is tilted only by the chord's depth offset. Knight's
+# corners sit 1.8 cm apart in depth and its seam is level with them, so the three-point plane tilted 13 degrees and the
+# jaw opened the pouch on the slant (121 folded triangles; 95 with the level cut). A level plane is the one the lips
+# part along when the corners are level. Mara's plane is 2 degrees off level and is kept.
+tilt_deg = float(np.degrees(np.arccos(min(1.0, abs(n_w[2])))))
+level_seam = abs(seam_w[2] - 0.5 * (mcl_w[2] + mcr_w[2])) < 0.1 * ied
+if a.cut == "level" or (a.cut == "auto" and level_seam and tilt_deg > 10.0):
+    n_w = np.array([0.0, 0.0, 1.0])
+    print(f"[face] mouth cut level (the seam sits level with the corners; the three-point plane tilted {tilt_deg:.1f} deg)",
+          flush=True)
 Minv0 = np.linalg.inv(Mw0)
 co_loc = Minv0[:3, :3] @ seam_w + Minv0[:3, 3]
 no_loc = Mw0[:3, :3].T @ n_w
@@ -169,7 +219,7 @@ if mouth_ok:
     chain = []
     for u_, l_ in pairs:
         cu, cl = np.array(u_.co), np.array(l_.co)
-        chain.append((u_, new_vert(cu + inward * d1, u_, 0.0), new_vert((cu + cl) / 2 + inward * d2, u_, 0.5),
+        chain.append((u_, new_vert(cu + inward * d1, u_, 0.0), new_vert((cu + cl) / 2 + inward * d2, u_, a.pouch_mid),
                       new_vert(cl + inward * d1, l_, 1.0), l_))
     chain.sort(key=lambda row: to_w(row[0].co)[0])
     mat = bpy.data.materials.new("mouth")
@@ -272,7 +322,7 @@ else:
     f_vert = ss((mouth[2] + 0.04 * ied - V[:, 2]) / (0.10 * ied))      # 0 above the upper lip, 1 below
     f_front = ss((hinge[1] + 0.2 * ied - V[:, 1]) / (0.6 * ied))       # the face, not the back of the head
     f_side = ss((1.35 * ied - np.abs(V[:, 0] - mouth[0])) / (0.45 * ied))
-    f_neck = ss((V[:, 2] - (chin[2] - 0.7 * ied)) / (0.5 * ied))        # fades down the neck
+    f_neck = ss((V[:, 2] - (chin[2] - a.neck_start * ied)) / (a.neck_fade * ied))        # fades down the neck
     # the cut's two sides and the pouch: above the seam stays, below goes, in the middle of the mouth
     # (toward the joined corners the old smooth blend takes over, so the corners stretch, not tear)
     if upper_idx or lower_idx:
@@ -293,6 +343,22 @@ else:
     if bag_idx:
         for i_, t_ in bag_idx.items():
             wj[i_] = t_ * max(Whead[i_], 1e-3) if Whead[i_] > 0 else t_
+    if a.jaw_smooth > 0:
+        # the jaw share varies sharply where the painted head weight does (the chin's neck share); averaging it
+        # over the edges makes the morph's displacement change gently, and the pouch keeps its own rows
+        Ev = np.empty(len(me.edges) * 2, dtype=np.int64)
+        me.edges.foreach_get("vertices", Ev)
+        Ev = Ev.reshape(-1, 2)
+        deg_ = np.bincount(Ev.ravel(), minlength=n).astype(float)
+        s_ = wj.copy()
+        for _ in range(a.jaw_smooth):
+            nb_ = np.zeros(n)
+            np.add.at(nb_, Ev[:, 0], s_[Ev[:, 1]])
+            np.add.at(nb_, Ev[:, 1], s_[Ev[:, 0]])
+            s_ = (s_ + nb_) / (1.0 + deg_)
+        keep_ = np.zeros(n, bool)
+        keep_[list(bag_idx)] = True
+        wj = np.where(keep_, wj, np.minimum(s_, Whead))
     jv = mesh.vertex_groups.new(name="jaw")
     hv = mesh.vertex_groups[head_name]
     moved = 0
