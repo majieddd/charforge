@@ -73,7 +73,12 @@ ap.add_argument("--quad-face-angle", type=float, default=60.0,
 ap.add_argument("--quad-shape-angle", type=float, default=60.0,
                 help="with --quads: the largest corner deviation from square, degrees (E118: 40 keeps the quads squarer "
                      "but leaves 36% of faces quads, 60 gives 56%)")
+ap.add_argument("--geometry-only", action="store_true",
+                help="with --cage: stop once the decimated low is cleaned and write it to --out as a GLB with no UVs, "
+                     "maps or GPU work (the E168 budget sweep, tools/budget_sweep.py)")
 a = ap.parse_args(argv)
+if a.geometry_only and not a.cage:
+    raise SystemExit("[retopo] --geometry-only needs --cage (the collapse decimation of the solid)")
 
 
 def import_one(path):
@@ -565,6 +570,18 @@ def main():
             print(f"[retopo] legs: cut {len(weld):,} faces where the remesh had welded the legs "
                   f"together, closed {len(filled['faces']):,} openings", flush=True)
         bm.free()
+
+    if a.geometry_only:
+        # The E168 budget sweep measures the decimated surface against the solid. Everything below is UVs and
+        # maps, so the low is written here, as it stands after the cleanup: no unwrap, no bake, no GPU.
+        bpy.ops.object.select_all(action="DESELECT")
+        low.select_set(True)
+        bpy.context.view_layer.objects.active = low
+        bpy.ops.object.shade_smooth()
+        bpy.ops.export_scene.gltf(filepath=a.out, export_format="GLB", use_selection=True)
+        print(f"[retopo] geometry only: {len(low.data.polygons):,} triangles from {tris0:,} on the solid -> {a.out}",
+              flush=True)
+        return
 
     # Smooth shading before baking. On a flat-shaded cage every face carries its own tangent
     # basis, so the baked normal map encodes the facet angle rather than surface detail - which
