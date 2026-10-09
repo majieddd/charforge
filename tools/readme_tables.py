@@ -30,9 +30,11 @@ def roster(cfg):
         prompt = (m.get("source") or {}).get("prompt") or c.get("prompt") or ""
         made = f"*\"{prompt}\"*" if (m.get("source") or {}).get("prompt") else prompt
         face = m.get("face") or {}
+        morphs = face.get("morphs", [])
         parts = (["jaw"] if face.get("jaw_bone") else []) + [x.replace("_L", "").replace("_R", "")
-                                                              for x in face.get("morphs", [])]
-        face_s = ", ".join(dict.fromkeys(parts)) or "-"
+                                                              for x in morphs if x == x.lower()]
+        arkit = sum(1 for x in morphs if x != x.lower())     # the ARKit-named shapes (camelCase, E166): counted, not listed
+        face_s = ", ".join(dict.fromkeys(parts)) + (f" + {arkit} ARKit" if arkit else "") or "-"
         # a character made since the release is built here but has no download yet ("released": false)
         pkg = f"[{c['id']}.zip]({rel}/{c['id']}.zip)" if c.get("released", True) else "not in a release yet"
         rows.append(f"| **{c['name']}** | {(m.get('style') or {}).get('name', 'realistic')} | {made} | {m['height_m']:.2f} m | {lods} | {face_s} | "
