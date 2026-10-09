@@ -58,7 +58,8 @@
         bound and an LOD ladder from the same bake - what Tripo does after generating ~1.5-2M faces [E168];</li>
       <li>done: Pixal3D against TRELLIS.2 on six characters - an option with a better silhouette and a cleaner surface,
         not the default for its eyes and symmetry [E155];</li>
-      <li>skin weights chosen by building each candidate through the clips [E161];</li>
+      <li>done: a judge that builds a weight candidate through the clips; it rejects the surface-relative weights on all four
+        characters tried, because a thick bone takes a thin joint's weight beside it - a radius per part is next [E161];</li>
       <li>a high-resolution pass on the reference and views, written and waiting on ComfyUI [E164].</li>
     </ul>
     Each lane is reviewed by a second agent that re-runs its measures before anything is merged.</li>
